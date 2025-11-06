@@ -124,7 +124,7 @@ object DatabricksConfig:
       !containsPathTraversal &&                    // No path traversal
       !containsCurrentDir &&                       // No current dir refs
       !hasBackslash &&                             // No backslashes
-      decodedPath.matches("^/[a-zA-Z0-9/_@. -]+$") // Safe chars only (allows spaces, @, dots)
+      decodedPath.matches("^/[a-zA-Z0-9/_@.-]+$")  // Safe chars only (no spaces, allows @, dots)
 
     if (isValidFormat) {
       ZIO.succeed(path) // Return original path (API expects it as-is)
