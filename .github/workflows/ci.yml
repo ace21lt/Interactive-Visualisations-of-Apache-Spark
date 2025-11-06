@@ -34,13 +34,13 @@ jobs:
     - name: Check Scalafmt
       run: |
         echo "::group::Checking Scala code formatting"
-        sbt scalafmtCheckAll || (echo "❌ Scala files are not formatted. Run 'sbt scalafmtAll' locally." && exit 1)
-        echo "✅ All Scala files are properly formatted"
+        sbt scalafmtCheckAll || (echo "cala files are not formatted. Run 'sbt scalafmtAll' locally." && exit 1)
+        echo "All Scala files are properly formatted"
         echo "::endgroup::"
         
         echo "::group::Checking build.sbt formatting"
-        sbt scalafmtSbtCheck || (echo "❌ build.sbt is not formatted. Run 'sbt scalafmtAll' locally." && exit 1)
-        echo "✅ build.sbt is properly formatted"
+        sbt scalafmtSbtCheck || (echo "build.sbt is not formatted. Run 'sbt scalafmtAll' locally." && exit 1)
+        echo "build.sbt is properly formatted"
         echo "::endgroup::"
       continue-on-error: false
 
@@ -69,9 +69,9 @@ jobs:
       run: |
         if [ -f target/scala-3.3.1/scoverage-report/scoverage.xml ]; then
           COVERAGE=$(grep -oP 'statement-rate="\K[^"]+' target/scala-3.3.1/scoverage-report/scoverage.xml | head -1)
-          echo "📊 Test Coverage: ${COVERAGE}%"
+          echo "Test Coverage: ${COVERAGE}%"
         else
-          echo "⚠️  No coverage report found (no tests implemented yet)"
+          echo "⚠No coverage report found (no tests implemented yet)"
         fi
 
     # Step 9: Run E2E tests (will run when you add them)
