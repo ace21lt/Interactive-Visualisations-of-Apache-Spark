@@ -48,3 +48,6 @@ frontend/yarn-error.log*
 *.jar
 *.class
 .cache/
+
+# Environment variables (contains secrets)
+.env
