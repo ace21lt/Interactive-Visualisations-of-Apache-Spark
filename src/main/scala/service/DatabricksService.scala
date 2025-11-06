@@ -199,12 +199,24 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
         maybeOutput.getOrElse(RunOutput(runId, TimeoutState, None)) // Return output or timeout
       }
 
-  // Extract notebook output from JSON response (placeholder for now)
+  // Extract notebook output from JSON response
   private def extractNotebookOutput(jsonStr: String): NotebookOutput =
-    // Store full JSON response for now - can parse specific fields later
-    NotebookOutput(
-      result = Some(jsonStr)
-    )
+    import zio.json.ast.Json
+    // Try to parse the JSON and extract notebook_output.result field
+    Json.fromString(jsonStr) match {
+      case Left(_) =>
+        // Parsing failed, return None
+        NotebookOutput(result = None)
+      case Right(json) =>
+        // Try to find notebook_output.result
+        val resultOpt = for {
+          notebookOutput <- json.asObject.flatMap(_.get("notebook_output"))
+          notebookObj    <- notebookOutput.asObject
+          resultValue    <- notebookObj.get("result")
+          resultStr      <- resultValue.asString
+        } yield resultStr
+        NotebookOutput(result = resultOpt)
+    }
 
   // Fetch actual notebook output from task run (Cell 6 dbutils.notebook.exit() value)
   private def fetchNotebookOutput(runId: Long): Task[Option[NotebookOutput]] =
