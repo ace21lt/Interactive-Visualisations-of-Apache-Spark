@@ -10,7 +10,6 @@ case class DatabricksConfig(
     notebookPath: String,                   // Absolute path to notebook in workspace (from NOTEBOOK_PATH)
     maxPollAttempts: Int = 30,              // Max times to check if notebook completed (default: 30 checks)
     pollIntervalSeconds: Int = 2,           // Seconds between status checks (default: 2s polling)
-    enableDetailedLogging: Boolean = false, // Verbose logs for debugging
     maxVisualizationRows: Int = 1000,       // Row limit for frontend display
     timeoutSeconds: Int = 300,              // Overall execution timeout (5 minutes)
     captureExecutionPlan: Boolean = true,   // Capture Spark query plans for DAG viz
