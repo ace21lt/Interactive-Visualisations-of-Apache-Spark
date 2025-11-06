@@ -47,17 +47,21 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
         .flatMap { response =>
           response.body.asString.flatMap { jsonStr =>
             if (response.status.isSuccess) {
-              // Parse JSON to extract task run_id using regex
-              ZIO.attempt {
-                val taskRunIdPattern = "\"run_id\"\\s*:\\s*(\\d+)".r
-                val matches          = taskRunIdPattern.findAllMatchIn(jsonStr).toList
-                // First match = main run_id, second match = task run_id
-                if (matches.length >= 2) {
-                  matches(1).group(1).toLong
-                } else {
-                  throw new RuntimeException(s"Could not find task run_id in response: $jsonStr")
-                }
-              }
+              // Parse JSON to extract task run_id from tasks[0].run_id
+              ZIO
+                .fromEither(jsonStr.fromJson[RunDetailsResponse])
+                .mapBoth(
+                  err => new RuntimeException(s"Failed to parse run details: $err"),
+                  runDetails =>
+                    runDetails.tasks
+                      .flatMap(_.headOption)
+                      .map(_.runId)
+                      .getOrElse(
+                        throw new RuntimeException(
+                          s"No tasks found in run details for run_id=$runId. Response: $jsonStr"
+                        )
+                      )
+                )
             } else {
               ZIO.fail(new RuntimeException(s"Failed to get run details: $jsonStr"))
             }

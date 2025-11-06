@@ -85,6 +85,27 @@ object RunStatusResponse:
   implicit val encoder: JsonEncoder[RunStatusResponse] = DeriveJsonEncoder.gen[RunStatusResponse]
   implicit val decoder: JsonDecoder[RunStatusResponse] = DeriveJsonDecoder.gen[RunStatusResponse]
 
+// Task run information for MULTI_TASK format
+case class TaskRun(
+    @jsonField("run_id") runId: Long,       // Task-level run ID
+    @jsonField("task_key") taskKey: String  // Task identifier
+)
+
+object TaskRun:
+  implicit val encoder: JsonEncoder[TaskRun] = DeriveJsonEncoder.gen[TaskRun]
+  implicit val decoder: JsonDecoder[TaskRun] = DeriveJsonDecoder.gen[TaskRun]
+
+// Response from getting run details (includes task runs)
+case class RunDetailsResponse(
+    @jsonField("run_id") runId: Long, // Main run ID
+    state: RunState,                  // Current state
+    tasks: Option[List[TaskRun]]      // List of task runs (for MULTI_TASK format)
+)
+
+object RunDetailsResponse:
+  implicit val encoder: JsonEncoder[RunDetailsResponse] = DeriveJsonEncoder.gen[RunDetailsResponse]
+  implicit val decoder: JsonDecoder[RunDetailsResponse] = DeriveJsonDecoder.gen[RunDetailsResponse]
+
 // === Service Output Models (for our API responses) ===
 
 // Notebook execution output (from dbutils.notebook.exit())
