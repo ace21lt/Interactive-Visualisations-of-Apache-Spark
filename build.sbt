@@ -22,3 +22,12 @@ libraryDependencies ++= Seq(
 
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 
+// Test coverage settings
+coverageMinimumStmtTotal := 100
+coverageMinimumBranchTotal := 100
+coverageFailOnMinimum := true
+coverageHighlighting := true
+
+// Exclude Main from coverage (entry point)
+coverageExcludedPackages := "<empty>;Main"
+

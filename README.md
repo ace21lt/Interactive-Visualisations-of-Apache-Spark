@@ -1,2 +1,55 @@
-# Interactive-Visualisations-of-Apache-Spark
-My Dissertation project that focuses on building an application to showcase Interactive Visualisations of Apache Spark to enable students to have a more free learning technique
+# Interactive Visualisations of Apache Spark
+
+[![CI](https://github.com/YOUR_USERNAME/Interactive-Visualisations-of-Apache-Spark/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/Interactive-Visualisations-of-Apache-Spark/actions/workflows/ci.yml)
+
+My Dissertation project that focuses on building an application to showcase Interactive Visualisations of Apache Spark to enable students to have a more free learning technique.
+
+## Tech Stack
+
+- **Backend:** Scala 3 + ZIO
+- **API:** ZIO HTTP
+- **Integration:** Databricks REST API
+- **CI/CD:** GitHub Actions
+
+## Quick Start
+
+```bash
+# 1. Configure environment
+cp .env.example .env
+# Edit .env with your Databricks credentials
+
+# 2. Run the backend
+./run.sh
+
+# 3. Test the API
+curl http://localhost:8080/health
+curl -X POST http://localhost:8080/trigger
+```
+
+## Development
+
+```bash
+# Format code
+sbt scalafmtAll
+
+# Compile
+sbt compile
+
+# Run tests with coverage (when added)
+sbt clean coverage test coverageReport
+
+# Check coverage meets 100% requirement
+sbt coverageAggregate
+```
+
+## Documentation
+
+See [.github/workflows/ci.yml](.github/workflows/ci.yml) for CI/CD pipeline configuration.
+
+---
+
+**Author:** Liam Thomas  
+**Supervisor:** Dr T. R. Khan  
+**Module:** COM6012  
+**University:** University of Sheffield
+

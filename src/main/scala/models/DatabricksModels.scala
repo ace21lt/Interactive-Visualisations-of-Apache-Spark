@@ -3,7 +3,7 @@ package models
 import zio.json.*
 
 // JSON models for Databricks REST API communication
-// All models use zio-json for type-safe serialization/deserialization
+// All models use zio-json for type-safe serialisation/deserialisation
 // @jsonField annotations convert camelCase to snake_case for Databricks API
 
 // === Request Models ===
@@ -87,8 +87,8 @@ object RunStatusResponse:
 
 // Task run information for MULTI_TASK format
 case class TaskRun(
-    @jsonField("run_id") runId: Long,       // Task-level run ID
-    @jsonField("task_key") taskKey: String  // Task identifier
+    @jsonField("run_id") runId: Long,      // Task-level run ID
+    @jsonField("task_key") taskKey: String // Task identifier
 )
 
 object TaskRun:
@@ -119,5 +119,5 @@ case class NotebookOutput(
 case class RunOutput(
     runId: Long,                   // Databricks run ID
     state: String,                 // SUCCESS, FAILED, TIMEOUT
-    output: Option[NotebookOutput] // Notebook results for visualization
+    output: Option[NotebookOutput] // Notebook results for visualisation
 )

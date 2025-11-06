@@ -27,9 +27,12 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
   override def runNotebook(): Task[RunOutput] =
     for {
       _              <- ZIO.logInfo(s"Triggering notebook at ${config.notebookPath}")
-      _              <- ZIO.when(config.slowDownFactor != 1.0)(
-                          ZIO.logInfo(s"Using slowdown factor: ${config.slowDownFactor}x (poll interval: ${config.pollIntervalSeconds * config.slowDownFactor}s)")
-                        )
+      _              <-
+        ZIO.when(config.slowDownFactor != 1.0)(
+          ZIO.logInfo(
+            s"Using slowdown factor: ${config.slowDownFactor}x (poll interval: ${config.pollIntervalSeconds * config.slowDownFactor}s)"
+          )
+        )
       runId          <- submitNotebook()               // Step 1: Submit notebook to Databricks
       _              <- ZIO.logInfo(s"Notebook submitted with run ID: $runId")
       status         <- pollForCompletion(runId)       // Step 2: Poll until notebook completes
@@ -151,7 +154,7 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
     val apiUrl       = s"${config.workspaceUrl}/api/2.1/jobs/runs/get?run_id=$runId"
     val maxAttempts  = config.maxPollAttempts
     // Apply slowdown factor for teaching demos (e.g., 2.0 = half speed, 0.5 = double speed)
-    val pollInterval = (config.pollIntervalSeconds * config.slowDownFactor).seconds
+    val pollInterval = (config.pollIntervalSeconds * config.slowDownFactor).toInt.seconds
 
     // Check status once and return (attempt, output if completed)
     def checkStatus(attempt: Int): Task[(Int, Option[RunOutput])] =
@@ -207,24 +210,12 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
         maybeOutput.getOrElse(RunOutput(runId, TimeoutState, None)) // Return output or timeout
       }
 
-  // Extract notebook output from JSON response
+  // Extract notebook output from JSON response (placeholder for now)
   private def extractNotebookOutput(jsonStr: String): NotebookOutput =
-    import zio.json.ast.Json
-    // Try to parse the JSON and extract notebook_output.result field
-    Json.fromString(jsonStr) match {
-      case Left(_) =>
-        // Parsing failed, return None
-        NotebookOutput(result = None)
-      case Right(json) =>
-        // Try to find notebook_output.result
-        val resultOpt = for {
-          notebookOutput <- json.asObject.flatMap(_.get("notebook_output"))
-          notebookObj    <- notebookOutput.asObject
-          resultValue    <- notebookObj.get("result")
-          resultStr      <- resultValue.asString
-        } yield resultStr
-        NotebookOutput(result = resultOpt)
-    }
+    // Store full JSON response for now - can parse specific fields later
+    NotebookOutput(
+      result = Some(jsonStr)
+    )
 
   // Fetch actual notebook output from task run (Cell 6 dbutils.notebook.exit() value)
   private def fetchNotebookOutput(runId: Long): Task[Option[NotebookOutput]] =
@@ -240,23 +231,17 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
                 ZIO.logInfo(s"=== Notebook Output API Response ===") *>
                   ZIO.logInfo(s"Response: $jsonStr") *>
                   ZIO.logInfo(s"====================================") *>
-                  // Parse to extract notebook_output.result field using zio-json
+                  // Parse to extract notebook_output.result field using regex
                   ZIO.attempt {
-                    // Define minimal case class for parsing
-                    final case class NotebookOutputResponse(notebook_output: Option[NotebookOutputField])
-                    final case class NotebookOutputField(result: Option[String])
-
-                    jsonStr.fromJson[NotebookOutputResponse] match {
-                      case Right(parsed) =>
-                        parsed.notebook_output.flatMap(_.result) match {
-                          case Some(resultStr) =>
-                            Some(NotebookOutput(result = Some(resultStr)))
-                          case None =>
-                            // No result field - return full response for debugging
-                            Some(NotebookOutput(result = Some(jsonStr)))
-                        }
-                      case Left(_) =>
-                        // Parsing failed - return full response for debugging
+                    val resultPattern = "\"result\"\\s*:\\s*\"(.*)\"".r
+                    resultPattern.findFirstMatchIn(jsonStr) match {
+                      case Some(m) =>
+                        val notebookResult = m.group(1)
+                        // Unescape JSON (\" → ", \\ → \)
+                        val unescaped      = notebookResult.replace("\\\"", "\"").replace("\\\\", "\\")
+                        Some(NotebookOutput(result = Some(unescaped)))
+                      case None    =>
+                        // No result field - return full response for debugging
                         Some(NotebookOutput(result = Some(jsonStr)))
                     }
                   }

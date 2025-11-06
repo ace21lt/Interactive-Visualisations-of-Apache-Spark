@@ -5,16 +5,16 @@ import zio.*
 // Configuration for Databricks REST API integration
 // Holds all settings needed to connect to Databricks and execute notebooks
 case class DatabricksConfig(
-    workspaceUrl: String,                   // Databricks workspace URL (from DATABRICKS_HOST env var)
-    token: String,                          // Personal access token for API auth (from DATABRICKS_TOKEN)
-    notebookPath: String,                   // Absolute path to notebook in workspace (from NOTEBOOK_PATH)
-    maxPollAttempts: Int = 30,              // Max times to check if notebook completed (default: 30 checks)
-    pollIntervalSeconds: Int = 2,           // Seconds between status checks (default: 2s polling)
-    maxVisualizationRows: Int = 1000,       // Row limit for frontend display
-    timeoutSeconds: Int = 300,              // Overall execution timeout (5 minutes)
-    captureExecutionPlan: Boolean = true,   // Capture Spark query plans for DAG viz
-    capturePartitionInfo: Boolean = true,   // Capture partition distribution data
-    slowDownFactor: Double = 1.0            // Speed multiplier for teaching demos
+    workspaceUrl: String,                 // Databricks workspace URL (from DATABRICKS_HOST env var)
+    token: String,                        // Personal access token for API auth (from DATABRICKS_TOKEN)
+    notebookPath: String,                 // Absolute path to notebook in workspace (from NOTEBOOK_PATH)
+    maxPollAttempts: Int = 30,            // Max times to check if notebook completed (default: 30 checks)
+    pollIntervalSeconds: Int = 2,         // Seconds between status checks (default: 2s polling)
+    maxVisualisationRows: Int = 1000,     // Row limit for frontend display
+    timeoutSeconds: Int = 300,            // Overall execution timeout (5 minutes)
+    captureExecutionPlan: Boolean = true, // Capture Spark query plans for DAG viz
+    capturePartitionInfo: Boolean = true, // Capture partition distribution data
+    slowDownFactor: Double = 1.0          // Speed multiplier for teaching demos
 )
 
 object DatabricksConfig:
@@ -33,9 +33,9 @@ object DatabricksConfig:
   // Prevent infinite URL decode loops
   private val MaxUrlDecodeIterations = 5
 
-  // Visualization parameter limits
-  private val MinVisualizationRows      = 10
-  private val MaxVisualizationRowsLimit = 10000
+  // Visualisation parameter limits
+  private val MinVisualisationRows      = 10
+  private val MaxVisualisationRowsLimit = 10000
   private val MinTimeoutSeconds         = 30
   private val MaxTimeoutSeconds         = 3600
   private val MinSlowDownFactor         = 0.1
@@ -119,12 +119,12 @@ object DatabricksConfig:
 
     // Must be absolute path with safe characters only
     val isValidFormat = decodedPath.nonEmpty &&
-      decodedPath.startsWith("/") &&               // Absolute path required
-      decodedPath.length > 1 &&                    // More than just "/"
-      !containsPathTraversal &&                    // No path traversal
-      !containsCurrentDir &&                       // No current dir refs
-      !hasBackslash &&                             // No backslashes
-      decodedPath.matches("^/[a-zA-Z0-9/_@.-]+$")  // Safe chars only (no spaces, allows @, dots)
+      decodedPath.startsWith("/") &&              // Absolute path required
+      decodedPath.length > 1 &&                   // More than just "/"
+      !containsPathTraversal &&                   // No path traversal
+      !containsCurrentDir &&                      // No current dir refs
+      !hasBackslash &&                            // No backslashes
+      decodedPath.matches("^/[a-zA-Z0-9/_@.-]+$") // Safe chars only (no spaces, allows @, dots)
 
     if (isValidFormat) {
       ZIO.succeed(path) // Return original path (API expects it as-is)
@@ -152,13 +152,13 @@ object DatabricksConfig:
       )
     }
 
-  // Validate visualization rows limit
-  private def validateVisualizationRows(rows: Int): IO[String, Int] =
-    if (rows >= MinVisualizationRows && rows <= MaxVisualizationRowsLimit) {
+  // Validate visualisation rows limit
+  private def validateVisualisationRows(rows: Int): IO[String, Int] =
+    if (rows >= MinVisualisationRows && rows <= MaxVisualisationRowsLimit) {
       ZIO.succeed(rows)
     } else {
       ZIO.fail(
-        s"Invalid maxVisualizationRows value: $rows. Must be between $MinVisualizationRows and $MaxVisualizationRowsLimit."
+        s"Invalid maxVisualisationRows value: $rows. Must be between $MinVisualisationRows and $MaxVisualisationRowsLimit."
       )
     }
 
@@ -237,7 +237,7 @@ object DatabricksConfig:
   val layer: ZLayer[Any, String, DatabricksConfig] =
     ZLayer.fromZIO(
       for {
-        // Load and validate required config
+        // Load and validate required API configuration
         workspaceUrl <- getRequiredEnv("DATABRICKS_HOST").flatMap(validateUrl)
         token        <- getRequiredEnv("DATABRICKS_TOKEN").flatMap(validateToken)
         notebookPath <- getRequiredEnv("NOTEBOOK_PATH").flatMap(validateNotebookPath)
@@ -248,10 +248,9 @@ object DatabricksConfig:
         pollIntervalSecondsRaw <- getOptionalEnvInt("POLL_INTERVAL_SECONDS", 2)
         pollIntervalSeconds    <- validatePollInterval(pollIntervalSecondsRaw)
 
-        // Load and validate visualization config
-        enableDetailedLogging   <- getOptionalEnvBoolean("ENABLE_DETAILED_LOGGING", false)
-        maxVisualizationRowsRaw <- getOptionalEnvInt("MAX_VISUALIZATION_ROWS", 1000)
-        maxVisualizationRows    <- validateVisualizationRows(maxVisualizationRowsRaw)
+        // Load and validate visualisation config
+        maxVisualisationRowsRaw <- getOptionalEnvInt("MAX_VISUALISATION_ROWS", 1000)
+        maxVisualisationRows    <- validateVisualisationRows(maxVisualisationRowsRaw)
         timeoutSecondsRaw       <- getOptionalEnvInt("TIMEOUT_SECONDS", 300)
         timeoutSeconds          <- validateTimeout(timeoutSecondsRaw)
         captureExecutionPlan    <- getOptionalEnvBoolean("CAPTURE_EXECUTION_PLAN", true)
@@ -264,8 +263,7 @@ object DatabricksConfig:
         notebookPath = notebookPath,
         maxPollAttempts = maxPollAttempts,
         pollIntervalSeconds = pollIntervalSeconds,
-        enableDetailedLogging = enableDetailedLogging,
-        maxVisualizationRows = maxVisualizationRows,
+        maxVisualisationRows = maxVisualisationRows,
         timeoutSeconds = timeoutSeconds,
         captureExecutionPlan = captureExecutionPlan,
         capturePartitionInfo = capturePartitionInfo,
