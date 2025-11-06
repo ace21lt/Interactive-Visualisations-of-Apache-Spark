@@ -27,6 +27,9 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
   override def runNotebook(): Task[RunOutput] =
     for {
       _              <- ZIO.logInfo(s"Triggering notebook at ${config.notebookPath}")
+      _              <- ZIO.when(config.slowDownFactor != 1.0)(
+                          ZIO.logInfo(s"Using slowdown factor: ${config.slowDownFactor}x (poll interval: ${config.pollIntervalSeconds * config.slowDownFactor}s)")
+                        )
       runId          <- submitNotebook()               // Step 1: Submit notebook to Databricks
       _              <- ZIO.logInfo(s"Notebook submitted with run ID: $runId")
       status         <- pollForCompletion(runId)       // Step 2: Poll until notebook completes
@@ -143,7 +146,8 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
   private def pollForCompletion(runId: Long): Task[RunOutput] =
     val apiUrl       = s"${config.workspaceUrl}/api/2.1/jobs/runs/get?run_id=$runId"
     val maxAttempts  = config.maxPollAttempts
-    val pollInterval = config.pollIntervalSeconds.seconds
+    // Apply slowdown factor for teaching demos (e.g., 2.0 = half speed, 0.5 = double speed)
+    val pollInterval = (config.pollIntervalSeconds * config.slowDownFactor).seconds
 
     // Check status once and return (attempt, output if completed)
     def checkStatus(attempt: Int): Task[(Int, Option[RunOutput])] =
