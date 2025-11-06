@@ -220,17 +220,23 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
                 ZIO.logInfo(s"=== Notebook Output API Response ===") *>
                   ZIO.logInfo(s"Response: $jsonStr") *>
                   ZIO.logInfo(s"====================================") *>
-                  // Parse to extract notebook_output.result field using regex
+                  // Parse to extract notebook_output.result field using zio-json
                   ZIO.attempt {
-                    val resultPattern = "\"result\"\\s*:\\s*\"(.*)\"".r
-                    resultPattern.findFirstMatchIn(jsonStr) match {
-                      case Some(m) =>
-                        val notebookResult = m.group(1)
-                        // Unescape JSON (\" → ", \\ → \)
-                        val unescaped      = notebookResult.replace("\\\"", "\"").replace("\\\\", "\\")
-                        Some(NotebookOutput(result = Some(unescaped)))
-                      case None    =>
-                        // No result field - return full response for debugging
+                    // Define minimal case class for parsing
+                    final case class NotebookOutputResponse(notebook_output: Option[NotebookOutputField])
+                    final case class NotebookOutputField(result: Option[String])
+
+                    jsonStr.fromJson[NotebookOutputResponse] match {
+                      case Right(parsed) =>
+                        parsed.notebook_output.flatMap(_.result) match {
+                          case Some(resultStr) =>
+                            Some(NotebookOutput(result = Some(resultStr)))
+                          case None =>
+                            // No result field - return full response for debugging
+                            Some(NotebookOutput(result = Some(jsonStr)))
+                        }
+                      case Left(_) =>
+                        // Parsing failed - return full response for debugging
                         Some(NotebookOutput(result = Some(jsonStr)))
                     }
                   }
