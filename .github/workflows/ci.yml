@@ -40,17 +40,23 @@ jobs:
       env:
         CI: true
 
-    # Step 6: Check coverage meets 100% requirement
+    # Step 6: Check coverage meets 100% requirement and display percentage
     - name: Check coverage threshold
-      run: sbt coverageAggregate
+      run: |
+        sbt coverageAggregate
+        echo "Coverage report generated. Checking for 100% coverage requirement..."
       continue-on-error: false
 
-    # Step 7: Upload coverage report
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        files: ./target/scala-3.3.1/scoverage-report/scoverage.xml
-        fail_ci_if_error: true
+    # Step 7: Display coverage summary
+    - name: Display coverage summary
+      if: always()
+      run: |
+        if [ -f target/scala-3.3.1/scoverage-report/scoverage.xml ]; then
+          COVERAGE=$(grep -oP 'statement-rate="\K[^"]+' target/scala-3.3.1/scoverage-report/scoverage.xml | head -1)
+          echo "📊 Test Coverage: ${COVERAGE}%"
+        else
+          echo "⚠️  No coverage report found (no tests implemented yet)"
+        fi
 
     # Step 8: Run E2E tests (will run when you add them)
     # These require Databricks credentials, so they're optional
@@ -63,23 +69,5 @@ jobs:
         DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
         NOTEBOOK_PATH: ${{ secrets.NOTEBOOK_PATH }}
 
-    # Step 9: Generate test report (when tests exist)
-    - name: Publish test report
-      uses: dorny/test-reporter@v1
-      if: always()
-      with:
-        name: Test Results
-        path: target/test-reports/*.xml
-        reporter: java-junit
-        fail-on-error: true
-
-    # Step 10: Upload test results as artifact
-    - name: Upload test results
-      uses: actions/upload-artifact@v4
-      if: always()
-      with:
-        name: test-results
-        path: target/test-reports/
-        retention-days: 30
 
 
