@@ -73,7 +73,7 @@ object Routes:
                                  .json(
                                    ErrorResponse(
                                      error =
-                                       "Failed to execute notebook. Please verify: (1) DATABRICKS_HOST is correct and accessible, (2) DATABRICKS_TOKEN is valid and not expired, (3) NOTEBOOK_PATH exists and is accessible.",
+                                       s"Failed to execute notebook. Please verify: (1) DATABRICKS_HOST is correct and accessible, (2) DATABRICKS_TOKEN is valid and not expired, (3) NOTEBOOK_PATH exists and is accessible. Error details: $errorMessage",
                                      timestamp = timestamp
                                    ).toJson
                                  )
