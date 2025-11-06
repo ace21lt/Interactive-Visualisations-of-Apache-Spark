@@ -55,8 +55,8 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
                   details => {
                     // Extract the first task's run_id from MULTI_TASK format
                     details.tasks
-                      .flatMap(_.headOption)
-                      .map(_.runId)
+                      .flatMap(_.headOption) // Get first task from list
+                      .map(_.runId)          // Extract run_id from task
                       .getOrElse(
                         throw new RuntimeException(
                           s"No tasks found in MULTI_TASK run response for run_id: $runId"
