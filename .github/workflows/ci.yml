@@ -32,7 +32,16 @@ jobs:
 
     # Step 4: Check Scalafmt formatting
     - name: Check Scalafmt
-      run: sbt scalafmtCheckAll scalafmtSbtCheck
+      run: |
+        echo "::group::Checking Scala code formatting"
+        sbt scalafmtCheckAll || (echo "❌ Scala files are not formatted. Run 'sbt scalafmtAll' locally." && exit 1)
+        echo "✅ All Scala files are properly formatted"
+        echo "::endgroup::"
+        
+        echo "::group::Checking build.sbt formatting"
+        sbt scalafmtSbtCheck || (echo "❌ build.sbt is not formatted. Run 'sbt scalafmtAll' locally." && exit 1)
+        echo "✅ build.sbt is properly formatted"
+        echo "::endgroup::"
       continue-on-error: false
 
     # Step 5: Compile the project
