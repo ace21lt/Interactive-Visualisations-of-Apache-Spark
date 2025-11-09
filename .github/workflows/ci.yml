@@ -63,17 +63,17 @@ jobs:
       run: |
         if [ -f target/scala-3.3.1/scoverage-report/scoverage.xml ]; then
           COVERAGE=$(grep -oP 'statement-rate="\K[^"]+' target/scala-3.3.1/scoverage-report/scoverage.xml | head -1)
-          echo "📊 Test Coverage: ${COVERAGE}%"
+          echo "Test Coverage: ${COVERAGE}%"
           
           # Only enforce 100% coverage if there are actual tests
           if [ -d "src/test/scala" ] && [ "$(find src/test/scala -name '*.scala' | wc -l)" -gt 0 ]; then
             echo "Tests found - enforcing 100% coverage requirement"
             sbt coverageAggregate
           else
-            echo "⚠️  No tests implemented yet - skipping coverage enforcement"
+            echo "No tests implemented yet - skipping coverage enforcement"
           fi
         else
-          echo "⚠️  No coverage report found (no tests implemented yet)"
+          echo "No coverage report found (no tests implemented yet)"
         fi
       continue-on-error: false
 

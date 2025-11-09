@@ -1,15 +1,8 @@
 # Interactive Visualisations of Apache Spark
 
-[![CI](https://github.com/YOUR_USERNAME/Interactive-Visualisations-of-Apache-Spark/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/Interactive-Visualisations-of-Apache-Spark/actions/workflows/ci.yml)
 
 My Dissertation project that focuses on building an application to showcase Interactive Visualisations of Apache Spark to enable students to have a more free learning technique.
 
-## Tech Stack
-
-- **Backend:** Scala 3 + ZIO
-- **API:** ZIO HTTP
-- **Integration:** Databricks REST API
-- **CI/CD:** GitHub Actions
 
 ## Quick Start
 
@@ -42,14 +35,4 @@ sbt clean coverage test coverageReport
 sbt coverageAggregate
 ```
 
-## Documentation
-
-See [.github/workflows/ci.yml](.github/workflows/ci.yml) for CI/CD pipeline configuration.
-
----
-
-**Author:** Liam Thomas  
-**Supervisor:** Dr T. R. Khan  
-**Module:** COM6012  
-**University:** University of Sheffield
 
