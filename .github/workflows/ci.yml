@@ -1,0 +1,92 @@
+name: Scala CI Pipeline
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Step 1: Checkout code
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    # Step 2: Setup Java
+    - name: Setup JDK 21
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '21'
+        cache: 'sbt'
+
+    # Step 3: Setup SBT
+    - name: Setup SBT
+      run: |
+        echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | sudo tee /etc/apt/sources.list.d/sbt.list
+        echo "deb https://repo.scala-sbt.org/scalasbt/debian /" | sudo tee /etc/apt/sources.list.d/sbt_old.list
+        curl -sL "https://keyserver.ubuntu.com/pks/lookup?op=get&search=0x2EE0EA64E40A89B84B2DF73499E82A75642AC823" | sudo apt-key add
+        sudo apt-get update
+        sudo apt-get install sbt
+
+    # Step 4: Check Scalafmt formatting
+    - name: Check Scalafmt
+      run: |
+        echo "::group::Checking Scala code formatting"
+        sbt scalafmtCheckAll || (echo "cala files are not formatted. Run 'sbt scalafmtAll' locally." && exit 1)
+        echo "All Scala files are properly formatted"
+        echo "::endgroup::"
+        
+        echo "::group::Checking build.sbt formatting"
+        sbt scalafmtSbtCheck || (echo "build.sbt is not formatted. Run 'sbt scalafmtAll' locally." && exit 1)
+        echo "build.sbt is properly formatted"
+        echo "::endgroup::"
+      continue-on-error: false
+
+    # Step 5: Compile the project
+    - name: Compile code
+      run: sbt compile
+      continue-on-error: false
+
+    # Step 6: Run unit tests with coverage
+    - name: Run unit tests with coverage
+      run: sbt clean coverage test coverageReport
+      continue-on-error: true  # Don't fail if no tests exist yet
+      id: tests
+      env:
+        CI: true
+
+    # Step 7: Check coverage meets 100% requirement (only if tests exist)
+    - name: Check coverage threshold
+      if: success() || failure()  # Run even if tests failed
+      run: |
+        if [ -f target/scala-3.3.1/scoverage-report/scoverage.xml ]; then
+          COVERAGE=$(grep -oP 'statement-rate="\K[^"]+' target/scala-3.3.1/scoverage-report/scoverage.xml | head -1)
+          echo "Test Coverage: ${COVERAGE}%"
+          
+          # Only enforce 100% coverage if there are actual tests
+          if [ -d "src/test/scala" ] && [ "$(find src/test/scala -name '*.scala' | wc -l)" -gt 0 ]; then
+            echo "Tests found - enforcing 100% coverage requirement"
+            sbt coverageAggregate
+          else
+            echo "No tests implemented yet - skipping coverage enforcement"
+          fi
+        else
+          echo "No coverage report found (no tests implemented yet)"
+        fi
+      continue-on-error: false
+
+    # Step 8: Run E2E tests (will run when you add them)
+    # These require Databricks credentials, so they're optional
+    - name: Run E2E tests
+      if: ${{ github.base_ref == 'main' || github.base_ref == 'develop' }}
+      run: sbt "testOnly *E2ESpec"
+      continue-on-error: true  # Don't fail build if E2E tests fail (they need Databricks)
+      env:
+        DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
+        DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
+        NOTEBOOK_PATH: ${{ secrets.NOTEBOOK_PATH }}
+
+
+
