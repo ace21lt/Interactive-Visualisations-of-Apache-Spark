@@ -35,7 +35,7 @@ object Routes:
     zio.http.Routes.fromIterable(
       Chunk(
         // POST /trigger - Submit notebook and return execution trace
-        Method.POST / "trigger" -> handler { (_: Request) =>
+        Method.POST / "trigger"    -> handler { (_: Request) =>
           DatabricksService
             .runNotebook() // Execute notebook
             .map { result =>
@@ -68,13 +68,14 @@ object Routes:
             }
         },
         // GET /health - Simple health check endpoint
-        Method.GET / "health"   -> handler { (_: Request) =>
+        Method.GET / "health"      -> handler { (_: Request) =>
           ZIO.succeed(addCorsHeaders(Response.text("OK")))
         },
         // OPTIONS for CORS preflight
         Method.OPTIONS / "trigger" -> handler { (_: Request) =>
           ZIO.succeed(
-            Response.status(Status.NoContent)
+            Response
+              .status(Status.NoContent)
               .addHeader("Access-Control-Allow-Origin", "http://localhost:3000")
               .addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
               .addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")

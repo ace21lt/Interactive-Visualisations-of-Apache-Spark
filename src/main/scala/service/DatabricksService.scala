@@ -227,22 +227,22 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
       val key = "\"result\""
       var idx = json.indexOf(key)
       if idx < 0 then return None
-      
+
       // Move past the key to the colon
       idx = json.indexOf(':', idx + key.length)
       if idx < 0 then return None
-      
+
       // Skip whitespace after colon
       var i = idx + 1
       while i < json.length && Character.isWhitespace(json.charAt(i)) do i += 1
       if i >= json.length || json.charAt(i) != '"' then return None
-      
+
       // Now extract the string value, handling escapes
-      val sb = new StringBuilder
-      var j = i + 1  // Start after opening quote
+      val sb      = new StringBuilder
+      var j       = i + 1 // Start after opening quote
       var escaped = false
-      var closed = false
-      
+      var closed  = false
+
       while j < json.length && !closed do
         val ch = json.charAt(j)
         if escaped then
@@ -259,26 +259,26 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
         else
           sb.append(ch)
           j += 1
-      
+
       if !closed then return None
-      
+
       // Now unescape the extracted string
-      val raw = sb.toString
+      val raw       = sb.toString
       val unescaped = new StringBuilder(raw.length)
-      var k = 0
+      var k         = 0
       while k < raw.length do
         val c = raw.charAt(k)
         if c == '\\' && k + 1 < raw.length then
           raw.charAt(k + 1) match
-            case '"' => unescaped.append('"'); k += 2
-            case '\\' => unescaped.append('\\'); k += 2
-            case 'n' => unescaped.append('\n'); k += 2
-            case 'r' => unescaped.append('\r'); k += 2
-            case 't' => unescaped.append('\t'); k += 2
+            case '"'   => unescaped.append('"'); k += 2
+            case '\\'  => unescaped.append('\\'); k += 2
+            case 'n'   => unescaped.append('\n'); k += 2
+            case 'r'   => unescaped.append('\r'); k += 2
+            case 't'   => unescaped.append('\t'); k += 2
             case other => unescaped.append(other); k += 2
         else
           unescaped.append(c); k += 1
-      
+
       Some(unescaped.toString)
 
     ZIO
@@ -296,7 +296,7 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
                       case Some(value) =>
                         val trimmed = value.trim
                         Some(NotebookOutput(result = Some(trimmed)))
-                      case None =>
+                      case None        =>
                         // Fallback: return full response for debugging
                         Some(NotebookOutput(result = Some(jsonStr)))
                   }

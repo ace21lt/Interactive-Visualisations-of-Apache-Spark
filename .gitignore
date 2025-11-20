@@ -26,6 +26,9 @@ npm-debug.log*
 yarn-error.log*
 yarn.lock
 
+# Environment variables (contains secrets)
+.env
+
 # IDE/Editor
 .idea/
 .vscode/
