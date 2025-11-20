@@ -221,6 +221,66 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
   private def fetchNotebookOutput(runId: Long): Task[Option[NotebookOutput]] =
     val apiUrl = s"${config.workspaceUrl}/api/2.1/jobs/runs/get-output?run_id=$runId"
 
+    // Helper: extract value for "result" field from JSON, stopping at the closing quote
+    // Handles escaped quotes properly to avoid including "truncated" field
+    def extractResultField(json: String): Option[String] =
+      val key = "\"result\""
+      var idx = json.indexOf(key)
+      if idx < 0 then return None
+      
+      // Move past the key to the colon
+      idx = json.indexOf(':', idx + key.length)
+      if idx < 0 then return None
+      
+      // Skip whitespace after colon
+      var i = idx + 1
+      while i < json.length && Character.isWhitespace(json.charAt(i)) do i += 1
+      if i >= json.length || json.charAt(i) != '"' then return None
+      
+      // Now extract the string value, handling escapes
+      val sb = new StringBuilder
+      var j = i + 1  // Start after opening quote
+      var escaped = false
+      var closed = false
+      
+      while j < json.length && !closed do
+        val ch = json.charAt(j)
+        if escaped then
+          // Keep the escape sequence for later unescaping
+          sb.append('\\').append(ch)
+          escaped = false
+          j += 1
+        else if ch == '\\' then
+          escaped = true
+          j += 1
+        else if ch == '"' then
+          closed = true
+          j += 1
+        else
+          sb.append(ch)
+          j += 1
+      
+      if !closed then return None
+      
+      // Now unescape the extracted string
+      val raw = sb.toString
+      val unescaped = new StringBuilder(raw.length)
+      var k = 0
+      while k < raw.length do
+        val c = raw.charAt(k)
+        if c == '\\' && k + 1 < raw.length then
+          raw.charAt(k + 1) match
+            case '"' => unescaped.append('"'); k += 2
+            case '\\' => unescaped.append('\\'); k += 2
+            case 'n' => unescaped.append('\n'); k += 2
+            case 'r' => unescaped.append('\r'); k += 2
+            case 't' => unescaped.append('\t'); k += 2
+            case other => unescaped.append(other); k += 2
+        else
+          unescaped.append(c); k += 1
+      
+      Some(unescaped.toString)
+
     ZIO
       .scoped {
         client
@@ -229,31 +289,24 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
             response.body.asString.flatMap { jsonStr =>
               if (response.status.isSuccess) {
                 ZIO.logInfo(s"=== Notebook Output API Response ===") *>
-                  ZIO.logInfo(s"Response: $jsonStr") *>
+                  ZIO.logInfo(s"Response length: ${jsonStr.length} chars") *>
                   ZIO.logInfo(s"====================================") *>
-                  // Parse to extract notebook_output.result field using regex
                   ZIO.attempt {
-                    val resultPattern = "\"result\"\\s*:\\s*\"(.*)\"".r
-                    resultPattern.findFirstMatchIn(jsonStr) match {
-                      case Some(m) =>
-                        val notebookResult = m.group(1)
-                        // Unescape JSON (\" → ", \\ → \)
-                        val unescaped      = notebookResult.replace("\\\"", "\"").replace("\\\\", "\\")
-                        Some(NotebookOutput(result = Some(unescaped)))
-                      case None    =>
-                        // No result field - return full response for debugging
+                    extractResultField(jsonStr) match
+                      case Some(value) =>
+                        val trimmed = value.trim
+                        Some(NotebookOutput(result = Some(trimmed)))
+                      case None =>
+                        // Fallback: return full response for debugging
                         Some(NotebookOutput(result = Some(jsonStr)))
-                    }
                   }
               } else {
-                // API error - log warning but don't fail (output is optional)
                 ZIO.logWarning(s"Failed to fetch notebook output (HTTP ${response.status.code}): $jsonStr").as(None)
               }
             }
           }
       }
       .catchAll { error =>
-        // Exception during fetch - log warning but don't fail
         ZIO.logWarning(s"Error fetching notebook output: ${error.getMessage}").as(None)
       }
 
