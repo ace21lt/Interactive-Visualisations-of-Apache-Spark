@@ -6,6 +6,9 @@ project/target/
 project 2/
 .bloop/
 .metals/
+.bsp/
+.scala-build/
+metals.sbt
 *.class
 *.log
 
