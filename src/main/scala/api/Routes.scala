@@ -23,12 +23,19 @@ object ErrorResponse:
 
 object Routes:
 
+  // Add CORS headers to all responses to allow frontend (localhost:3000) to call backend API
+  private def addCorsHeaders(response: Response): Response =
+    response
+      .addHeader("Access-Control-Allow-Origin", "http://localhost:3000")
+      .addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+      .addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
+
   // HTTP routes definition - no authentication needed for single-user demo
   def apply(): zio.http.Routes[DatabricksService, Response] =
     zio.http.Routes.fromIterable(
       Chunk(
         // POST /trigger - Submit notebook and return execution trace
-        Method.POST / "trigger" -> handler { (_: Request) =>
+        Method.POST / "trigger"    -> handler { (_: Request) =>
           DatabricksService
             .runNotebook() // Execute notebook
             .map { result =>
@@ -38,7 +45,7 @@ object Routes:
                 state = result.state,
                 output = result.output
               )
-              Response.json(response.toJson)
+              addCorsHeaders(Response.json(response.toJson))
             }
             .catchAll { error =>
               // Failure - log details internally, return generic error to user
@@ -46,21 +53,34 @@ object Routes:
               for {
                 _         <- ZIO.logError(s"Notebook execution failed: $errorMessage")
                 timestamp <- Clock.currentTime(java.util.concurrent.TimeUnit.MILLISECONDS)
-                response   = Response
-                               .json(
-                                 ErrorResponse(
-                                   error =
-                                     "Failed to execute notebook. Please verify: (1) DATABRICKS_HOST is correct and accessible, (2) DATABRICKS_TOKEN is valid and not expired, (3) NOTEBOOK_PATH exists and is accessible.",
-                                   timestamp = timestamp
-                                 ).toJson
-                               )
-                               .status(Status.InternalServerError)
+                response   = addCorsHeaders(
+                               Response
+                                 .json(
+                                   ErrorResponse(
+                                     error =
+                                       "Failed to execute notebook. Please verify: (1) DATABRICKS_HOST is correct and accessible, (2) DATABRICKS_TOKEN is valid and not expired, (3) NOTEBOOK_PATH exists and is accessible.",
+                                     timestamp = timestamp
+                                   ).toJson
+                                 )
+                                 .status(Status.InternalServerError)
+                             )
               } yield response
             }
         },
         // GET /health - Simple health check endpoint
-        Method.GET / "health"   -> handler { (_: Request) =>
-          ZIO.succeed(Response.text("OK"))
+        Method.GET / "health"      -> handler { (_: Request) =>
+          ZIO.succeed(addCorsHeaders(Response.text("OK")))
+        },
+        // OPTIONS for CORS preflight
+        Method.OPTIONS / "trigger" -> handler { (_: Request) =>
+          ZIO.succeed(
+            Response
+              .status(Status.NoContent)
+              .addHeader("Access-Control-Allow-Origin", "http://localhost:3000")
+              .addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+              .addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
+              .addHeader("Access-Control-Max-Age", "86400")
+          )
         }
       )
     )
