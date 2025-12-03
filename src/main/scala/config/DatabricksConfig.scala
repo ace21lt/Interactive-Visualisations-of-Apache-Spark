@@ -3,7 +3,6 @@ package config
 import zio.*
 
 // Configuration for Databricks REST API integration
-// Holds all settings needed to connect to Databricks and execute notebooks
 case class DatabricksConfig(
     workspaceUrl: String,                 // Databricks workspace URL (from DATABRICKS_HOST env var)
     token: String,                        // Personal access token for API auth (from DATABRICKS_TOKEN)

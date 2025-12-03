@@ -6,9 +6,9 @@ import zio.json.*
 // All models use zio-json for type-safe serialisation/deserialisation
 // @jsonField annotations convert camelCase to snake_case for Databricks API
 
-// === Request Models ===
+// request models
 
-// Cluster configuration for creating new clusters (not used for serverless)
+// Cluster configuration for creating new clusters
 case class NewCluster(
     @jsonField("spark_version") sparkVersion: String, // Databricks runtime version
     @jsonField("node_type_id") nodeTypeId: String,    // AWS/Azure instance type
@@ -31,7 +31,7 @@ object NotebookTask:
 
 // Task specification for MULTI_TASK format (required for serverless)
 case class TaskSpec(
-    @jsonField("task_key") taskKey: String,                // Unique task identifier
+    @jsonField("task_key") taskKey: String,
     @jsonField("notebook_task") notebookTask: NotebookTask // Notebook to execute
 )
 
@@ -41,12 +41,12 @@ object TaskSpec:
 
 // Request to submit a notebook run to Databricks
 case class NotebookRunRequest(
-    @jsonField("run_name") runName: String,                                // Unique run name
-    tasks: Option[List[TaskSpec]] = None,                                  // For MULTI_TASK format (serverless)
+    @jsonField("run_name") runName: String,
+    tasks: Option[List[TaskSpec]] = None,                                  // For MULTI_TASK format
     @jsonField("notebook_task") notebookTask: Option[NotebookTask] = None, // For SINGLE_TASK format
-    @jsonField("new_cluster") newCluster: Option[NewCluster] = None,       // Cluster config (not for serverless)
-    @jsonField("timeout_seconds") timeoutSeconds: Option[Int] = None,      // Overall timeout
-    format: Option[String] = None                                          // "MULTI_TASK" for serverless
+    @jsonField("new_cluster") newCluster: Option[NewCluster] = None,
+    @jsonField("timeout_seconds") timeoutSeconds: Option[Int] = None,
+    format: Option[String] = None
 )
 
 object NotebookRunRequest:
@@ -57,7 +57,7 @@ object NotebookRunRequest:
 
 // Response from submitting a notebook run
 case class SubmitRunResponse(
-    @jsonField("run_id") runId: Long // Unique run ID for polling status
+    @jsonField("run_id") runId: Long
 )
 
 object SubmitRunResponse:
@@ -66,9 +66,9 @@ object SubmitRunResponse:
 
 // State information about a notebook run
 case class RunState(
-    @jsonField("life_cycle_state") lifeCycleState: String,          // PENDING, RUNNING, TERMINATING, TERMINATED
-    @jsonField("result_state") resultState: Option[String] = None,  // SUCCESS, FAILED, etc.
-    @jsonField("state_message") stateMessage: Option[String] = None // Error details if failed
+    @jsonField("life_cycle_state") lifeCycleState: String,
+    @jsonField("result_state") resultState: Option[String] = None,
+    @jsonField("state_message") stateMessage: Option[String] = None
 )
 
 object RunState:
@@ -77,8 +77,8 @@ object RunState:
 
 // Response from polling run status
 case class RunStatusResponse(
-    @jsonField("run_id") runId: Long, // The run ID we're checking
-    state: RunState                   // Current state
+    @jsonField("run_id") runId: Long,
+    state: RunState
 )
 
 object RunStatusResponse:
@@ -87,8 +87,8 @@ object RunStatusResponse:
 
 // Task run information for MULTI_TASK format
 case class TaskRun(
-    @jsonField("run_id") runId: Long,      // Task-level run ID
-    @jsonField("task_key") taskKey: String // Task identifier
+    @jsonField("run_id") runId: Long,
+    @jsonField("task_key") taskKey: String
 )
 
 object TaskRun:
@@ -97,27 +97,27 @@ object TaskRun:
 
 // Response from getting run details (includes task runs)
 case class RunDetailsResponse(
-    @jsonField("run_id") runId: Long, // Main run ID
-    state: RunState,                  // Current state
-    tasks: Option[List[TaskRun]]      // List of task runs (for MULTI_TASK format)
+    @jsonField("run_id") runId: Long,
+    state: RunState,
+    tasks: Option[List[TaskRun]]
 )
 
 object RunDetailsResponse:
   implicit val encoder: JsonEncoder[RunDetailsResponse] = DeriveJsonEncoder.gen[RunDetailsResponse]
   implicit val decoder: JsonDecoder[RunDetailsResponse] = DeriveJsonDecoder.gen[RunDetailsResponse]
 
-// === Service Output Models (for our API responses) ===
+// Service Output Models
 
-// Notebook execution output (from dbutils.notebook.exit())
+// Notebook execution output
 case class NotebookOutput(
-    logs: Option[String] = None,  // Execution logs
-    error: Option[String] = None, // Error message if failed
-    result: Option[String] = None // JSON result from notebook (Cell 6 output)
+    logs: Option[String] = None,
+    error: Option[String] = None,
+    result: Option[String] = None
 )
 
 // Final output returned by our API to the frontend
 case class RunOutput(
-    runId: Long,                   // Databricks run ID
-    state: String,                 // SUCCESS, FAILED, TIMEOUT
-    output: Option[NotebookOutput] // Notebook results for visualisation
+    runId: Long,
+    state: String,
+    output: Option[NotebookOutput]
 )

@@ -6,8 +6,6 @@ import zio.*
 import zio.http.*
 import zio.json.*
 
-// DTOs (Data Transfer Objects) for API responses
-
 // Success response when notebook execution completes
 case class TriggerResponse(runId: Long, state: String, output: Option[NotebookOutput])
 
@@ -30,16 +28,14 @@ object Routes:
       .addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
       .addHeader("Access-Control-Allow-Headers", "Content-Type, Authorization")
 
-  // HTTP routes definition - no authentication needed for single-user demo
+  // HTTP routes definition
   def apply(): zio.http.Routes[DatabricksService, Response] =
     zio.http.Routes.fromIterable(
       Chunk(
-        // POST /trigger - Submit notebook and return execution trace
         Method.POST / "trigger"    -> handler { (_: Request) =>
           DatabricksService
-            .runNotebook() // Execute notebook
+            .runNotebook()
             .map { result =>
-              // Success - return run ID, state, and output as JSON
               val response = TriggerResponse(
                 runId = result.runId,
                 state = result.state,
@@ -48,7 +44,6 @@ object Routes:
               addCorsHeaders(Response.json(response.toJson))
             }
             .catchAll { error =>
-              // Failure - log details internally, return generic error to user
               val errorMessage = Option(error.getMessage).getOrElse(error.toString)
               for {
                 _         <- ZIO.logError(s"Notebook execution failed: $errorMessage")
@@ -67,7 +62,6 @@ object Routes:
               } yield response
             }
         },
-        // GET /health - Simple health check endpoint
         Method.GET / "health"      -> handler { (_: Request) =>
           ZIO.succeed(addCorsHeaders(Response.text("OK")))
         },
