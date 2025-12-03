@@ -6,7 +6,6 @@ import zio.*
 import zio.http.*
 import zio.json.*
 
-// Service interface for Databricks notebook execution
 trait DatabricksService:
   def runNotebook(): Task[RunOutput] // Submits notebook, polls for completion, returns results
 
@@ -15,15 +14,13 @@ object DatabricksService:
   def runNotebook(): ZIO[DatabricksService, Throwable, RunOutput] =
     ZIO.serviceWithZIO[DatabricksService](_.runNotebook())
 
-// Live implementation of Databricks service using real HTTP client
 case class DatabricksServiceLive(config: DatabricksConfig, client: Client) extends DatabricksService:
 
-  // Lifecycle state constants from Databricks API
-  private val TerminatedState = "TERMINATED" // Job finished (success or failure)
-  private val UnknownState    = "UNKNOWN"    // Error state if we can't determine status
-  private val TimeoutState    = "TIMEOUT"    // We gave up waiting
+  private val TerminatedState = "TERMINATED"
+  private val UnknownState    = "UNKNOWN"
+  private val TimeoutState    = "TIMEOUT"
 
-  // Main entry point: runs notebook end-to-end and returns execution trace
+  // Runs notebook end-to-end and returns execution trace
   override def runNotebook(): Task[RunOutput] =
     for {
       _              <- ZIO.logInfo(s"Triggering notebook at ${config.notebookPath}")
@@ -33,17 +30,16 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
             s"Using slowdown factor: ${config.slowDownFactor}x (poll interval: ${config.pollIntervalSeconds * config.slowDownFactor}s)"
           )
         )
-      runId          <- submitNotebook()               // Step 1: Submit notebook to Databricks
+      runId          <- submitNotebook()
       _              <- ZIO.logInfo(s"Notebook submitted with run ID: $runId")
-      status         <- pollForCompletion(runId)       // Step 2: Poll until notebook completes
+      status         <- pollForCompletion(runId)
       _              <- ZIO.logInfo(s"Notebook completed with state: ${status.state}")
-      taskRunId      <- getTaskRunId(runId)            // Step 3: Get task run ID (MULTI_TASK format)
+      taskRunId      <- getTaskRunId(runId)
       _              <- ZIO.logInfo(s"Task run ID: $taskRunId")
-      notebookOutput <- fetchNotebookOutput(taskRunId) // Step 4: Fetch Cell 6 output
+      notebookOutput <- fetchNotebookOutput(taskRunId)
       _              <- ZIO.logInfo(s"Retrieved notebook output")
-    } yield status.copy(output = notebookOutput) // Combine status + output
+    } yield status.copy(output = notebookOutput)
 
-  // Extract task run ID from main run (needed for MULTI_TASK format)
   private def getTaskRunId(runId: Long): Task[Long] =
     val apiUrl = s"${config.workspaceUrl}/api/2.1/jobs/runs/get?run_id=$runId"
 
@@ -53,7 +49,6 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
         .flatMap { response =>
           response.body.asString.flatMap { jsonStr =>
             if (response.status.isSuccess) {
-              // Parse JSON to extract task run_id from tasks[0].run_id
               ZIO
                 .fromEither(jsonStr.fromJson[RunDetailsResponse])
                 .mapBoth(
@@ -78,27 +73,25 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
   // Submit notebook to Databricks and get run ID
   private def submitNotebook(): Task[Long] =
     val apiUrl  = s"${config.workspaceUrl}/api/2.1/jobs/runs/submit"
-    val runName = s"spark-trace-${java.lang.System.currentTimeMillis()}" // Unique run name
+    val runName = s"spark-trace-${java.lang.System.currentTimeMillis()}"
 
-    // Build request for Databricks serverless compute (MULTI_TASK format)
     val notebookTask = NotebookTask(notebookPath = config.notebookPath)
     val task         = TaskSpec(
-      taskKey = "notebook_task", // Unique identifier for this task
+      taskKey = "notebook_task",
       notebookTask = notebookTask
     )
 
     val request = NotebookRunRequest(
       runName = runName,
       tasks = Some(List(task)),   // MULTI_TASK requires tasks array
-      notebookTask = None,        // Don't use single task format
-      newCluster = None,          // Serverless = no cluster config
+      notebookTask = None,
+      newCluster = None,
       timeoutSeconds = Some(config.timeoutSeconds),
       format = Some("MULTI_TASK") // Required for serverless
     )
     val body    = request.toJson
 
     for {
-      // Log detailed request info for debugging
       _ <- ZIO.logInfo(s"=== Submitting Notebook to Databricks (Serverless) ===")
       _ <- ZIO.logInfo(s"URL: $apiUrl")
       _ <- ZIO.logInfo(s"Run Name: $runName")
@@ -118,20 +111,18 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
                    .flatMap { response =>
                      response.body.asString.flatMap { jsonStr =>
                        for {
-                         // Log response for debugging
                          _ <- ZIO.logInfo(s"=== Databricks API Response ===")
                          _ <- ZIO.logInfo(s"HTTP Status: ${response.status.code}")
                          _ <- ZIO.logInfo(s"Response Body: $jsonStr")
                          _ <- ZIO.logInfo(s"===============================")
 
-                         // Parse response or fail with detailed error
                          result <- if (response.status.isSuccess) {
                                      ZIO
                                        .fromEither(jsonStr.fromJson[SubmitRunResponse])
                                        .mapBoth(
                                          err => new RuntimeException(s"Failed to parse response: $err"),
                                          _.runId
-                                       ) // Extract run ID
+                                       )
                                    } else {
                                      ZIO.fail(
                                        new RuntimeException(
@@ -149,21 +140,17 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
                }
     } yield runId
 
-  // Poll Databricks API until notebook completes or times out
   private def pollForCompletion(runId: Long): Task[RunOutput] =
     val apiUrl       = s"${config.workspaceUrl}/api/2.1/jobs/runs/get?run_id=$runId"
     val maxAttempts  = config.maxPollAttempts
-    // Apply slowdown factor for teaching demos (e.g., 2.0 = half speed, 0.5 = double speed)
     val pollInterval = (config.pollIntervalSeconds * config.slowDownFactor).toInt.seconds
 
-    // Check status once and return (attempt, output if completed)
     def checkStatus(attempt: Int): Task[(Int, Option[RunOutput])] =
       ZIO.scoped {
         client
           .request(Request.get(apiUrl).addHeader("Authorization", s"Bearer ${config.token}"))
           .flatMap { response =>
             response.body.asString.flatMap { jsonStr =>
-              // Check HTTP status before parsing
               if (response.status.isSuccess) {
                 ZIO
                   .fromEither(jsonStr.fromJson[RunStatusResponse])
@@ -174,12 +161,11 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
                       val resultState = statusResponse.state.resultState
 
                       val output = if (state == TerminatedState) {
-                        // Notebook finished - extract output
                         val notebookOutput = extractNotebookOutput(jsonStr)
                         Some(RunOutput(runId, resultState.getOrElse(UnknownState), Some(notebookOutput)))
-                      } else None // Still running
+                      } else None
 
-                      (attempt + 1, output) // Return next attempt number and output (if any)
+                      (attempt + 1, output)
                     }
                   )
               } else {
@@ -193,36 +179,31 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
           }
       }
 
-    // Polling loop: repeat until we get output or hit max attempts
     ZIO
       .iterate((0, Option.empty[RunOutput])) { case (currentAttempt, maybeOutput) =>
-        currentAttempt < maxAttempts && maybeOutput.isEmpty // Continue condition
+        currentAttempt < maxAttempts && maybeOutput.isEmpty
       } { case (attempt, _) =>
         checkStatus(attempt).flatMap { result =>
           result._2 match {
-            case Some(_)                          => ZIO.succeed(result)                     // Done - notebook finished
-            case None if result._1 >= maxAttempts => ZIO.succeed(result)                     // Done - max attempts reached
-            case None                             => ZIO.succeed(result).delay(pollInterval) // Still running - wait before next check
+            case Some(_)                          => ZIO.succeed(result)
+            case None if result._1 >= maxAttempts => ZIO.succeed(result)
+            case None                             => ZIO.succeed(result).delay(pollInterval)
           }
         }
       }
       .map { case (_, maybeOutput) =>
-        maybeOutput.getOrElse(RunOutput(runId, TimeoutState, None)) // Return output or timeout
+        maybeOutput.getOrElse(RunOutput(runId, TimeoutState, None))
       }
 
-  // Extract notebook output from JSON response (placeholder for now)
   private def extractNotebookOutput(jsonStr: String): NotebookOutput =
-    // Store full JSON response for now - can parse specific fields later
     NotebookOutput(
       result = Some(jsonStr)
     )
 
-  // Fetch actual notebook output from task run (Cell 6 dbutils.notebook.exit() value)
+  // Fetch actual notebook output from task run
   private def fetchNotebookOutput(runId: Long): Task[Option[NotebookOutput]] =
     val apiUrl = s"${config.workspaceUrl}/api/2.1/jobs/runs/get-output?run_id=$runId"
 
-    // Helper: extract value for "result" field from JSON, stopping at the closing quote
-    // Handles escaped quotes properly to avoid including "truncated" field
     def extractResultField(json: String): Option[String] =
       val key = "\"result\""
       var idx = json.indexOf(key)
@@ -297,7 +278,6 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
                         val trimmed = value.trim
                         Some(NotebookOutput(result = Some(trimmed)))
                       case None        =>
-                        // Fallback: return full response for debugging
                         Some(NotebookOutput(result = Some(jsonStr)))
                   }
               } else {

@@ -11,7 +11,7 @@ function App() {
         setError(null);
 
         try {
-            // Call your Scala backend
+            // Call Scala backend
             const response = await fetch('http://localhost:8080/trigger', {
                 method: 'POST',
                 headers: {
@@ -26,7 +26,7 @@ function App() {
             const result = await response.json();
             console.log('Raw response:', result);
 
-            // Parse the nested JSON - output.result is a JSON string!
+            // Parse the nested JSON 
             if (result.output && result.output.result) {
                 const sparkData = JSON.parse(result.output.result);
                 console.log('Parsed Spark data:', sparkData);
@@ -76,7 +76,6 @@ function App() {
                 <div className="results">
                     <h2>Analysis Complete!</h2>
 
-                    {/* Quick Stats Summary */}
                     <div className="stats-grid">
                         <div className="stat-card">
                             <h3>Total Records</h3>
@@ -105,12 +104,10 @@ function App() {
                         </div>
                     </div>
 
-                    {/* Spark Internals Section */}
                     {data.spark_internals && (
                         <div className="spark-internals">
                             <h2>Spark Internals</h2>
 
-                            {/* Partition Info */}
                             {data.spark_internals.partition_distribution && (
                                 <div className="section">
                                     <h3>Partition Distribution</h3>
@@ -121,7 +118,6 @@ function App() {
                                 </div>
                             )}
 
-                            {/* Transformation Pipeline */}
                             {data.spark_internals.transformation_pipeline && (
                                 <div className="section">
                                     <h3>Transformation Pipeline ({data.spark_internals.transformation_pipeline.length} steps)</h3>
@@ -145,7 +141,6 @@ function App() {
                                 </div>
                             )}
 
-                            {/* Shuffles */}
                             {data.spark_internals.shuffles && (
                                 <div className="section">
                                     <h3>Shuffle Operations ({data.spark_internals.shuffles.length})</h3>
@@ -159,7 +154,6 @@ function App() {
                                 </div>
                             )}
 
-                            {/* Stages */}
                             {data.spark_internals.stages && (
                                 <div className="section">
                                     <h3>Execution Stages ({data.spark_internals.stages.length})</h3>
@@ -181,7 +175,6 @@ function App() {
                         </div>
                     )}
 
-                    {/* Status Distribution */}
                     {data.status_distribution && (
                         <div className="section">
                             <h3>HTTP Status Code Distribution</h3>
