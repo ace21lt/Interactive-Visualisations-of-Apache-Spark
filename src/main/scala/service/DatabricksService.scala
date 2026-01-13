@@ -7,11 +7,11 @@ import zio.http.*
 import zio.json.*
 
 trait DatabricksService:
-  def runNotebook(): Task[RunOutput] // Submits notebook, polls for completion, returns results
+  def runNotebook(): IO[DatabricksError, RunOutput] // Submits notebook, polls for completion, returns results
 
 object DatabricksService:
   // Helper to access service from ZIO environment
-  def runNotebook(): ZIO[DatabricksService, Throwable, RunOutput] =
+  def runNotebook(): ZIO[DatabricksService, DatabricksError, RunOutput] =
     ZIO.serviceWithZIO[DatabricksService](_.runNotebook())
 
 case class DatabricksServiceLive(config: DatabricksConfig, client: Client) extends DatabricksService:
@@ -21,7 +21,7 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
   private val TimeoutState    = "TIMEOUT"
 
   // Runs notebook end-to-end and returns execution trace
-  override def runNotebook(): Task[RunOutput] =
+  override def runNotebook(): IO[DatabricksError, RunOutput] =
     for {
       _              <- ZIO.logInfo(s"Triggering notebook at ${config.notebookPath}")
       _              <-
@@ -40,39 +40,40 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
       _              <- ZIO.logInfo(s"Retrieved notebook output")
     } yield status.copy(output = notebookOutput)
 
-  private def getTaskRunId(runId: Long): Task[Long] =
-    val apiUrl = s"${config.workspaceUrl}/api/2.1/jobs/runs/get?run_id=$runId"
+  private def getTaskRunId(runId: Long): IO[DatabricksError, Long] =
+    val apiUrl = DatabricksApiPaths.buildGetRunUrl(config.workspaceUrl, runId)
 
-    ZIO.scoped {
-      client
-        .request(Request.get(apiUrl).addHeader("Authorization", s"Bearer ${config.token}"))
-        .flatMap { response =>
-          response.body.asString.flatMap { jsonStr =>
-            if (response.status.isSuccess) {
-              ZIO
-                .fromEither(jsonStr.fromJson[RunDetailsResponse])
-                .mapBoth(
-                  err => new RuntimeException(s"Failed to parse run details: $err"),
-                  runDetails =>
+    ZIO
+      .scoped {
+        client
+          .request(Request.get(apiUrl).addHeader("Authorization", s"Bearer ${config.token}"))
+          .flatMap { response =>
+            response.body.asString.flatMap { jsonStr =>
+              if (response.status.isSuccess) {
+                ZIO
+                  .fromEither(jsonStr.fromJson[RunDetailsResponse])
+                  .mapError(err => DatabricksError.JsonParseError(s"Failed to parse run details: $err", Some(jsonStr)))
+                  .flatMap { runDetails =>
                     runDetails.tasks
                       .flatMap(_.headOption)
-                      .map(_.runId)
+                      .map(task => ZIO.succeed(task.runId))
                       .getOrElse(
-                        throw new RuntimeException(
-                          s"No tasks found in run details for run_id=$runId. Response: $jsonStr"
+                        ZIO.fail(
+                          DatabricksError.TaskNotFound(runId, s"No tasks found in run details. Response: $jsonStr")
                         )
                       )
-                )
-            } else {
-              ZIO.fail(new RuntimeException(s"Failed to get run details: $jsonStr"))
+                  }
+              } else {
+                ZIO.fail(DatabricksError.ApiResponseError(response.status.code, jsonStr))
+              }
             }
           }
-        }
-    }
+      }
+      .mapError(DatabricksError.fromThrowable)
 
   // Submit notebook to Databricks and get run ID
-  private def submitNotebook(): Task[Long] =
-    val apiUrl  = s"${config.workspaceUrl}/api/2.1/jobs/runs/submit"
+  private def submitNotebook(): IO[DatabricksError, Long] =
+    val apiUrl  = DatabricksApiPaths.buildSubmitUrl(config.workspaceUrl)
     val runName = s"spark-trace-${java.lang.System.currentTimeMillis()}"
 
     val notebookTask = NotebookTask(notebookPath = config.notebookPath)
@@ -91,7 +92,7 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
     )
     val body    = request.toJson
 
-    for {
+    (for {
       _ <- ZIO.logInfo(s"=== Submitting Notebook to Databricks (Serverless) ===")
       _ <- ZIO.logInfo(s"URL: $apiUrl")
       _ <- ZIO.logInfo(s"Run Name: $runName")
@@ -120,17 +121,16 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
                                      ZIO
                                        .fromEither(jsonStr.fromJson[SubmitRunResponse])
                                        .mapBoth(
-                                         err => new RuntimeException(s"Failed to parse response: $err"),
+                                         err =>
+                                           DatabricksError
+                                             .JsonParseError(s"Failed to parse response: $err", Some(jsonStr)),
                                          _.runId
                                        )
                                    } else {
                                      ZIO.fail(
-                                       new RuntimeException(
-                                         s"\n=== Databricks API Error ===\n" +
-                                           s"HTTP Status: ${response.status.code}\n" +
-                                           s"Error Response: $jsonStr\n" +
-                                           s"Request Body Sent:\n$body\n" +
-                                           s"==========================="
+                                       DatabricksError.ApiResponseError(
+                                         response.status.code,
+                                         s"Failed to submit notebook: $jsonStr"
                                        )
                                      )
                                    }
@@ -138,61 +138,59 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
                      }
                    }
                }
-    } yield runId
+    } yield runId).mapError(DatabricksError.fromThrowable)
 
-  private def pollForCompletion(runId: Long): Task[RunOutput] =
-    val apiUrl       = s"${config.workspaceUrl}/api/2.1/jobs/runs/get?run_id=$runId"
+  private def pollForCompletion(runId: Long): IO[DatabricksError, RunOutput] =
+    val apiUrl       = DatabricksApiPaths.buildGetRunUrl(config.workspaceUrl, runId)
     val maxAttempts  = config.maxPollAttempts
     val pollInterval = (config.pollIntervalSeconds * config.slowDownFactor).toInt.seconds
 
-    def checkStatus(attempt: Int): Task[(Int, Option[RunOutput])] =
-      ZIO.scoped {
-        client
-          .request(Request.get(apiUrl).addHeader("Authorization", s"Bearer ${config.token}"))
-          .flatMap { response =>
-            response.body.asString.flatMap { jsonStr =>
-              if (response.status.isSuccess) {
-                ZIO
-                  .fromEither(jsonStr.fromJson[RunStatusResponse])
-                  .mapBoth(
-                    err => new RuntimeException(s"Failed to parse run status: $err"),
-                    statusResponse => {
-                      val state       = statusResponse.state.lifeCycleState
-                      val resultState = statusResponse.state.resultState
+    // Check status once and return Option[RunOutput]
+    def checkStatus(): IO[DatabricksError, Option[RunOutput]] =
+      ZIO
+        .scoped {
+          client
+            .request(Request.get(apiUrl).addHeader("Authorization", s"Bearer ${config.token}"))
+            .flatMap { response =>
+              response.body.asString.flatMap { jsonStr =>
+                if (response.status.isSuccess) {
+                  ZIO
+                    .fromEither(jsonStr.fromJson[RunStatusResponse])
+                    .mapBoth(
+                      err => DatabricksError.JsonParseError(s"Failed to parse run status: $err", Some(jsonStr)),
+                      statusResponse => {
+                        val state       = statusResponse.state.lifeCycleState
+                        val resultState = statusResponse.state.resultState
 
-                      val output = if (state == TerminatedState) {
-                        val notebookOutput = extractNotebookOutput(jsonStr)
-                        Some(RunOutput(runId, resultState.getOrElse(UnknownState), Some(notebookOutput)))
-                      } else None
-
-                      (attempt + 1, output)
-                    }
-                  )
-              } else {
-                ZIO.fail(
-                  new RuntimeException(
-                    s"Databricks API polling error (HTTP ${response.status.code}): $jsonStr"
-                  )
-                )
+                        if (state == TerminatedState) {
+                          val notebookOutput = extractNotebookOutput(jsonStr)
+                          Some(RunOutput(runId, resultState.getOrElse(UnknownState), Some(notebookOutput)))
+                        } else {
+                          None
+                        }
+                      }
+                    )
+                } else {
+                  ZIO.fail(DatabricksError.ApiResponseError(response.status.code, jsonStr))
+                }
               }
             }
-          }
-      }
-
-    ZIO
-      .iterate((0, Option.empty[RunOutput])) { case (currentAttempt, maybeOutput) =>
-        currentAttempt < maxAttempts && maybeOutput.isEmpty
-      } { case (attempt, _) =>
-        checkStatus(attempt).flatMap { result =>
-          result._2 match {
-            case Some(_)                          => ZIO.succeed(result)
-            case None if result._1 >= maxAttempts => ZIO.succeed(result)
-            case None                             => ZIO.succeed(result).delay(pollInterval)
-          }
         }
-      }
-      .map { case (_, maybeOutput) =>
-        maybeOutput.getOrElse(RunOutput(runId, TimeoutState, None))
+        .mapError(DatabricksError.fromThrowable)
+
+    // Use ZIO Schedule for declarative polling
+    // Repeat checkStatus with fixed interval, up to maxAttempts times, until we get Some(output)
+    val schedule = Schedule.fixed(pollInterval) *>
+      Schedule.recurUntil[Option[RunOutput]](_.isDefined) &&
+      Schedule.recurs(maxAttempts - 1)
+
+    checkStatus()
+      .repeat(schedule)
+      .map(_._1) // Extract the Option[RunOutput] from the tuple
+      .flatMap {
+        case Some(output) => ZIO.succeed(output)
+        case None         =>
+          ZIO.fail(DatabricksError.ExecutionTimeout(runId, maxAttempts, pollInterval.toSeconds.toInt))
       }
 
   private def extractNotebookOutput(jsonStr: String): NotebookOutput =
@@ -201,66 +199,9 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
     )
 
   // Fetch actual notebook output from task run
-  private def fetchNotebookOutput(runId: Long): Task[Option[NotebookOutput]] =
-    val apiUrl = s"${config.workspaceUrl}/api/2.1/jobs/runs/get-output?run_id=$runId"
-
-    def extractResultField(json: String): Option[String] =
-      val key = "\"result\""
-      var idx = json.indexOf(key)
-      if idx < 0 then return None
-
-      // Move past the key to the colon
-      idx = json.indexOf(':', idx + key.length)
-      if idx < 0 then return None
-
-      // Skip whitespace after colon
-      var i = idx + 1
-      while i < json.length && Character.isWhitespace(json.charAt(i)) do i += 1
-      if i >= json.length || json.charAt(i) != '"' then return None
-
-      // Now extract the string value, handling escapes
-      val sb      = new StringBuilder
-      var j       = i + 1 // Start after opening quote
-      var escaped = false
-      var closed  = false
-
-      while j < json.length && !closed do
-        val ch = json.charAt(j)
-        if escaped then
-          // Keep the escape sequence for later unescaping
-          sb.append('\\').append(ch)
-          escaped = false
-          j += 1
-        else if ch == '\\' then
-          escaped = true
-          j += 1
-        else if ch == '"' then
-          closed = true
-          j += 1
-        else
-          sb.append(ch)
-          j += 1
-
-      if !closed then return None
-
-      // Now unescape the extracted string
-      val raw       = sb.toString
-      val unescaped = new StringBuilder(raw.length)
-      var k         = 0
-      while k < raw.length do
-        val c = raw.charAt(k)
-        if c == '\\' && k + 1 < raw.length then
-          raw.charAt(k + 1) match
-            case '"'   => unescaped.append('"'); k += 2
-            case '\\'  => unescaped.append('\\'); k += 2
-            case 'n'   => unescaped.append('\n'); k += 2
-            case 'r'   => unescaped.append('\r'); k += 2
-            case 't'   => unescaped.append('\t'); k += 2
-            case other => unescaped.append(other); k += 2
-        else
-          unescaped.append(c); k += 1
-
-      Some(unescaped.toString)
+  // Returns None if output unavailable, fails with DatabricksError for serious errors
+  private def fetchNotebookOutput(runId: Long): IO[DatabricksError, Option[NotebookOutput]] =
+    val apiUrl = DatabricksApiPaths.buildGetOutputUrl(config.workspaceUrl, runId)
 
     ZIO
       .scoped {
@@ -272,21 +213,39 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
                 ZIO.logInfo(s"=== Notebook Output API Response ===") *>
                   ZIO.logInfo(s"Response length: ${jsonStr.length} chars") *>
                   ZIO.logInfo(s"====================================") *>
-                  ZIO.attempt {
-                    extractResultField(jsonStr) match
-                      case Some(value) =>
-                        val trimmed = value.trim
-                        Some(NotebookOutput(result = Some(trimmed)))
-                      case None        =>
-                        Some(NotebookOutput(result = Some(jsonStr)))
-                  }
+                  ZIO
+                    .fromEither(jsonStr.fromJson[NotebookOutputResponse])
+                    .map { outputResponse =>
+                      // Extract the result from the nested structure
+                      val result = outputResponse.metadata
+                        .flatMap(_.notebookOutput)
+                        .flatMap(_.result)
+
+                      // If we have an error in the response, include it
+                      val error = outputResponse.error
+
+                      Some(
+                        NotebookOutput(
+                          result = result,
+                          error = error
+                        )
+                      )
+                    }
+                    .catchAll { parseError =>
+                      // If parsing fails, fall back to including raw JSON as result
+                      ZIO
+                        .logWarning(s"Failed to parse notebook output response: $parseError")
+                        .as(Some(NotebookOutput(result = Some(jsonStr))))
+                    }
               } else {
+                // Non-success status is logged and return None
                 ZIO.logWarning(s"Failed to fetch notebook output (HTTP ${response.status.code}): $jsonStr").as(None)
               }
             }
           }
       }
       .catchAll { error =>
+        // Network errors are logged and return None
         ZIO.logWarning(s"Error fetching notebook output: ${error.getMessage}").as(None)
       }
 

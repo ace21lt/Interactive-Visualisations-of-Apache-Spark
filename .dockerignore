@@ -1,0 +1,64 @@
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# SBT build artifacts
+target/
+project/target/
+project/project/
+
+# IDE and editor files
+.idea/
+.vscode/
+.bsp/
+*.swp
+*.swo
+*~
+.metals/
+.bloop/
+
+# OS files
+.DS_Store
+Thumbs.db
+*.log
+
+# Environment and secrets
+.env
+.env.local
+.env.*
+*.pem
+*.key
+
+# Documentation and non-runtime files
+*.md
+README*
+LICENSE
+CHANGELOG*
+docs/
+
+# Test and coverage reports
+coverage/
+test-reports/
+*.coverage
+scoverage-data/
+
+# Frontend directory (not needed in backend image)
+frontend/
+node_modules/
+
+# Docker files
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+Jenkinsfile
+
+# Temporary files
+tmp/
+temp/
+*.tmp

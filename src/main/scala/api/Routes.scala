@@ -1,6 +1,6 @@
 package api
 
-import service.DatabricksService
+import service.{DatabricksError, DatabricksService}
 import models.NotebookOutput
 import zio.*
 import zio.http.*
@@ -43,23 +43,36 @@ object Routes:
               )
               addCorsHeaders(Response.json(response.toJson))
             }
-            .catchAll { error =>
-              val errorMessage = Option(error.getMessage).getOrElse(error.toString)
-              for {
-                _         <- ZIO.logError(s"Notebook execution failed: $errorMessage")
-                timestamp <- Clock.currentTime(java.util.concurrent.TimeUnit.MILLISECONDS)
-                response   = addCorsHeaders(
-                               Response
-                                 .json(
-                                   ErrorResponse(
-                                     error =
-                                       "Failed to execute notebook. Please verify: (1) DATABRICKS_HOST is correct and accessible, (2) DATABRICKS_TOKEN is valid and not expired, (3) NOTEBOOK_PATH exists and is accessible.",
-                                     timestamp = timestamp
-                                   ).toJson
-                                 )
-                                 .status(Status.InternalServerError)
-                             )
-              } yield response
+            .catchAll { (error: DatabricksError) =>
+              // Log the technical error message
+              ZIO.logError(s"Notebook execution failed: ${error.getMessage}") *>
+                Clock.currentTime(java.util.concurrent.TimeUnit.MILLISECONDS).map { timestamp =>
+                  // Return user-friendly error message (no secrets leaked)
+                  val userMessage = error.toUserMessage
+
+                  // Map error types to appropriate HTTP status codes
+                  val status = error match {
+                    case _: DatabricksError.ConfigError           => Status.BadRequest
+                    case _: DatabricksError.ApiCommunicationError => Status.BadGateway
+                    case e: DatabricksError.ApiResponseError      =>
+                      e.statusCode match {
+                        case 401 | 403     => Status.Unauthorized
+                        case 404           => Status.NotFound
+                        case c if c >= 500 => Status.BadGateway
+                        case _             => Status.InternalServerError
+                      }
+                    case _: DatabricksError.JsonParseError        => Status.InternalServerError
+                    case _: DatabricksError.ExecutionTimeout      => Status.RequestTimeout
+                    case _: DatabricksError.ExecutionFailed       => Status.InternalServerError
+                    case _: DatabricksError.TaskNotFound          => Status.InternalServerError
+                  }
+
+                  addCorsHeaders(
+                    Response
+                      .json(ErrorResponse(error = userMessage, timestamp = timestamp).toJson)
+                      .status(status)
+                  )
+                }
             }
         },
         Method.GET / "health"      -> handler { (_: Request) =>
