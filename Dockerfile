@@ -1,8 +1,7 @@
 # Multi-stage Dockerfile for Scala/ZIO Backend
-# Stage 1: Build the application using sbt
 FROM eclipse-temurin:21-jdk AS builder
 
-# Install sbt via official method (works on both ARM64 and x86_64)
+# Install sbt
 RUN apt-get update && \
     apt-get install -y apt-transport-https curl gnupg && \
     echo "deb https://repo.scala-sbt.org/scalasbt/debian all main" | tee /etc/apt/sources.list.d/sbt.list && \
@@ -13,15 +12,13 @@ RUN apt-get update && \
 
 WORKDIR /build
 
-# Copy only build configuration first to leverage Docker layer caching
 COPY project/build.properties project/
 COPY project/plugins.sbt project/
 COPY build.sbt .
 
-# Download dependencies (cached layer)
+# Download dependencies
 RUN sbt update
 
-# Copy source code
 COPY src/ src/
 
 # Build the fat JAR using sbt-assembly
@@ -30,7 +27,6 @@ RUN sbt assembly
 # Verify the JAR was created
 RUN ls -lh target/scala-3.3.1/spark-viz-backend.jar
 
-# Stage 2: Runtime image with minimal footprint
 FROM eclipse-temurin:21-jre-jammy
 
 LABEL maintainer="Interactive Visualisations of Apache Spark Team"
@@ -42,28 +38,21 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends wget && \
     rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user for security
 RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 WORKDIR /app
 
-# Copy the fat JAR from builder stage
 COPY --from=builder /build/target/scala-3.3.1/spark-viz-backend.jar /app/spark-viz-backend.jar
 
-# Change ownership to non-root user
 RUN chown -R appuser:appuser /app
 
-# Switch to non-root user
 USER appuser
 
-# Expose the application port
 EXPOSE 8080
 
-# Health check to ensure the service is running
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
 
-# Run the application
 ENTRYPOINT ["java"]
 CMD ["-XX:+UseContainerSupport", \
      "-XX:MaxRAMPercentage=75.0", \

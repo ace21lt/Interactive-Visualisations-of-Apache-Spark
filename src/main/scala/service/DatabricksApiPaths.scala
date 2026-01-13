@@ -1,7 +1,6 @@
 package service
 
 // Constants and helper methods for Databricks REST API endpoints
-// Centralizes API paths to avoid hardcoded strings throughout the codebase
 object DatabricksApiPaths:
 
   // Base API version prefix for all Databricks API endpoints

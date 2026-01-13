@@ -47,7 +47,7 @@ object Routes:
               // Log the technical error message
               ZIO.logError(s"Notebook execution failed: ${error.getMessage}") *>
                 Clock.currentTime(java.util.concurrent.TimeUnit.MILLISECONDS).map { timestamp =>
-                  // Return user-friendly error message (no secrets leaked)
+                  // Return user-friendly error message 
                   val userMessage = error.toUserMessage
 
                   // Map error types to appropriate HTTP status codes

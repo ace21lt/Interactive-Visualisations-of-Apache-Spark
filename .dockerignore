@@ -43,7 +43,7 @@ test-reports/
 *.coverage
 scoverage-data/
 
-# Frontend directory (not needed in backend image)
+# Frontend directory
 frontend/
 node_modules/
 

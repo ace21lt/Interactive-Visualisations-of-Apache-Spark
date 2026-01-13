@@ -21,7 +21,7 @@ coverage/
 *~
 .DS_Store
 
-# Environment files (should be passed at runtime)
+# Environment files
 .env.local
 .env.development.local
 .env.test.local

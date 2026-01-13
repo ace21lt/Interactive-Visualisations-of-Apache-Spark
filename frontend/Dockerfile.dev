@@ -1,6 +1,5 @@
 # DEVELOPMENT Dockerfile for React Frontend
 # Uses Node development server with hot reloading
-# For production, use Dockerfile instead
 
 FROM node:18-alpine
 
@@ -9,7 +8,7 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies (including devDependencies)
+# Install dependencies
 RUN npm install
 
 # Copy source code
@@ -19,5 +18,4 @@ COPY . .
 EXPOSE 3000
 
 # Start development server with hot reloading
-# Note: Code changes are detected via volumes mounted in docker-compose.yml
 CMD ["npm", "start"]

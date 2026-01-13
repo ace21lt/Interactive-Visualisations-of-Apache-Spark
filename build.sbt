@@ -23,7 +23,6 @@ libraryDependencies ++= Seq(
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 
 // Test coverage settings (disabled for development)
-// To enable strict coverage checks, uncomment and run: sbt clean coverage test coverageReport
 // coverageMinimumStmtTotal   := 100
 // coverageMinimumBranchTotal := 100
 // coverageFailOnMinimum      := false

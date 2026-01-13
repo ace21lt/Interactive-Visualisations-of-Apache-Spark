@@ -32,7 +32,7 @@ services:
       - spark-viz-network
 
   # React Frontend Service
-  # Uses Node development server instead of nginx
+  # Uses Node development server
   frontend:
     build:
       context: ./frontend
