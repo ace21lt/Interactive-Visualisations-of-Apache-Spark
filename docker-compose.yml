@@ -53,9 +53,9 @@ services:
       - WDS_SOCKET_PORT=3000
     volumes:
       # Mount source code for hot reloading
-      # Read-only to prevent container from modifying source
+      # Read-only for src to prevent container from modifying source
       - ./frontend/src:/app/src:ro
-      - ./frontend/public:/app/public:ro
+      - ./frontend/public:/app/public
     depends_on:
       backend:
         condition: service_healthy
