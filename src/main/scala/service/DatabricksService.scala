@@ -178,22 +178,20 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
         }
         .mapError(DatabricksError.fromThrowable)
 
-    // Explicit recursive polling:
-    // - Call checkStatus up to maxAttempts times
-    // - Sleep for pollInterval between attempts
-    // - Succeed on first Some(output), otherwise fail with timeout
-    def loop(remainingAttempts: Int): IO[DatabricksError, RunOutput] =
-      checkStatus().flatMap {
-        case Some(output) =>
-          ZIO.succeed(output)
-        case None =>
-          if (remainingAttempts <= 1) {
-            ZIO.fail(DatabricksError.ExecutionTimeout(runId, maxAttempts, pollInterval.toSeconds.toInt))
-          } else {
-            ZIO.sleep(pollInterval) *> loop(remainingAttempts - 1)
-          }
+    // Use ZIO Schedule for declarative polling
+    // Repeat checkStatus with fixed interval, up to maxAttempts times, until we get Some(output)
+    val schedule = Schedule.fixed(pollInterval) *>
+      Schedule.recurUntil[Option[RunOutput]](_.isDefined) &&
+      Schedule.recurs(maxAttempts - 1)
 
-    loop(maxAttempts)
+    checkStatus()
+      .repeat(schedule)
+      .map(_._1) // Extract the Option[RunOutput] from the tuple
+      .flatMap {
+        case Some(output) => ZIO.succeed(output)
+        case None         =>
+          ZIO.fail(DatabricksError.ExecutionTimeout(runId, maxAttempts, pollInterval.toSeconds.toInt))
+      }
 
   private def extractNotebookOutput(jsonStr: String): NotebookOutput =
     NotebookOutput(
@@ -248,7 +246,9 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
       }
       .catchAll { error =>
         // Network errors are logged and then propagated as DatabricksError
-        ZIO.logWarning(s"Error fetching notebook output: ${error.getMessage}") *> ZIO.fail(error)
+        ZIO.logWarning(s"Error fetching notebook output: ${error.getMessage}") *> ZIO.fail(
+          DatabricksError.fromThrowable(error)
+        )
       }
 
 object DatabricksServiceLive:
