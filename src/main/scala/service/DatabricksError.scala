@@ -59,7 +59,7 @@ object DatabricksError:
   // Notebook execution timed out (exceeded max poll attempts)
   case class ExecutionTimeout(runId: Long, maxAttempts: Int, pollInterval: Int) extends DatabricksError:
     override def toUserMessage: String =
-      s"Notebook execution timed out after ${maxAttempts * pollInterval} seconds. The notebook may be taking longer than expected."
+      s"Notebook execution timed out after ${(maxAttempts + 1) * pollInterval} seconds. The notebook may be taking longer than expected."
 
     override def getMessage: String =
       s"Execution timeout for run_id=$runId after $maxAttempts polling attempts (interval: ${pollInterval}s)"
