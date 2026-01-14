@@ -245,8 +245,8 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
           }
       }
       .catchAll { error =>
-        // Network errors are logged and return None
-        ZIO.logWarning(s"Error fetching notebook output: ${error.getMessage}").as(None)
+        // Network errors are logged and then propagated as DatabricksError
+        ZIO.logWarning(s"Error fetching notebook output: ${error.getMessage}") *> ZIO.fail(error)
       }
 
 object DatabricksServiceLive:
