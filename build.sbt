@@ -33,10 +33,10 @@ testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 assembly / assemblyJarName       := "spark-viz-backend.jar"
 assembly / mainClass             := Some("Main")
 assembly / assemblyMergeStrategy := {
-  case PathList("META-INF", "MANIFEST.MF") => MergeStrategy.discard
+  case PathList("META-INF", "MANIFEST.MF")       => MergeStrategy.discard
   case PathList("META-INF", "versions", xs @ _*) => MergeStrategy.first
-  case PathList("META-INF", xs @ _*) => MergeStrategy.discard
-  case "reference.conf"              => MergeStrategy.concat
-  case "application.conf"            => MergeStrategy.concat
-  case _                             => MergeStrategy.first
+  case PathList("META-INF", xs @ _*)             => MergeStrategy.discard
+  case "reference.conf"                          => MergeStrategy.concat
+  case "application.conf"                        => MergeStrategy.concat
+  case _                                         => MergeStrategy.first
 }
