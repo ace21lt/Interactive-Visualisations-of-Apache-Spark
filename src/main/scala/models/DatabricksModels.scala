@@ -106,6 +106,37 @@ object RunDetailsResponse:
   implicit val encoder: JsonEncoder[RunDetailsResponse] = DeriveJsonEncoder.gen[RunDetailsResponse]
   implicit val decoder: JsonDecoder[RunDetailsResponse] = DeriveJsonDecoder.gen[RunDetailsResponse]
 
+// Metadata for notebook output (contains the actual result string)
+case class NotebookOutputMetadata(
+    @jsonField("notebook_output") notebookOutput: Option[NotebookOutputData] = None
+)
+
+object NotebookOutputMetadata:
+  implicit val encoder: JsonEncoder[NotebookOutputMetadata] = DeriveJsonEncoder.gen[NotebookOutputMetadata]
+  implicit val decoder: JsonDecoder[NotebookOutputMetadata] = DeriveJsonDecoder.gen[NotebookOutputMetadata]
+
+// Notebook output data with result, truncated flag, and type
+case class NotebookOutputData(
+    result: Option[String] = None,
+    truncated: Option[Boolean] = None,
+    @jsonField("output_type") outputType: Option[String] = None
+)
+
+object NotebookOutputData:
+  implicit val encoder: JsonEncoder[NotebookOutputData] = DeriveJsonEncoder.gen[NotebookOutputData]
+  implicit val decoder: JsonDecoder[NotebookOutputData] = DeriveJsonDecoder.gen[NotebookOutputData]
+
+// Response from get-output API endpoint
+case class NotebookOutputResponse(
+    metadata: Option[NotebookOutputMetadata] = None,
+    error: Option[String] = None,
+    @jsonField("error_trace") errorTrace: Option[String] = None
+)
+
+object NotebookOutputResponse:
+  implicit val encoder: JsonEncoder[NotebookOutputResponse] = DeriveJsonEncoder.gen[NotebookOutputResponse]
+  implicit val decoder: JsonDecoder[NotebookOutputResponse] = DeriveJsonDecoder.gen[NotebookOutputResponse]
+
 // Service Output Models
 
 // Notebook execution output
