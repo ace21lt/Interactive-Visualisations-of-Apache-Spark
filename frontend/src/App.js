@@ -6,13 +6,16 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
+    // Use environment variable for API URL, fallback to localhost for development
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+
     const triggerAnalysis = async () => {
         setLoading(true);
         setError(null);
 
         try {
             // Call Scala backend
-            const response = await fetch('http://localhost:8080/trigger', {
+            const response = await fetch(`${apiUrl}/trigger`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

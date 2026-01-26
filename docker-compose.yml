@@ -1,0 +1,69 @@
+services:
+  # Scala/ZIO Backend Service
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: spark-viz-backend:latest
+    container_name: spark-viz-backend
+    ports:
+      - "8080:8080"
+    environment:
+      # Databricks Configuration (loaded from .env file)
+      - DATABRICKS_HOST=${DATABRICKS_HOST}
+      - DATABRICKS_TOKEN=${DATABRICKS_TOKEN}
+      - NOTEBOOK_PATH=${NOTEBOOK_PATH}
+      # Optional Configuration
+      - MAX_POLL_ATTEMPTS=${MAX_POLL_ATTEMPTS:-60}
+      - POLL_INTERVAL_SECONDS=${POLL_INTERVAL_SECONDS:-5}
+      - SLOW_DOWN_FACTOR=${SLOW_DOWN_FACTOR:-1}
+      - TIMEOUT_SECONDS=${TIMEOUT_SECONDS:-300}
+      - MAX_VISUALISATION_ROWS=${MAX_VISUALISATION_ROWS:-1000}
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - spark-viz-network
+
+  # React Frontend Service
+  # Uses Node development server
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: spark-viz-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      # Development mode
+      - NODE_ENV=development
+      # API URL - frontend in browser calls localhost:8080 (host machine)
+      - REACT_APP_API_URL=http://localhost:8080
+      # Disable React's browser auto-open
+      - BROWSER=none
+      # Enable hot reloading to work in Docker
+      - CHOKIDAR_USEPOLLING=true
+      # Allow connections from any host (needed for Docker)
+      - WDS_SOCKET_PORT=3000
+    volumes:
+      # Mount source code for hot reloading
+      # Read-only for src to prevent container from modifying source
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - spark-viz-network
+    restart: unless-stopped
+
+
+networks:
+  spark-viz-network:
+    driver: bridge
