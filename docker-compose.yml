@@ -22,7 +22,7 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -43,8 +43,6 @@ services:
     environment:
       # Development mode
       - NODE_ENV=development
-      # API URL - frontend in browser calls localhost:8080 (host machine)
-      - REACT_APP_API_URL=http://localhost:8080
       # Disable React's browser auto-open
       - BROWSER=none
       # Enable hot reloading to work in Docker

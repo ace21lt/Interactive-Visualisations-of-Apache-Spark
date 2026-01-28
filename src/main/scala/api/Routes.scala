@@ -35,13 +35,15 @@ object Routes:
         Method.POST / "trigger"    -> handler { (_: Request) =>
           DatabricksService
             .runNotebook()
-            .map { result =>
-              val response = TriggerResponse(
+            .flatMap { result =>
+              val response     = TriggerResponse(
                 runId = result.runId,
                 state = result.state,
                 output = result.output
               )
-              addCorsHeaders(Response.json(response.toJson))
+              val jsonResponse = response.toJson
+              ZIO.logInfo(s"Sending response to frontend: $jsonResponse") *>
+                ZIO.succeed(addCorsHeaders(Response.json(jsonResponse)))
             }
             .catchAll { (error: DatabricksError) =>
               // Log the technical error message
