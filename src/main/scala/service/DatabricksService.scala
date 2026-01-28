@@ -41,7 +41,8 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
     } yield status.copy(output = notebookOutput)
 
   private def getTaskRunId(runId: Long): IO[DatabricksError, Long] =
-    val apiUrl = DatabricksApiPaths.buildGetRunUrl(config.workspaceUrl, runId)
+    val apiUrl        = DatabricksApiPaths.buildGetRunUrl(config.workspaceUrl, runId)
+    val retrySchedule = Schedule.exponential(1.second) && Schedule.recurs(3)
 
     ZIO
       .scoped {
@@ -70,6 +71,8 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
           }
       }
       .mapError(DatabricksError.fromThrowable)
+      .retry(retrySchedule)
+      .tapError(err => ZIO.logWarning(s"Failed to get task run ID after retries: ${err.getMessage}"))
 
   // Submit notebook to Databricks and get run ID
   private def submitNotebook(): IO[DatabricksError, Long] =
@@ -146,7 +149,10 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
     val pollInterval = (config.pollIntervalSeconds * config.slowDownFactor).toInt.seconds
 
     // Check status once and return Option[RunOutput]
+    // Retry transient connection errors (e.g., PrematureChannelClosureException)
     def checkStatus(): IO[DatabricksError, Option[RunOutput]] =
+      val retrySchedule = Schedule.exponential(1.second) && Schedule.recurs(3)
+
       ZIO
         .scoped {
           client
@@ -177,6 +183,8 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
             }
         }
         .mapError(DatabricksError.fromThrowable)
+        .retry(retrySchedule)
+        .tapError(err => ZIO.logWarning(s"Polling attempt failed: ${err.getMessage}"))
 
     // Use ZIO Schedule for declarative polling
     // Repeat checkStatus with fixed interval, up to maxAttempts times, until we get Some(output)
@@ -198,10 +206,50 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
       result = Some(jsonStr)
     )
 
-  // Fetch actual notebook output from task run
   // Returns None if output unavailable, fails with DatabricksError for serious errors
   private def fetchNotebookOutput(runId: Long): IO[DatabricksError, Option[NotebookOutput]] =
     val apiUrl = DatabricksApiPaths.buildGetOutputUrl(config.workspaceUrl, runId)
+
+    // Extract result field using zio-json AST for safe, clean JSON parsing
+    def extractResultField(json: String): Option[String] =
+      import zio.json.ast.Json
+
+      Json.decoder.decodeJson(json).toOption.flatMap { ast =>
+        // Helper to safely extract string from Json.Obj
+        def getString(obj: Json, key: String): Option[String] = obj match {
+          case Json.Obj(fields) =>
+            fields.find(_._1 == key).flatMap {
+              case (_, Json.Str(s)) => Some(s)
+              case _                => None
+            }
+          case _                => None
+        }
+
+        // Helper to safely get nested object
+        def getObj(obj: Json, key: String): Option[Json] = obj match {
+          case Json.Obj(fields) => fields.find(_._1 == key).map(_._2)
+          case _                => None
+        }
+
+        // Try multiple possible locations for the notebook output
+        // Pattern 1: metadata.notebook_output.result
+        val fromMetadata = for {
+          metadata       <- getObj(ast, "metadata")
+          notebookOutput <- getObj(metadata, "notebook_output")
+          result         <- getString(notebookOutput, "result")
+        } yield result
+
+        // Pattern 2: top-level notebook_output.result
+        val fromTopLevel = for {
+          notebookOutput <- getObj(ast, "notebook_output")
+          result         <- getString(notebookOutput, "result")
+        } yield result
+
+        // Pattern 3: direct result field (for simple responses)
+        val fromDirect = getString(ast, "result")
+
+        fromMetadata.orElse(fromTopLevel).orElse(fromDirect)
+      }
 
     ZIO
       .scoped {
@@ -212,44 +260,34 @@ case class DatabricksServiceLive(config: DatabricksConfig, client: Client) exten
               if (response.status.isSuccess) {
                 ZIO.logInfo(s"=== Notebook Output API Response ===") *>
                   ZIO.logInfo(s"Response length: ${jsonStr.length} chars") *>
+                  ZIO.logInfo(s"FULL JSON RESPONSE:") *>
+                  ZIO.logInfo(jsonStr) *>
                   ZIO.logInfo(s"====================================") *>
                   ZIO
-                    .fromEither(jsonStr.fromJson[NotebookOutputResponse])
-                    .map { outputResponse =>
-                      // Extract the result from the nested structure
-                      val result = outputResponse.metadata
-                        .flatMap(_.notebookOutput)
-                        .flatMap(_.result)
-
-                      // If we have an error in the response, include it
-                      val error = outputResponse.error
-
-                      Some(
-                        NotebookOutput(
-                          result = result,
-                          error = error
-                        )
-                      )
+                    .attempt {
+                      extractResultField(jsonStr) match
+                        case Some(value) =>
+                          val trimmed = value.trim
+                          ZIO
+                            .logInfo(s"Extracted notebook output (length=${trimmed.length} chars)")
+                            .as(Some(NotebookOutput(result = Some(trimmed))))
+                        case None        =>
+                          ZIO
+                            .logInfo(s"No 'result' field found, using raw JSON as fallback")
+                            .as(Some(NotebookOutput(result = Some(jsonStr))))
                     }
-                    .catchAll { parseError =>
-                      // If parsing fails, fall back to including raw JSON as result
-                      ZIO
-                        .logWarning(s"Failed to parse notebook output response: $parseError")
-                        .as(Some(NotebookOutput(result = Some(jsonStr))))
-                    }
+                    .flatten
+                    .mapError(err =>
+                      DatabricksError
+                        .JsonParseError(s"Failed to extract notebook output: ${err.getMessage}", Some(jsonStr))
+                    )
               } else {
-                // Non-success status is logged and return None
                 ZIO.logWarning(s"Failed to fetch notebook output (HTTP ${response.status.code}): $jsonStr").as(None)
               }
             }
           }
       }
-      .catchAll { error =>
-        // Network errors are logged and then propagated as DatabricksError
-        ZIO.logWarning(s"Error fetching notebook output: ${error.getMessage}") *> ZIO.fail(
-          DatabricksError.fromThrowable(error)
-        )
-      }
+      .mapError(DatabricksError.fromThrowable)
 
 object DatabricksServiceLive:
   // ZLayer for dependency injection - requires config and HTTP client

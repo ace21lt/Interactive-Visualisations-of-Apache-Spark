@@ -87,5 +87,7 @@ object DatabricksError:
   def fromThrowable(error: Throwable): DatabricksError =
     error match {
       case e: DatabricksError => e
-      case e                  => ApiCommunicationError(e.getMessage, Some(e))
+      case e                  =>
+        val message = Option(e.getMessage).getOrElse(s"${e.getClass.getName}: No error message available")
+        ApiCommunicationError(message, Some(e))
     }

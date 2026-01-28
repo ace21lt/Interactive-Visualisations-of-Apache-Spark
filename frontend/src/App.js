@@ -6,8 +6,9 @@ function App() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    // Use environment variable for API URL, fallback to localhost for development
-    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+    // Use empty string for API URL so requests go through the proxy configured in package.json
+    // This allows the frontend to work both from localhost:3000 and the Docker network IP
+    const apiUrl = process.env.REACT_APP_API_URL || '';
 
     const triggerAnalysis = async () => {
         setLoading(true);
@@ -35,7 +36,21 @@ function App() {
                 console.log('Parsed Spark data:', sparkData);
                 setData(sparkData);
             } else {
-                throw new Error('Unexpected response format');
+                // Provide detailed error message
+                const errorDetails = {
+                    hasOutput: !!result.output,
+                    hasResult: !!(result.output && result.output.result),
+                    hasError: !!(result.output && result.output.error),
+                    outputStructure: result.output ? Object.keys(result.output) : 'N/A'
+                };
+                console.error('Response structure:', errorDetails);
+                console.error('Full response:', result);
+
+                if (result.output && result.output.error) {
+                    throw new Error(`Notebook execution error: ${result.output.error}`);
+                } else {
+                    throw new Error(`Unexpected response format. Output field is ${result.output ? 'present but result is missing' : 'missing'}. Check console for details.`);
+                }
             }
         } catch (err) {
             setError(err.message);
