@@ -9,9 +9,10 @@ services:
     ports:
       - "8080:8080"
     environment:
-      # Databricks Configuration (loaded from .env file)
-      - DATABRICKS_HOST=${DATABRICKS_HOST}
-      - DATABRICKS_TOKEN=${DATABRICKS_TOKEN}
+      # BYPASS MODE: Set both to skip PAT login (direct mode)
+      - DATABRICKS_HOST=${DATABRICKS_HOST:-}
+      - DATABRICKS_TOKEN=${DATABRICKS_TOKEN:-}
+      # Notebook to execute
       - NOTEBOOK_PATH=${NOTEBOOK_PATH}
       # Optional Configuration
       - MAX_POLL_ATTEMPTS=${MAX_POLL_ATTEMPTS:-60}
@@ -49,6 +50,8 @@ services:
       - CHOKIDAR_USEPOLLING=true
       # Allow connections from any host (needed for Docker)
       - WDS_SOCKET_PORT=3000
+      # Use empty API URL so React uses relative URLs with proxy
+      - REACT_APP_API_URL=
     volumes:
       # Mount source code for hot reloading
       # Read-only for src to prevent container from modifying source

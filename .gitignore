@@ -38,3 +38,4 @@ yarn.lock
 
 # OS-specific
 .DS_Store
+.claude

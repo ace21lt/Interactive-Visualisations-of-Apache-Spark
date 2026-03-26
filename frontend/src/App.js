@@ -1,42 +1,121 @@
-import React, { useState } from 'react';
+import React, {useState, useEffect} from 'react';
 import './App.css';
+import Login from './components/Login';
+import Lab1Layout from "./components/visualisations/Lab1Layout";
 
 function App() {
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
+    const [workspaceUrl, setWorkspaceUrl] = useState(null);
     const [data, setData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [sessionError, setSessionError] = useState(null);
+    const [lastExecutedStep, setLastExecutedStep] = useState(null);
+    const [runHistory, setRunHistory] = useState([]);  
 
-    // Use empty string for API URL so requests go through the proxy configured in package.json
-    // This allows the frontend to work both from localhost:3000 and the Docker network IP
     const apiUrl = process.env.REACT_APP_API_URL || '';
 
-    const triggerAnalysis = async () => {
+    useEffect(() => {
+        const checkSession = async () => {
+            try {
+                const res = await fetch(`${apiUrl}/api/me`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    headers: {'Accept': 'application/json'}
+                });
+                if (!res.ok) {
+                    setIsAuthenticated(false);
+                    setWorkspaceUrl(null);
+                    return;
+                }
+                const me = await res.json();
+                setIsAuthenticated(true);
+                setWorkspaceUrl(me.workspaceUrl || null);
+                setSessionError(null);
+            } catch (e) {
+                setIsAuthenticated(false);
+                setWorkspaceUrl(null);
+            }
+        };
+        checkSession();
+    }, [apiUrl]);
+
+    const handleLogout = async () => {
+        try {
+            await fetch(`${apiUrl}/api/logout`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: {'Content-Type': 'application/json'}
+            });
+        } catch (e) {
+            // even if it fails, clear UI state
+        } finally {
+            setIsAuthenticated(false);
+            setWorkspaceUrl(null);
+            setData(null);
+            setError(null);
+        }
+    };
+
+
+    const triggerAnalysis = async ({step, editedCode} = {}) => {
         setLoading(true);
         setError(null);
 
+        const _runStart = Date.now();
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 min
+
         try {
-            // Call Scala backend
+            if (step != null) setLastExecutedStep(step);
+            const hasEdit = step != null && editedCode && editedCode.trim().length > 0;
+            const body = hasEdit ? JSON.stringify({step, editedCode}) : undefined;
+
             const response = await fetch(`${apiUrl}/trigger`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
+                credentials: 'include',
+                headers: {'Content-Type': 'application/json'},
+                signal: controller.signal,
+                ...(body ? {body} : {}),
             });
 
             if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
+                if (response.status === 401) {
+                    // Token expired or invalid — clear session and return to login screen
+                    setSessionError('Your Databricks access token has expired. Please generate a new token and log in again.');
+                    setIsAuthenticated(false);
+                    setWorkspaceUrl(null);
+                    setData(null);
+                    return;
+                }
+                const errBody = await response.json().catch(() => null);
+                throw new Error(errBody?.error || `HTTP error! status: ${response.status}`);
             }
 
             const result = await response.json();
             console.log('Raw response:', result);
 
-            // Parse the nested JSON 
             if (result.output && result.output.result) {
                 const sparkData = JSON.parse(result.output.result);
                 console.log('Parsed Spark data:', sparkData);
                 setData(sparkData);
+
+                const cfg = sparkData?.spark_config ?? {};
+                if (cfg.num_partitions != null) {
+                    const entry = {
+                        partitions: cfg.num_partitions,
+                        skipped: cfg.skip_repartition ?? false,
+                        executionSecs: result.executionSeconds ?? null,
+                        roundTripSecs: Math.round((Date.now() - _runStart) / 1000),
+                        timestamp: new Date().toLocaleTimeString(),
+                    };
+                    setRunHistory(prev => {
+                        // Keep latest entry per partition count 
+                        const filtered = prev.filter(r => r.partitions !== entry.partitions);
+                        return [...filtered, entry].slice(-8);
+                    });
+                }
             } else {
-                // Provide detailed error message
                 const errorDetails = {
                     hasOutput: !!result.output,
                     hasResult: !!(result.output && result.output.result),
@@ -45,170 +124,71 @@ function App() {
                 };
                 console.error('Response structure:', errorDetails);
                 console.error('Full response:', result);
-
                 if (result.output && result.output.error) {
                     throw new Error(`Notebook execution error: ${result.output.error}`);
                 } else {
-                    throw new Error(`Unexpected response format. Output field is ${result.output ? 'present but result is missing' : 'missing'}. Check console for details.`);
+                    throw new Error(
+                        `Unexpected response format. Output field is ${
+                            result.output ? 'present but result is missing' : 'missing'
+                        }. Check console for details.`
+                    );
                 }
             }
         } catch (err) {
-            setError(err.message);
+            if (err.name === 'AbortError') {
+                setError('Request timed out after 5 minutes. The Databricks run may still be executing — check your workspace.');
+            } else {
+                setError(err.message);
+            }
             console.error('Error fetching Spark data:', err);
         } finally {
+            clearTimeout(timeoutId);
             setLoading(false);
         }
     };
 
+    if (!isAuthenticated) {
+        return <Login sessionError={sessionError}/>;
+    }
+
+    const workspaceLabel = workspaceUrl
+        ? workspaceUrl.replace('https://', '').replace('http://', '').split('.')[0]
+        : 'Connected';
+
     return (
         <div className="App">
-            <header className="app-header">
+            <div className="app-header">
                 <h1>Interactive Spark Visualisations</h1>
-            </header>
-
-            <div className="controls">
-                <button
-                    onClick={triggerAnalysis}
-                    disabled={loading}
-                    className="trigger-btn"
-                >
-                    {loading ? 'Running Spark Analysis...' : 'Run Spark Analysis'}
-                </button>
+                <div className="header-right">
+                    <span className="workspace-indicator">{workspaceLabel}</span>
+                    <button onClick={handleLogout} className="logout-btn">Logout</button>
+                </div>
             </div>
 
-            {error && (
-                <div className="error-box">
-                    <strong>Error:</strong> {error}
+            <div className="results-container" style={{maxWidth: "1280px", margin: "0 auto", padding: "0 32px"}}>
+                <div className="controls">
+                    <button
+                        onClick={() => triggerAnalysis()}
+                        disabled={loading}
+                        className="trigger-btn"
+                    >
+                        {loading ? 'Running Spark Analysis...' : 'Run Spark Analysis'}
+                    </button>
                 </div>
-            )}
 
-            {loading && (
-                <div className="loading-box">
-                    <div className="spinner"></div>
-                    <p>Executing Spark job on Databricks...</p>
-                    <p className="subtext">This may take a little while</p>
-                </div>
-            )}
-
-            {data && (
-                <div className="results">
-                    <h2>Analysis Complete!</h2>
-
-                    <div className="stats-grid">
-                        <div className="stat-card">
-                            <h3>Total Records</h3>
-                            <p className="stat-value">
-                                {data.filter_results?.total ? data.filter_results.total.toLocaleString() : 'N/A'}
-                            </p>
-                        </div>
-                        <div className="stat-card">
-                            <h3>Unique Hosts</h3>
-                            <p className="stat-value">
-                                {data.metrics?.unique_hosts_total ? data.metrics.unique_hosts_total.toLocaleString() : 'N/A'}
-                            </p>
-                        </div>
-                        <div className="stat-card">
-                            <h3>404 Errors</h3>
-                            <p className="stat-value">
-                                {data.filter_results?.errors_404 ? data.filter_results.errors_404.toLocaleString() : 'N/A'}
-                            </p>
-                        </div>
-                        <div className="stat-card">
-                            <h3>Top Host</h3>
-                            <p className="stat-value">{data.top_host?.host || 'N/A'}</p>
-                            <p className="subtext">
-                                {data.top_host?.requests ? `${data.top_host.requests.toLocaleString()} requests` : '0 requests'}
-                            </p>
-                        </div>
+                {error && (
+                    <div className="error-box">
+                        <strong>Error:</strong> {error}
                     </div>
+                )}
 
-                    {data.spark_internals && (
-                        <div className="spark-internals">
-                            <h2>Spark Internals</h2>
-
-                            {data.spark_internals.partition_distribution && (
-                                <div className="section">
-                                    <h3>Partition Distribution</h3>
-                                    <pre>{JSON.stringify(data.spark_internals.partition_distribution, null, 2)}</pre>
-                                    <p className="explanation">
-                                        All data is in 1 partition! This means no parallelism.
-                                    </p>
-                                </div>
-                            )}
-
-                            {data.spark_internals.transformation_pipeline && (
-                                <div className="section">
-                                    <h3>Transformation Pipeline ({data.spark_internals.transformation_pipeline.length} steps)</h3>
-                                    <div className="pipeline">
-                                        {data.spark_internals.transformation_pipeline.map((step, idx) => (
-                                            <div
-                                                key={idx}
-                                                className={`pipeline-step ${step.lazy ? 'lazy' : 'action'}`}
-                                            >
-                                                <div className="step-number">{step.step}</div>
-                                                <div className="step-info">
-                                                    <strong>{step.operation}</strong>
-                                                    <p>{step.description}</p>
-                                                    {step.output_rows && <span className="badge">{step.output_rows.toLocaleString()} rows</span>}
-                                                    {step.shuffle && <span className="badge shuffle">Shuffle</span>}
-                                                    {step.lazy ? <span className="badge lazy">💤 Lazy</span> : <span className="badge action">⚡ Action</span>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {data.spark_internals.shuffles && (
-                                <div className="section">
-                                    <h3>Shuffle Operations ({data.spark_internals.shuffles.length})</h3>
-                                    {data.spark_internals.shuffles.map((shuffle, idx) => (
-                                        <div key={idx} className="shuffle-info">
-                                            <h4>{shuffle.operation}</h4>
-                                            <p>{shuffle.reason}</p>
-                                            <p>{shuffle.partitions_read} partitions → {shuffle.partitions_write} partitions</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {data.spark_internals.stages && (
-                                <div className="section">
-                                    <h3>Execution Stages ({data.spark_internals.stages.length})</h3>
-                                    <div className="stages">
-                                        {data.spark_internals.stages.map((stage, idx) => (
-                                            <div key={idx} className={`stage ${stage.shuffle ? 'with-shuffle' : 'no-shuffle'}`}>
-                                                <div className="stage-id">Stage {stage.stage_id}</div>
-                                                <div className="stage-details">
-                                                    <strong>{stage.name}</strong>
-                                                    <p>{stage.operations.join(', ')}</p>
-                                                    {stage.shuffle && <span className="badge">Shuffle</span>}
-                                                    {stage.rows_processed && <span>{stage.rows_processed.toLocaleString()} rows</span>}
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {data.status_distribution && (
-                        <div className="section">
-                            <h3>HTTP Status Code Distribution</h3>
-                            <div className="status-list">
-                                {data.status_distribution.map((status, idx) => (
-                                    <div key={idx} className="status-row">
-                                        <span className="status-code">{status.status}</span>
-                                        <span className="status-count">{status.count?.toLocaleString() || '0'}</span>
-                                        <div className="bar" style={{width: `${data.filter_results?.total ? (status.count / data.filter_results.total) * 100 : 0}%`}}></div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-                </div>
-            )}
+                {data && data.spark_internals && (
+                    <div className="results">
+                        <Lab1Layout data={data} onExecuteStep={triggerAnalysis} loading={loading}
+                                    lastExecutedStep={lastExecutedStep} runHistory={runHistory}/>
+                    </div>
+                )}
+            </div>
         </div>
     );
 }
