@@ -245,11 +245,7 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
                     <button
                         onClick={handleSaveTrace}
                         title="Download this run's execution trace as a JSON file — reload it any time using the Load Trace button above without re-running Spark."
-                        style={{
-                            fontSize: '11px', padding: '4px 10px', borderRadius: '4px',
-                            border: '1px solid var(--grey-300)', background: 'var(--grey-50)',
-                            color: 'var(--grey-600)', cursor: 'pointer'
-                        }}
+                        className="trace-btn"
                     >
                         Save Trace
                     </button>
