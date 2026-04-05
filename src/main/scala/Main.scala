@@ -15,7 +15,6 @@ import zio.http.Header.{
   Origin
 }
 import zio.http.Middleware.{cors, CorsConfig}
-
 import java.io.File
 import java.nio.file.Paths
 
@@ -130,7 +129,11 @@ object Main extends ZIOAppDefault:
           ZIO
             .attempt(scala.sys.env.getOrElse("PORT", "8080").toInt)
             .orElse(ZIO.succeed(8080))
-            .map(port => Server.Config.default.port(port))
+            .map(port =>
+              Server.Config.default
+                .port(port)
+                .idleTimeout(5.minutes)
+            )
         ) >>> Server.live,
         Client.default,
 
