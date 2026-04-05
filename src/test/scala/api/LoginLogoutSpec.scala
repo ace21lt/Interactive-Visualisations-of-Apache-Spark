@@ -68,7 +68,7 @@ object LoginLogoutSpec extends ZIOSpecDefault:
     val baseLayer            = configLayer ++ urlValidationLayer ++ testDatabricksService ++ InMemorySessionManager.layer
     val credResolverLayer    = baseLayer >>> CredentialResolver.layer
     val loginHandlerLayer    = baseLayer >>> LoginHandler.layer
-    val notebookHandlerLayer = (credResolverLayer ++ testDatabricksService) >>> NotebookHandler.layer
+    val notebookHandlerLayer = (configLayer ++ credResolverLayer ++ testDatabricksService) >>> NotebookHandler.layer
     val healthHandlerLayer   = HealthHandler.layer
     loginHandlerLayer ++ notebookHandlerLayer ++ healthHandlerLayer
 

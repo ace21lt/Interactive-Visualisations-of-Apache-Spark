@@ -1,5 +1,6 @@
 package handlers
 
+import config.DatabricksConfig
 import credentials.CredentialResolver
 import service.{DatabricksError, DatabricksService}
 import zio.*
@@ -8,6 +9,10 @@ import zio.test.*
 import zio.test.Assertion.*
 
 object NotebookHandlerSpec extends ZIOSpecDefault:
+
+  // A default config sufficient for handler unit tests; secureCookies = false
+  // means no Secure flag on any cleared cookies, which is fine for HTTP test requests.
+  private val testConfig = DatabricksConfig()
 
   // Mock implementations for testing
   case class FailingCredentialResolver(error: DatabricksError) extends CredentialResolver:
@@ -41,6 +46,7 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
       // Error path: not authenticated
       test("returns 401 Unauthorized when credentials resolver fails with NotAuthenticated") {
         val handler = NotebookHandlerLive(
+          testConfig,
           FailingCredentialResolver(DatabricksError.NotAuthenticated()),
           SuccessfulDatabricksService()
         )
@@ -48,8 +54,9 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
         for response <- handler.trigger(request)
         yield assert(response.status)(equalTo(Status.Unauthorized))
       },
-      test("returns 'Not authenticated' message when not authenticated") {
+      test("returns JSON error body when not authenticated") {
         val handler = NotebookHandlerLive(
+          testConfig,
           FailingCredentialResolver(DatabricksError.NotAuthenticated()),
           SuccessfulDatabricksService()
         )
@@ -57,12 +64,30 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
         for
           response <- handler.trigger(request)
           body     <- response.body.asString
-        yield assert(body)(containsString("Not authenticated"))
+        yield assert(body)(containsString("Not authenticated")) &&
+          assert(body)(containsString("\"error\""))
+      },
+      test("clears sid cookie in 401 response when not authenticated") {
+        val handler = NotebookHandlerLive(
+          testConfig,
+          FailingCredentialResolver(DatabricksError.NotAuthenticated()),
+          SuccessfulDatabricksService()
+        )
+        val request = Request.post(URL(Path("/trigger")), Body.empty)
+        for response <- handler.trigger(request)
+        yield assert(
+          response.headers.exists(h =>
+            h.headerName.equalsIgnoreCase("set-cookie") &&
+              h.renderedValue.contains("sid=") &&
+              h.renderedValue.contains("Max-Age=0")
+          )
+        )(isTrue)
       },
 
       // Error path: Databricks service failure
       test("handles Databricks API communication error") {
         val handler = NotebookHandlerLive(
+          testConfig,
           SuccessfulCredentialResolver("https://test.databricks.com", "dapiTOKEN-123"),
           FailingDatabricksService(DatabricksError.ApiCommunicationError("Connection timeout"))
         )
@@ -72,6 +97,7 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
       },
       test("handles Databricks API response error (401)") {
         val handler = NotebookHandlerLive(
+          testConfig,
           SuccessfulCredentialResolver("https://test.databricks.com", "dapiTOKEN-123"),
           FailingDatabricksService(DatabricksError.ApiResponseError(401, "Unauthorized"))
         )
@@ -81,6 +107,7 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
       },
       test("handles execution timeout error") {
         val handler = NotebookHandlerLive(
+          testConfig,
           SuccessfulCredentialResolver("https://test.databricks.com", "dapiTOKEN-123"),
           FailingDatabricksService(
             DatabricksError.ExecutionTimeout(runId = 123L, maxAttempts = 30, pollInterval = 2)
@@ -92,6 +119,7 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
       },
       test("handles execution failed error") {
         val handler = NotebookHandlerLive(
+          testConfig,
           SuccessfulCredentialResolver("https://test.databricks.com", "dapiTOKEN-123"),
           FailingDatabricksService(
             DatabricksError.ExecutionFailed(
@@ -109,6 +137,7 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
       // Happy path: successful execution
       test("returns 200 with run details on successful execution") {
         val handler = NotebookHandlerLive(
+          testConfig,
           SuccessfulCredentialResolver("https://test.databricks.com", "dapiTOKEN-123"),
           SuccessfulDatabricksService()
         )
@@ -118,6 +147,7 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
       },
       test("response contains valid JSON with run details") {
         val handler = NotebookHandlerLive(
+          testConfig,
           SuccessfulCredentialResolver("https://test.databricks.com", "dapiTOKEN-123"),
           SuccessfulDatabricksService()
         )
@@ -133,6 +163,7 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
       // Edge cases
       test("handles empty request body (uses default TriggerRequest)") {
         val handler = NotebookHandlerLive(
+          testConfig,
           SuccessfulCredentialResolver("https://test.databricks.com", "dapiTOKEN-123"),
           SuccessfulDatabricksService()
         )
@@ -142,29 +173,15 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
       },
       test("handles malformed JSON in request body gracefully") {
         val handler = NotebookHandlerLive(
+          testConfig,
           SuccessfulCredentialResolver("https://test.databricks.com", "dapiTOKEN-123"),
           SuccessfulDatabricksService()
         )
         val request = Request.post(URL(Path("/trigger")), Body.fromString("{not-json}"))
         for response <- handler.trigger(request)
         yield assert(response.status)(equalTo(Status.Ok)) // Falls back to default request
-      },
-      test("includes CORS headers in success response") {
-        val handler = NotebookHandlerLive(
-          SuccessfulCredentialResolver("https://test.databricks.com", "dapiTOKEN-123"),
-          SuccessfulDatabricksService()
-        )
-        val request = Request.post(URL(Path("/trigger")), Body.empty)
-        for response <- handler.trigger(request)
-        yield assert(response.headers.exists(_.headerName.equalsIgnoreCase("Access-Control-Allow-Origin")))(isTrue)
-      },
-      test("includes CORS headers in error response") {
-        val handler = NotebookHandlerLive(
-          FailingCredentialResolver(DatabricksError.NotAuthenticated()),
-          SuccessfulDatabricksService()
-        )
-        val request = Request.post(URL(Path("/trigger")), Body.empty)
-        for response <- handler.trigger(request)
-        yield assert(response.headers.exists(_.headerName.equalsIgnoreCase("Access-Control-Allow-Origin")))(isTrue)
       }
+      // Note: CORS header tests are intentionally absent. CORS is handled entirely by
+      // Middleware.cors in Main and is not the responsibility of individual handlers.
+      // CORS behaviour is covered by integration tests (RoutesSpec).
     )

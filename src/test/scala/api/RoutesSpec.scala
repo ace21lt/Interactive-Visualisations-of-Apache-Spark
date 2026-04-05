@@ -58,7 +58,8 @@ object RoutesSpec extends ZIOSpecDefault:
       configLayerDirectDisabled ++ urlValidationStub ++ testDatabricksService ++ InMemorySessionManager.layer
     val credResolverLayer    = baseLayer >>> CredentialResolver.layer
     val loginHandlerLayer    = baseLayer >>> LoginHandler.layer
-    val notebookHandlerLayer = (credResolverLayer ++ testDatabricksService) >>> NotebookHandler.layer
+    val notebookHandlerLayer =
+      (configLayerDirectDisabled ++ credResolverLayer ++ testDatabricksService) >>> NotebookHandler.layer
     val healthHandlerLayer   = HealthHandler.layer
     loginHandlerLayer ++ notebookHandlerLayer ++ healthHandlerLayer
 

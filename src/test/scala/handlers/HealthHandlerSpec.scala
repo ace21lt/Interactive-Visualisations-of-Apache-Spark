@@ -22,12 +22,8 @@ object HealthHandlerSpec extends ZIOSpecDefault:
           body     <- response.body.asString
         yield assertTrue(body == "OK")
       },
-      test("includes CORS headers") {
-        val handler = HealthHandlerLive()
-        val request = Request.get(URL.root)
-        for response <- handler.health(request)
-        yield assert(response.headers.exists(_.headerName.equalsIgnoreCase("Access-Control-Allow-Origin")))(isTrue)
-      },
+      // Note: CORS headers are injected by Middleware.cors in Main, not by individual
+      // handlers. CORS behaviour is covered at the integration level in RoutesSpec.
       test("handles multiple requests") {
         val handler = HealthHandlerLive()
         for
