@@ -21,6 +21,12 @@ import java.nio.file.Paths
 
 object Main extends ZIOAppDefault:
 
+  locally {
+    val lm = java.util.logging.LogManager.getLogManager
+    lm.reset()
+    java.util.logging.Logger.getLogger("").setLevel(java.util.logging.Level.SEVERE)
+  }
+
   // Directory containing the React production build
   private val PublicDir = "/app/public"
 
@@ -120,7 +126,17 @@ object Main extends ZIOAppDefault:
       _ <- ZIO.logInfo(s"Serving static files from $PublicDir")
 
       // API routes first, then static file fallback
-      allRoutes = (Routes.apply() ++ staticRoutes) @@ corsMiddleware
+      baseRoutes = (Routes.apply() ++ staticRoutes) @@ corsMiddleware
+
+      // Only apply password protection if DEV_PASSWORD environment variable is set
+      allRoutes = scala.sys.env.get("DEV_PASSWORD") match {
+                    case Some(pwd) if pwd.nonEmpty =>
+                      baseRoutes @@ Middleware.basicAuth { credentials =>
+                        credentials.uname == "admin" && credentials.upassword == pwd
+                      }
+                    case _                         =>
+                      baseRoutes
+                  }
 
       _ <- Server.serve(allRoutes.toHttpApp)
     yield ())

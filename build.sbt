@@ -15,6 +15,10 @@ libraryDependencies ++= Seq(
   // JSON handling
   "dev.zio" %% "zio-json" % "0.6.2",
 
+  // Logging
+  "ch.qos.logback" % "logback-classic" % "1.4.14",
+  "org.slf4j"      % "jul-to-slf4j"    % "2.0.9",
+
   // Testing
   "dev.zio" %% "zio-test"     % "2.0.19" % Test,
   "dev.zio" %% "zio-test-sbt" % "2.0.19" % Test

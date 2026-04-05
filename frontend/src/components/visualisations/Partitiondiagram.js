@@ -163,16 +163,15 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             ? (internals.partition_story?.post_shuffle_partitions ?? realN)
             : realN;
 
-        const gap = n === 1 ? 0 : 8;
-        // Box width anchored to max(n, 8) — boxes stay same width regardless of step
-        const maxN = Math.max(n, 8);
+        const slotsN = isBottleneck ? (pipeline[1]?.partitions_after ?? 8) : n;
+        const gap = slotsN === 1 ? 0 : 8;
+        // Anchor box width to max(slotsN, 8) so boxes don't grow too wide for small counts
+        const maxN = Math.max(slotsN, 8);
         const boxW = Math.min(68, (IW - gap * (maxN - 1)) / maxN);
         const pY = execLabelY + 14;
         const maxBarH = H - mt - mb - pY - 16;
         const sqrtScale = d3.scaleSqrt().domain([0, GLOBAL_MAX]).range([0, maxBarH - 16]);
 
-        // Step 1: draw 8 ghost slots to dramatise the bottleneck
-        const slotsN = isBottleneck ? (pipeline[1]?.partitions_after ?? 8) : n;
         const groupW = slotsN * boxW + gap * (slotsN - 1);
         const startX = (IW - groupW) / 2;
 
@@ -195,13 +194,15 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
         if (isShuffle) {
             const prevParts = getPartitionsForStep(currentStep - 1, pipeline, internals);
             const ghostN = Math.max(prevParts.length, 1);
-            const ghostGrpW = ghostN * boxW + gap * (ghostN - 1);
+            const ghostGap = ghostN === 1 ? 0 : 8;
+            const ghostBoxW = Math.min(68, (IW - ghostGap * (Math.max(ghostN, 8) - 1)) / Math.max(ghostN, 8));
+            const ghostGrpW = ghostN * ghostBoxW + ghostGap * (ghostN - 1);
             const ghostX = (IW - ghostGrpW) / 2;
             const destX = startX + (n === 1 ? boxW / 2 : groupW / 2);
             const destY = netY - 4;
 
             for (let i = 0; i < ghostN; i++) {
-                const srcX = ghostX + i * (boxW + gap) + boxW / 2;
+                const srcX = ghostX + i * (ghostBoxW + ghostGap) + ghostBoxW / 2;
                 g.append('path')
                     .attr('d', `M${srcX},${pY + 10} Q${(srcX + destX) / 2},${pY - 20} ${destX},${destY}`)
                     .attr('fill', 'none').attr('stroke', '#E69F00')
