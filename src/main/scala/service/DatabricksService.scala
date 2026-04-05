@@ -53,18 +53,25 @@ case class DatabricksServiceLive(
   ): IO[DatabricksError, RunOutput] =
     for
       // Step 1 — auto-discover catalog, ensure datasets exist, get resolved path
-      _          <- ZIO.logInfo(s"Discovering catalog and ensuring datasets: $workspaceUrl")
-      volumePath <- datasetProvisioner.ensureDatasets(workspaceUrl, token)
-      _          <- ZIO.logInfo(s"Using volume path: $volumePath")
+      _         <- ZIO.logInfo(s"Discovering catalog and ensuring datasets: $workspaceUrl")
+      provision <- datasetProvisioner.ensureDatasets(workspaceUrl, token)
+      volumePath = provision.volumePath
+      _         <- ZIO.logInfo(s"Using volume path: $volumePath")
 
-      // Step 2 — build notebook source with the resolved volume path injected
+      // Step 2 — build notebook source with the resolved volume path injected.
+      // skipRepartition is only safe when the Delta table already exists —
+      // on a brand-new account deltaTableExists=false, so we force the write.
       notebookSource <- (step, editedCode) match
                           case (Some(s), Some(code)) if code.trim.nonEmpty =>
                             ZIO.logInfo(s"Building notebook with edited step $s") *>
                               NotebookTemplate.buildNotebook(s, code, datasetVolumePath = volumePath)
                           case _                                           =>
-                            ZIO.logInfo("Building notebook from template (no edits, skipping Delta write)") *>
-                              NotebookTemplate.loadDefault(datasetVolumePath = volumePath, skipRepartition = true)
+                            val skip = provision.deltaTableExists
+                            ZIO.logInfo(
+                              s"Building notebook from template " +
+                                s"(skipRepartition=$skip, deltaTableExists=${provision.deltaTableExists})"
+                            ) *>
+                              NotebookTemplate.loadDefault(datasetVolumePath = volumePath, skipRepartition = skip)
 
       // Step 3 — import notebook to a fresh path in the student's workspace
       importDir      <- config.notebookImportDir
