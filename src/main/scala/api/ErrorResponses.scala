@@ -27,8 +27,6 @@ object ErrorResponses:
       case _: DatabricksError.ExecutionFailed       => Status.UnprocessableEntity
       case _: DatabricksError.TaskNotFound          => Status.InternalServerError
 
-    CorsHandler.addHeaders(
-      Response
-        .json(ErrorResponse(error = userMessage, timestamp = timestamp).toJson)
-        .status(status)
-    )
+    Response
+      .json(ErrorResponse(error = userMessage, timestamp = timestamp).toJson)
+      .status(status)
