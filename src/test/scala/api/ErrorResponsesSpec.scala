@@ -112,14 +112,6 @@ object ErrorResponsesSpec extends ZIOSpecDefault:
         assert(response.status)(equalTo(Status.InternalServerError))
       },
 
-      // Response includes CORS headers
-      test("response includes CORS headers") {
-        val error         = DatabricksError.BadRequestError("Test error")
-        val response      = ErrorResponses.toResponse(error, System.currentTimeMillis())
-        val hasCorsHeader = response.headers.exists(_.headerName.equalsIgnoreCase("Access-Control-Allow-Origin"))
-        assert(hasCorsHeader)(isTrue)
-      },
-
       // Response is JSON with error message
       test("response contains JSON with error and timestamp") {
         val error    = DatabricksError.BadRequestError("Test error")

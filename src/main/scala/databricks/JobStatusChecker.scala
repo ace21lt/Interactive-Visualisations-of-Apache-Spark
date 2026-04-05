@@ -23,7 +23,7 @@ case class JobStatusCheckerLive(config: DatabricksConfig, client: Client, retryP
   override def waitForCompletion(workspaceUrl: String, token: String, runId: Long): IO[DatabricksError, RunOutput] =
     val apiUrl       = DatabricksApiPaths.buildGetRunUrl(workspaceUrl, runId)
     val maxAttempts  = config.maxPollAttempts
-    val pollInterval = retryPolicy.pollInterval(config.pollIntervalSeconds, config.slowDownFactor)
+    val pollInterval = retryPolicy.pollInterval(config.pollIntervalSeconds)
 
     def checkStatus(): IO[DatabricksError, Option[RunOutput]] =
       ZIO

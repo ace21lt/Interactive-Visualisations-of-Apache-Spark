@@ -4,15 +4,15 @@ import zio.*
 
 trait RetryPolicy:
   def schedule: Schedule[Any, Throwable, Any]
-  def pollInterval(baseSeconds: Int, slowDownFactor: Double): Duration
+  def pollInterval(baseSeconds: Int): Duration
 
 // Default exponential backoff retry policy
 case class ExponentialBackoffRetryPolicy(base: Duration, maxRetries: Int) extends RetryPolicy:
   override def schedule: Schedule[Any, Throwable, Any] =
     Schedule.exponential(base) && Schedule.recurs(maxRetries)
 
-  override def pollInterval(baseSeconds: Int, slowDownFactor: Double): Duration =
-    (baseSeconds * slowDownFactor).toInt.seconds
+  override def pollInterval(baseSeconds: Int): Duration =
+    baseSeconds.toInt.seconds
 
 object RetryPolicy:
   val default: RetryPolicy = ExponentialBackoffRetryPolicy(1.second, 3)

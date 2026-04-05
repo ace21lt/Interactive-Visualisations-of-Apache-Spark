@@ -27,7 +27,6 @@ case class DatabricksConfig(
     timeoutSeconds: Int = 300,
     captureExecutionPlan: Boolean = true,
     capturePartitionInfo: Boolean = true,
-    slowDownFactor: Double = 1.0,
     secureCookies: Boolean = false,
     corsAllowedOrigins: Set[String] = Set("http://localhost:3000")
 ):
@@ -52,8 +51,6 @@ object DatabricksConfig:
   private val MaxVisualisationRowsLimit = 10000
   private val MinTimeoutSeconds         = 30
   private val MaxTimeoutSeconds         = 3600
-  private val MinSlowDownFactor         = 0.1
-  private val MaxSlowDownFactor         = 10.0
 
   val layer: ZLayer[Any, String, DatabricksConfig] =
     ZLayer.fromZIO(
@@ -89,7 +86,6 @@ object DatabricksConfig:
         timeout      <- ConfigReader.getOptionalEnvInt("TIMEOUT_SECONDS", 300, MinTimeoutSeconds, MaxTimeoutSeconds)
         capPlan      <- ConfigReader.getOptionalEnvBoolean("CAPTURE_EXECUTION_PLAN", true)
         capParts     <- ConfigReader.getOptionalEnvBoolean("CAPTURE_PARTITION_INFO", true)
-        slowDown     <- ConfigReader.getOptionalEnvDouble("SLOW_DOWN_FACTOR", 1.0, MinSlowDownFactor, MaxSlowDownFactor)
 
         secureCookies <- ConfigReader.getOptionalEnvBoolean("SECURE_COOKIES", false)
         _             <- ZIO.when(secureCookies)(ZIO.logInfo("Secure cookies enabled (HTTPS mode)"))
@@ -113,7 +109,6 @@ object DatabricksConfig:
         timeoutSeconds = timeout,
         captureExecutionPlan = capPlan,
         capturePartitionInfo = capParts,
-        slowDownFactor = slowDown,
         secureCookies = secureCookies,
         corsAllowedOrigins = corsAllowedOrigins
       )

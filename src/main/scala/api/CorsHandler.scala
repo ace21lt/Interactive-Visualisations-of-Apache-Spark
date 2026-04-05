@@ -3,8 +3,7 @@ package api
 import zio.http.*
 
 // CORS is configured centrally via ZIO HTTP middleware in Main.
-// Keep this helper as a compatibility shim, but do not add manual
-// Access-Control-* headers here to avoid conflicting/duplicate policy.
+
 object CorsHandler:
 
   // Leave response unchanged; CORS headers are applied by middleware.
