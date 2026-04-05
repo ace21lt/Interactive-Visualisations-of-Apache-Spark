@@ -11,11 +11,10 @@ import zio.*
 //   DATABRICKS_TOKEN        — (optional) PAT for direct/demo mode
 //   NOTEBOOK_IMPORT_DIR     — workspace dir for imported notebooks  (default: /tmp/spark-viz)
 //   DATASET_VOLUME_PATH     — Unity Catalog volume path for datasets (default: /Volumes/main/default/sparkml_tmp)
-//   MAX_POLL_ATTEMPTS       — (default: 30)
+//   MAX_POLL_ATTEMPTS       — (default: 60)
 //   POLL_INTERVAL_SECONDS   — (default: 2)
 //   TIMEOUT_SECONDS         — (default: 300)
 //   SECURE_COOKIES          — set to "true" when serving over HTTPS
-//   CORS_ALLOWED_ORIGINS    — comma-separated permitted frontend origins (default: http://localhost:3000)
 case class DatabricksConfig(
     workspaceUrl: Option[String] = None,
     token: Option[String] = None,
@@ -74,9 +73,9 @@ object DatabricksConfig:
                s"Dataset volume path: ${datasetPath.getOrElse("/Volumes/main/default/sparkml_tmp")}"
              )
 
-        maxPoll      <- ConfigReader.getOptionalEnvInt("MAX_POLL_ATTEMPTS", 30, MinPollAttempts, MaxPollAttempts)
+        maxPoll      <- ConfigReader.getOptionalEnvInt("MAX_POLL_ATTEMPTS", 60, MinPollAttempts, MaxPollAttempts)
         pollInterval <-
-          ConfigReader.getOptionalEnvInt("POLL_INTERVAL_SECONDS", 2, MinPollIntervalSeconds, MaxPollIntervalSeconds)
+          ConfigReader.getOptionalEnvInt("POLL_INTERVAL_SECONDS", 3, MinPollIntervalSeconds, MaxPollIntervalSeconds)
         maxRows      <- ConfigReader.getOptionalEnvInt(
                           "MAX_VISUALISATION_ROWS",
                           1000,
