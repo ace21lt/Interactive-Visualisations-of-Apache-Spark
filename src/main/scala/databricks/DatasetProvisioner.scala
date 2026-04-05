@@ -5,13 +5,17 @@ import zio.*
 import zio.http.*
 import zio.Chunk
 
+// Returned by ensureDatasets so callers know whether to skip the Delta write.
+case class DatasetProvisionResult(volumePath: String, deltaTableExists: Boolean)
+
 trait DatasetProvisioner:
-  // Returns the resolved volume path so DatabricksService can pass it
-  // to NotebookTemplate for path injection.
+  // Returns the resolved volume path and whether the optimised Delta table
+  // already exists, so DatabricksService can decide whether to skip the
+  // repartition/write step for non-step-2 runs.
   def ensureDatasets(
       workspaceUrl: String,
       token: String
-  ): IO[DatabricksError, String] // returns resolved volumePath
+  ): IO[DatabricksError, DatasetProvisionResult]
 
 case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
 
@@ -21,18 +25,25 @@ case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
     "NASA_access_log_Aug95.gz"
   )
 
+  // Sentinel file inside the Delta log — present iff the table has been written.
+  private val DeltaLogSentinel = "NASA_logs_optimised/_delta_log/00000000000000000000.json"
+
   override def ensureDatasets(
       workspaceUrl: String,
       token: String
-  ): IO[DatabricksError, String] =
+  ): IO[DatabricksError, DatasetProvisionResult] =
     for
       // Auto-discover the catalog, works for any student's workspace
-      volumePath <- CatalogDiscovery.discoverVolumePath(workspaceUrl, token, client)
-      _          <- ZIO.foreachDiscard(datasets) { filename =>
-                      val destPath = s"${volumePath.stripSuffix("/")}/$filename"
-                      ensureFile(workspaceUrl, token, filename, destPath)
-                    }
-    yield volumePath // return so DatabricksService can inject into notebook
+      volumePath       <- CatalogDiscovery.discoverVolumePath(workspaceUrl, token, client)
+      _                <- ZIO.foreachDiscard(datasets) { filename =>
+                            val destPath = s"${volumePath.stripSuffix("/")}/$filename"
+                            ensureFile(workspaceUrl, token, filename, destPath)
+                          }
+      // Check whether the optimised Delta table has already been written.
+      sentinelPath      = s"${volumePath.stripSuffix("/")}/$DeltaLogSentinel"
+      deltaTableExists <- checkExists(workspaceUrl, token, sentinelPath)
+      _                <- ZIO.logInfo(s"Delta table exists: $deltaTableExists ($sentinelPath)")
+    yield DatasetProvisionResult(volumePath, deltaTableExists)
 
   private def ensureFile(
       workspaceUrl: String,
