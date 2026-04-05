@@ -12,8 +12,7 @@ const Login = ({sessionError = null}) => {
         return (
             u.startsWith('https://')
         ) && (
-            u.includes('.databricks.com') ||
-            u.includes('.azuredatabricks.net')
+            u.includes('.databricks.com')
         );
     };
 

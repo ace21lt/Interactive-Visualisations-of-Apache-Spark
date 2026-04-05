@@ -48,7 +48,7 @@ logs = spark.read.format("delta").load(optimised_path).repartition(NUM_PARTITION
 # Nothing executes yet — Spark records the intention only.
 hosts_japan = logs.filter(logs.value.contains(".jp"))`,
         readOnly: false,
-        desc: "Change the filter string only — try '.uk', 'nasa.gov', or 'timken.com'. Keep the variable name 'hosts_japan' unchanged. Notice this step produces no output — the filter is lazy until an action is called in Step 4."
+        desc: "Change the filter string only — try '.uk', '.gov', or '.dk'. Keep the variable name 'hosts_japan' unchanged. Notice this step produces no output — the filter is lazy until an action is called in Step 4."
     },
     4: {
         title: "Count Action (Fires DAG)",
@@ -56,7 +56,7 @@ hosts_japan = logs.filter(logs.value.contains(".jp"))`,
             `# Step 4 — Action: triggers the full DAG across all partitions
 # read -> repartition -> filter all execute NOW in parallel.
 hostsJapan_big = hosts_japan.count()`,
-        readOnly: true,
+        readOnly: false,
         desc: "count() is an action — it forces Spark to execute the entire DAG built in Steps 1–3. Keep the variable name 'hostsJapan_big' unchanged. Try changing .count() to .first() or .take(5) to see different action types."
     },
     5: {
@@ -78,8 +78,6 @@ df = (
         defaultCode:
             `# Step 6 — repartitionByRange routes all rows with the same key to the
 # SAME partition before groupBy, so each partition owns one distinct value.
-# Change groupby_col to "day" or "host" and re-run to see how key
-# cardinality changes the partition layout. Keep variable name 'status_counts'.
 groupby_col = "status"
 df_grouped = df.repartitionByRange(num_return_codes, groupby_col)
 status_counts = df_grouped.groupBy(groupby_col).agg(count("*").alias("num")).orderBy(col("num").desc())`,
@@ -266,8 +264,7 @@ const CodePanel = ({currentStep, onExecuteStep, data}) => {
             }}>
                 <p style={{margin: 0, color: '#333'}}>
                     <strong>Task:</strong> {
-                    data?.spark_internals?.transformation_pipeline?.[currentStep - 1]?.description
-                    ?? activeTemplate.desc
+                    activeTemplate.desc
                 }
                 </p>
             </div>

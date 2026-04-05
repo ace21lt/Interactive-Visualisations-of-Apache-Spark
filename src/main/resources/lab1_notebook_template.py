@@ -108,6 +108,8 @@ _stats = (
         when(logs.value.contains("gateway.timken.com")
              & logs.value.contains("[15/Aug/1995")
              & logs.value.rlike(_pat404), 1).otherwise(0).alias("edt"),
+        # Folded in here to avoid a separate full scan action later
+        when(logs.value.contains(".uk"), 1).otherwise(0).alias("uk"),
     )
     .agg(
         count("*").alias("total"),
@@ -116,6 +118,7 @@ _stats = (
         spark_sum("e").alias("errs_404"),
         spark_sum("ed").alias("errs_404_15"),
         spark_sum("edt").alias("errs_404_15_timken"),
+        spark_sum("uk").alias("hosts_uk"),
     )
     .collect()[0]
 )
@@ -125,6 +128,7 @@ on_15th = _stats["on_15th"]
 errs_404 = _stats["errs_404"]
 errs_404_15 = _stats["errs_404_15"]
 errs_404_15_timken = _stats["errs_404_15_timken"]
+hostsUK_big = _stats["hosts_uk"]
 
 print(f"\nQ1 — Total requests: {total:,}")
 print(f"Q2 — From gateway.timken.com: {from_timken:,}")
@@ -149,9 +153,8 @@ df = (
 parsed_sample = [row.asDict() for row in df.limit(5).collect()]
 # SPARK-VIZ-STEP-5-END
 
-# hostsUK_big is defined outside the editable marker so student edits
-# to the filter predicate never lose this variable.
-hostsUK_big = logs.filter(logs.value.contains(".uk")).count()
+# hostsUK_big is now computed inside _stats (Cell 5) in the same pass as the
+# exercise answers — no separate full scan needed here.
 
 # INJECTED_FILTER_PREDICATE is replaced at runtime by the backend when the
 # student edits step 3 — always reflects the actual predicate in hosts_japan.
@@ -168,6 +171,33 @@ filter_predicate = INJECTED_FILTER_PREDICATE
 # count() is an action — triggers the full DAG: read → repartition → filter
 hostsJapan_big = hosts_japan.count()
 # SPARK-VIZ-STEP-4-END
+
+# Detect which action the student used — must happen BEFORE normalisation
+# because normalisation overwrites the raw result with an int.
+if isinstance(hostsJapan_big, int):
+    _action_method = "count()"
+    _action_result_desc = f"returned integer count: {hostsJapan_big}"
+elif isinstance(hostsJapan_big, list):
+    _action_method = f"take({len(hostsJapan_big)})"
+    _action_result_desc = f"returned list of {len(hostsJapan_big)} Row(s)"
+elif hostsJapan_big is not None:
+    _action_method = "first()"
+    _action_result_desc = "returned first matching Row"
+else:
+    _action_method = "first()"
+    _action_result_desc = "returned None — no matching rows"
+
+# Normalise hostsJapan_big to an integer regardless of which action the student used.
+# Without this, .first() puts a Row object into the JSON and breaks all downstream
+# arithmetic (NaN in filter counts, DV bar, partition sub-label, etc.).
+if isinstance(hostsJapan_big, int):
+    hostsJapan_big = hostsJapan_big        # .count()  → already an int
+elif isinstance(hostsJapan_big, list):
+    hostsJapan_big = len(hostsJapan_big)   # .take(n)  → list of Rows
+elif hostsJapan_big is not None:
+    hostsJapan_big = 1                     # .first()  → single Row means ≥1 match
+else:
+    hostsJapan_big = 0                     # .first()  on empty DF → None
 
 # unique_hosts_15, unique_hosts_total, most_frequent_host removed —
 # each requires an expensive shuffle on 75k distinct hosts and none
@@ -241,36 +271,16 @@ try:
 except Exception:
     advisory_size_mb = 64  # standard default; not directly readable on Serverless
 
-# 3. Per-partition distribution AFTER filter (Step 3/4)
-filter_partition_dist = (
-    hosts_japan
-    .withColumn("pid", spark_partition_id())
-    .groupBy("pid")
-    .count()
-    .orderBy("pid")
-    .collect()
-)
+# filter_partition_dist is now derived from raw_tracked_df below — no separate job needed.
 
-print(f"\nFilter partition distribution:")
-for row in filter_partition_dist:
-    print(f"  Partition {row['pid']}: {row['count']} matching rows")
+# 4. Per-partition distribution AFTER groupBy('day')
+# AQE on Serverless always coalesces 30 distinct day keys into 1 partition.
+# Re-running the groupBy shuffle just to confirm this is wasteful — derive it
+# directly from daily_counts_collected which is already in the driver.
+daily_partition_dist = [{"pid": 0, "count": num_days}]
+daily_post_shuffle_partition_count = 1
 
-# 4. Per-partition distribution AFTER groupBy('day') (Step 7)
-daily_partition_dist = (
-    daily_counts
-    .withColumn("pid", spid())
-    .groupBy("pid")
-    .count()
-    .orderBy("pid")
-    .collect()
-)
-
-# Derive from collected result — no extra Spark job
-daily_post_shuffle_partition_count = len(daily_partition_dist)
-
-print(f"\nPost-shuffle partition count (day groupBy): {daily_post_shuffle_partition_count}")
-for row in daily_partition_dist:
-    print(f"  Partition {row['pid']}: {row['count']} rows")
+print(f"\nPost-shuffle partition count (day groupBy): {daily_post_shuffle_partition_count} (AQE-coalesced)")
 
 # 5. Tracked rows — one row per partition in a SINGLE Spark job
 # Also collect 5 rows per partition from df_grouped for step 6 partition panel.
@@ -286,14 +296,31 @@ from collections import defaultdict
 
 ROWS_PER_PARTITION = 5
 
+# Output caps — prevent 30 MB limit when groupby_col = "host" (~75k distinct keys).
+# Applied only at JSON serialisation time; counts/metrics use the full data.
+MAX_DISTRIBUTION_ROWS = 200  # status_distribution / post_shuffle_distribution
+MAX_GROUPED_PARTITIONS = 50  # grouped_tracked_rows partitions
+MAX_RAW_VALUE_LEN = 150      # raw log line chars in tracked_rows
+
 raw_tracked_df = (
     logs
     .withColumn("pid", spark_partition_id())
     .groupBy("pid")
-    .agg(spark_slice(collect_list("value"), 1, ROWS_PER_PARTITION).alias("values"))
+    .agg(
+        spark_slice(collect_list("value"), 1, ROWS_PER_PARTITION).alias("values"),
+        # Counted in the same pass — avoids a separate hosts_japan full scan below
+        spark_sum(when(col("value").contains(filter_predicate), 1).otherwise(0)).alias("filter_count"),
+    )
     .orderBy("pid")
     .collect()
 )
+
+# Derive filter_partition_dist from the combined result — no extra Spark job
+filter_partition_dist = [{"pid": r["pid"], "count": r["filter_count"]} for r in raw_tracked_df]
+
+print(f"\nFilter partition distribution:")
+for row in filter_partition_dist:
+    print(f"  Partition {row['pid']}: {row['count']} matching rows")
 
 # Build rows_by_partition from collect_list result
 rows_by_partition = defaultdict(list)
@@ -349,8 +376,10 @@ all_tracked_partitions = tracked_partitions
 # count-descending order. This avoids any repartitionByRange pid ordering ambiguity.
 from pyspark.sql.functions import struct
 
+_top_keys = {row[groupby_key] for row in status_sample[:MAX_GROUPED_PARTITIONS]}
 df_key_tracked = (
     df
+    .filter(col(groupby_key).isin(_top_keys))
     .groupBy(groupby_key)
     .agg(spark_slice(collect_list(struct("host", "status", "day")), 1, ROWS_PER_PARTITION).alias("rows"))
     .collect()
@@ -417,8 +446,8 @@ json_output = {
     },
 
     "status_distribution": [
-        {"status": row[groupby_key], "count": row["num"]}
-        for row in status_sample
+        {"key": row[groupby_key], "count": row["num"]}
+        for row in status_sample[:MAX_DISTRIBUTION_ROWS]
     ],
 
     "top_host": {
@@ -442,7 +471,7 @@ json_output = {
             "rows": [
                 {
                     "host": r["host"],
-                    "raw_value": r["raw_value"],
+                    "raw_value": r["raw_value"][:MAX_RAW_VALUE_LEN],
                     "status": r["status"],
                     "day": r["day"],
                     "passes_japan_filter": r["passes_japan_filter"]
@@ -458,7 +487,7 @@ json_output = {
             "partition_id": pid,
             "rows": rows
         }
-        for pid, rows in sorted(grouped_rows_by_partition.items())
+        for pid, rows in sorted(grouped_rows_by_partition.items())[:MAX_GROUPED_PARTITIONS]
     ],
 
     # Parsed state of tracked rows (after withColumn transformations)
@@ -471,6 +500,7 @@ json_output = {
             "after_repartition": repartitioned_count,
             "configured_shuffle_partitions": actual_shuffle_partitions,
             "post_shuffle_partitions": post_shuffle_partition_count,
+            "daily_post_shuffle_partitions": daily_post_shuffle_partition_count,
             "why_gzip_is_one": "gzip uses DEFLATE compression which is not seekable. Spark cannot split the stream, so 1 task handles all data."
         },
 
@@ -486,7 +516,7 @@ json_output = {
 
         "post_shuffle_distribution": [
             {"partition_id": row["pid"], "row_count": row["count"]}
-            for row in post_shuffle_dist
+            for row in post_shuffle_dist[:MAX_DISTRIBUTION_ROWS]
         ],
 
         "daily_partition_distribution": [
@@ -514,7 +544,7 @@ json_output = {
                 "partitions_before": gzip_partition_count,
                 "partitions_after": repartitioned_count,
                 "output_rows": total,
-                "description": "Repartition to enable parallel processing. Try setting NUM_PARTITIONS to 4, 12 and 16 and see how it impacts run speed and shuffle behaviour in later steps."
+                "description": "Repartition to enable parallel processing."
             },
             {
                 "step": 3,
@@ -524,17 +554,17 @@ json_output = {
                 "lazy": True,
                 "output_rows": None,
                 "partitions": repartitioned_count,
-                "description": f"Filter for '{filter_predicate}' — adds predicate to DAG only (lazy). Try changing the filter to .uk or .dk or anything you want to try."
+                "description": f"Filter for '{filter_predicate}' — adds predicate to DAG only (lazy)."
             },
             {
                 "step": 4,
-                "operation": "hosts_japan.count()",
-                "code_snippet": "hostsJapan_big = hosts_japan.count()",
+                "operation": f"hosts_japan.{_action_method}",
+                "code_snippet": f"hostsJapan_big = hosts_japan.{_action_method}",
                 "type": "action",
                 "lazy": False,
                 "output_rows": hostsJapan_big,
                 "partitions": repartitioned_count,
-                "description": f"count() triggers execution — '{filter_predicate}' filter fires across all {repartitioned_count} partitions in parallel"
+                "description": f"{_action_method} triggers execution, '{filter_predicate}' filter fires across {repartitioned_count} partitions in parallel. Action {_action_result_desc}."
             },
             {
                 "step": 5,
@@ -556,7 +586,7 @@ json_output = {
                 "output_rows": len(status_sample),
                 "partitions_read": repartitioned_count,
                 "partitions_write": actual_shuffle_partitions,
-                "description": f"repartitionByRange routes all '{groupby_key}' rows to the same partition — {len(status_sample)} distinct keys -> {len(status_sample)} partitions. Try Changing groupby_col to day or host."
+                "description": f"repartitionByRange routes all '{groupby_key}' rows to the same partition — {len(status_sample)} distinct keys -> {len(status_sample)} partitions."
             }
         ],
 

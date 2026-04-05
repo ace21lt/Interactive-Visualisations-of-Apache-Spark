@@ -37,7 +37,7 @@ case class NotebookHandlerLive(
                     editedCode = triggerReq.editedCode
                   )
 
-        response = TriggerResponse(result.runId, result.state, result.output)
+        response = TriggerResponse(result.runId, result.state, result.output, result.executionSeconds)
         _       <- ZIO.logInfo("Sending response to frontend")
       yield CorsHandler.addHeaders(Response.json(response.toJson))
 

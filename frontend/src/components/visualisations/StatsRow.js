@@ -47,13 +47,17 @@ const StatsRow = ({currentStep, data}) => {
         const shuffleForSub = internals.shuffles?.find(s => step.operation?.includes(s.operation));
         const didCoalesce = shuffleForSub &&
             (shuffleForSub.post_shuffle_count ?? 0) < (shuffleForSub.output_distinct_keys ?? Infinity);
-        partCount = String(dist.length || '—');
-        rowsPerPart = dist.length
+        // Use partition_story for the real total — dist may be capped at serialisation time
+        const realCount = isDayStep
+            ? (internals.partition_story?.daily_post_shuffle_partitions ?? internals.partition_story?.post_shuffle_partitions ?? dist.length)
+            : (internals.partition_story?.post_shuffle_partitions ?? dist.length);
+        partCount = String(realCount || '—');
+        rowsPerPart = realCount
             ? `${(step.output_rows ?? 0).toLocaleString()} rows total`
             : '—';
         partSub = didCoalesce
             ? `after AQE coalescing (from ${shuffleForSub.output_distinct_keys} keys)`
-            : `${dist.length} partition(s) — one per distinct ${internals?.shuffles?.[0]?.operation?.match(/groupBy\('(.+?)'\)/)?.[1] ?? 'key'}`;
+            : `${realCount.toLocaleString()} partition(s) — one per distinct ${internals?.shuffles?.[0]?.operation?.match(/groupBy\('(.+?)'\)/)?.[1] ?? 'key'}`;
     } else if (step.type === 'action' && !step.shuffle) {
         const dist = internals.filter_partition_distribution ?? internals.partition_distribution ?? [];
         partCount = String(dist.length || '—');
@@ -61,7 +65,8 @@ const StatsRow = ({currentStep, data}) => {
             ? Math.round(dist.reduce((s, p) => s + p.row_count, 0) / dist.length)
             : 0;
         rowsPerPart = avg ? `~${avg.toLocaleString()} avg/partition` : '—';
-        partSub = `${(step.output_rows ?? 0).toLocaleString()} rows matched filter`;
+        const matchCount = step.output_rows ?? 0;
+        partSub = `${matchCount.toLocaleString()} ${matchCount === 1 ? 'row' : 'rows'} matched filter`;
     } else {
         // Lazy transformations: use partition_distribution
         const dist = internals.partition_distribution ?? [];
@@ -87,7 +92,7 @@ const StatsRow = ({currentStep, data}) => {
         );
 
         const requested = shuffleEntry?.partitions_write ?? step.partitions_write ?? '?';
-        const coalesced = shuffleEntry?.post_shuffle_count ?? step.output_rows ?? '?';
+        const coalesced = shuffleEntry?.post_shuffle_count ?? step.partitions_after ?? step.partitions_write ?? step.partitions_read ?? '?';
 
         shuffleContent = (
             <div style={{display: 'flex', gap: '24px', flexWrap: 'wrap'}}>

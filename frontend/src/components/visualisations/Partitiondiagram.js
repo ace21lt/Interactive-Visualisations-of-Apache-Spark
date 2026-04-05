@@ -39,12 +39,14 @@ function getPartitionsForStep(stepIndex, pipeline, internals) {
 // Colour logic
 // Reads from JSON step flags only. Uses partitions_after to detect repartition
 // (which the JSON marks as lazy:true but visually belongs to the purple/wide category).
+// Okabe-Ito colour-blind-safe palette
+// Avoids red/green pairing — safe for deuteranopia and protanopia
 function resolveStepColor(step, stepIndex) {
-    if (stepIndex === 1) return '#ef4444'; // red    — gzip bottleneck
-    if (step.shuffle) return '#f97316'; // orange — shuffle / wide
-    if (step.type === 'action') return '#10b981'; // green  — action (count)
-    if (step.partitions_after != null) return '#8b5cf6'; // purple — repartition
-    return '#f59e0b';                              // amber  — lazy transformation
+    if (stepIndex === 1) return '#D55E00'; // vermillion  — gzip bottleneck
+    if (step.shuffle) return '#E69F00';    // orange      — shuffle / wide
+    if (step.type === 'action') return '#0072B2'; // blue — action (count)
+    if (step.partitions_after != null) return '#CC79A7'; // reddish purple — repartition
+    return '#56B4E9';                       // sky blue   — lazy transformation
 }
 
 // Component
@@ -100,7 +102,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             .attr('refX', 4).attr('refY', 4)
             .attr('markerWidth', 5).attr('markerHeight', 5)
             .attr('orient', 'auto')
-            .append('path').attr('d', 'M0,0 L0,8 L8,4 z').attr('fill', '#f59e0b');
+            .append('path').attr('d', 'M0,0 L0,8 L8,4 z').attr('fill', '#E69F00');
 
         const g = svg.append('g').attr('transform', `translate(${ml},${mt})`);
 
@@ -137,7 +139,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
         g.append('text')
             .attr('x', IW / 2).attr('y', netY - 6)
             .attr('text-anchor', 'middle').attr('font-size', 9)
-            .attr('font-family', 'var(--font-mono)').attr('fill', '#b45309')
+            .attr('font-family', 'var(--font-mono)').attr('fill', '#E69F00')
             .text('NETWORK SHUFFLE BOUNDARY');
 
         // Executors label
@@ -149,7 +151,18 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             .text('EXECUTORS / WORKERS ▼');
 
         // Partition layout
-        const n = partitions.length;
+        const DIAGRAM_CAP = 35;
+        const realN = partitions.length;
+        // Cap to DIAGRAM_CAP — when groupby_col = "host" there can be 75k partitions
+        // which makes the diagram unusable. We show the top DIAGRAM_CAP by row count
+        // (the dist is already sorted desc) and display a banner explaining the cap.
+        const n = Math.min(realN, DIAGRAM_CAP);
+        const displayedPartitions = partitions.slice(0, n);
+        const isCapped = realN > DIAGRAM_CAP;
+        const realTotal = isShuffle
+            ? (internals.partition_story?.post_shuffle_partitions ?? realN)
+            : realN;
+
         const gap = n === 1 ? 0 : 8;
         // Box width anchored to max(n, 8) — boxes stay same width regardless of step
         const maxN = Math.max(n, 8);
@@ -162,6 +175,20 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
         const slotsN = isBottleneck ? (pipeline[1]?.partitions_after ?? 8) : n;
         const groupW = slotsN * boxW + gap * (slotsN - 1);
         const startX = (IW - groupW) / 2;
+
+        // Cap banner — shown when partition count exceeds DIAGRAM_CAP
+        if (isCapped) {
+            const bannerY = pY - 18;
+            g.append('rect')
+                .attr('x', 0).attr('y', bannerY - 12)
+                .attr('width', IW).attr('height', 16)
+                .attr('fill', '#fff7ed').attr('rx', 2);
+            g.append('text')
+                .attr('x', IW / 2).attr('y', bannerY)
+                .attr('text-anchor', 'middle').attr('font-size', 9)
+                .attr('font-family', 'var(--font-mono)').attr('fill', '#c2410c')
+                .text(`Showing top ${n} of ${realTotal.toLocaleString()} partitions — diagram capped for readability`);
+        }
 
         // Shuffle convergence arrows
         // Travel upward from partition zone → through boundary → toward driver
@@ -177,7 +204,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                 const srcX = ghostX + i * (boxW + gap) + boxW / 2;
                 g.append('path')
                     .attr('d', `M${srcX},${pY + 10} Q${(srcX + destX) / 2},${pY - 20} ${destX},${destY}`)
-                    .attr('fill', 'none').attr('stroke', '#f59e0b')
+                    .attr('fill', 'none').attr('stroke', '#E69F00')
                     .attr('stroke-width', 1.5).attr('stroke-dasharray', '4,3')
                     .attr('marker-end', 'url(#sh-arrow)').attr('opacity', 0)
                     .transition().duration(500).delay(i * 55).attr('opacity', 0.6);
@@ -188,8 +215,8 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
         for (let i = 0; i < slotsN; i++) {
             const x = startX + i * (boxW + gap);
             const pData = isBottleneck
-                ? (i === 0 ? partitions[0] : {row_count: 0, partition_id: i})
-                : (partitions[i] ?? {row_count: 0, partition_id: i});
+                ? (i === 0 ? displayedPartitions[0] : {row_count: 0, partition_id: i})
+                : (displayedPartitions[i] ?? {row_count: 0, partition_id: i});
             const rows = pData.row_count ?? 0;
             const barH = rows > 0 ? Math.max(sqrtScale(rows), 4) : 0;
             const barY = pY + maxBarH - barH;
@@ -200,7 +227,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                 .attr('x', x).attr('y', pY)
                 .attr('width', boxW).attr('height', maxBarH)
                 .attr('fill', isHl ? '#fffbeb' : '#fafafa')
-                .attr('stroke', isHl ? '#f59e0b' : (isLazy ? 'var(--grey-300)' : color))
+                .attr('stroke', isHl ? '#E69F00' : (isLazy ? 'var(--grey-300)' : color))
                 .attr('stroke-width', isHl ? 2.5 : 1.5)
                 .attr('stroke-dasharray', isLazy ? '4,4' : 'none')
                 .attr('rx', 3)
@@ -216,7 +243,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             // Animated fill bar (grows upward from bottom of box)
             if (barH > 0) {
                 const barFill = isHl ? 'var(--uos-yellow)'
-                    : (isBottleneck && i === 0 ? '#ef4444' : color);
+                    : (isBottleneck && i === 0 ? '#D55E00' : color);
                 g.append('rect')
                     .attr('x', x).attr('y', pY + maxBarH)
                     .attr('width', boxW).attr('height', 0)
@@ -242,7 +269,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                     .attr('text-anchor', 'middle')
                     .attr('font-family', 'var(--font-mono)')
                     .attr('font-size', n === 1 ? 13 : 10).attr('font-weight', 'bold')
-                    .attr('fill', isHl ? '#b45309' : color)
+                    .attr('fill', isHl ? '#E69F00' : color)
                     .attr('opacity', 0)
                     .transition().duration(650).delay(300).attr('opacity', 1)
                     .text(lbl);
@@ -268,7 +295,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                 const passes = row.passes_japan_filter;
                 const dotFill = !evaluated ? '#888'
                     : passes ? '#16a34a'
-                        : '#ef4444';
+                        : '#D55E00';
                 const dotOp = evaluated && !passes ? 0.18 : 1;
 
                 g.append('circle')
@@ -314,8 +341,6 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
     const isShuffle = !!activeStep.shuffle;
 
 
-
-
     const badge = isShuffle ? 'SHUFFLE'
         : isLazy ? 'LAZY'
             : 'ACTION';
@@ -351,23 +376,23 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                 fontSize: '11px', color: '#666'
             }}>
                 {[
-                    {s: {width: 12, height: 12, background: '#ef4444', borderRadius: 2}, label: 'Bottleneck'},
-                    {s: {width: 12, height: 12, background: '#8b5cf6', borderRadius: 2}, label: 'Repartition'},
+                    {s: {width: 12, height: 12, background: '#D55E00', borderRadius: 2}, label: 'Bottleneck'},
+                    {s: {width: 12, height: 12, background: '#CC79A7', borderRadius: 2}, label: 'Repartition'},
                     {
                         s: {
                             width: 12,
                             height: 12,
-                            background: '#f59e0b',
+                            background: '#56B4E9',
                             borderRadius: 2,
                             border: '1px dashed #92400e'
                         },
                         label: 'Lazy'
                     },
-                    {s: {width: 12, height: 12, background: '#10b981', borderRadius: 2}, label: 'Action'},
-                    {s: {width: 12, height: 12, background: '#f97316', borderRadius: 2}, label: 'Shuffle'},
+                    {s: {width: 12, height: 12, background: '#0072B2', borderRadius: 2}, label: 'Action'},
+                    {s: {width: 12, height: 12, background: '#E69F00', borderRadius: 2}, label: 'Shuffle'},
                     {s: {width: 8, height: 8, background: '#16a34a', borderRadius: '50%'}, label: 'Passes filter'},
                     {
-                        s: {width: 8, height: 8, background: '#ef4444', borderRadius: '50%', opacity: 0.3},
+                        s: {width: 8, height: 8, background: '#D55E00', borderRadius: '50%', opacity: 0.3},
                         label: 'Filtered out'
                     },
                 ].map(({s, label}) => (
@@ -606,7 +631,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                                                     background: '#fff8e1',
                                                     padding: '6px 8px',
                                                     borderRadius: '4px',
-                                                    borderLeft: '3px solid #f59e0b'
+                                                    borderLeft: '3px solid #E69F00'
                                                 }}>
                                                     <strong>Why does .contains("{data?.spark_config?.filter_predicate ?? '.jp'}") match some unexpected rows?</strong>{' '}
                                                     Spark&apos;s <code>.contains()</code> searches the <em>entire raw log line</em> as a flat string not just the host field.

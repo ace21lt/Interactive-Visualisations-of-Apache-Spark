@@ -4,7 +4,12 @@ import models.NotebookOutput
 import zio.json.*
 
 // Response returned when notebook execution completes successfully
-case class TriggerResponse(runId: Long, state: String, output: Option[NotebookOutput])
+case class TriggerResponse(
+    runId: Long,
+    state: String,
+    output: Option[NotebookOutput],
+    executionSeconds: Option[Long] = None
+)
 
 object TriggerResponse:
   implicit val notebookOutputEncoder: JsonEncoder[NotebookOutput] = DeriveJsonEncoder.gen[NotebookOutput]

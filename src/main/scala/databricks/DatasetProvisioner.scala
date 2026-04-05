@@ -54,21 +54,26 @@ case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
       token: String,
       destPath: String
   ): IO[DatabricksError, Boolean] =
-    val url = DatabricksApiPaths.buildFilesUrl(workspaceUrl, destPath)
+    val rawUrl = DatabricksApiPaths.buildFilesUrl(workspaceUrl, destPath)
     ZIO
-      .scoped {
-        client
-          .request(
-            Request(
-              method = Method.HEAD,
-              url = URL.decode(url).getOrElse(URL.empty)
-            ).addHeader("Authorization", s"Bearer $token")
-          )
-          .map(_.status.code == 200)
-      }
-      .mapError(DatabricksError.fromThrowable)
-      .catchAll { err =>
-        ZIO.logWarning(s"HEAD check failed for $destPath: ${err.getMessage}").as(false)
+      .fromEither(URL.decode(rawUrl))
+      .orElseFail(DatabricksError.ConfigError(s"Failed to decode URL for HEAD check: $rawUrl"))
+      .flatMap { parsedUrl =>
+        ZIO
+          .scoped {
+            client
+              .request(
+                Request(
+                  method = Method.HEAD,
+                  url = parsedUrl
+                ).addHeader("Authorization", s"Bearer $token")
+              )
+              .map(_.status.code == 200)
+          }
+          .mapError(DatabricksError.fromThrowable)
+          .catchAll { err =>
+            ZIO.logWarning(s"HEAD check failed for $destPath: ${err.getMessage}").as(false)
+          }
       }
 
   // PUT /api/2.0/fs/files/{path} — body is raw file bytes
@@ -78,35 +83,38 @@ case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
       resourceName: String,
       destPath: String
   ): IO[DatabricksError, Unit] =
-    val url = DatabricksApiPaths.buildFilesUrl(workspaceUrl, destPath)
+    val rawUrl = DatabricksApiPaths.buildFilesUrl(workspaceUrl, destPath)
     for
-      bytes <- loadResource(resourceName)
-      _     <- ZIO
-                 .scoped {
-                   client
-                     .request(
-                       Request(
-                         method = Method.PUT,
-                         url = URL.decode(url).getOrElse(URL.empty),
-                         body = Body.fromChunk(bytes)
-                       )
-                         .addHeader("Authorization", s"Bearer $token")
-                         .addHeader("Content-Type", "application/octet-stream")
-                     )
-                     .flatMap { response =>
-                       response.body.asString.flatMap { body =>
-                         if response.status.isSuccess then ZIO.logInfo(s"Uploaded $resourceName → $destPath")
-                         else
-                           ZIO.fail(
-                             new RuntimeException(
-                               s"Files API upload failed for $resourceName: " +
-                                 s"HTTP ${response.status.code} — $body"
-                             )
+      parsedUrl <- ZIO
+                     .fromEither(URL.decode(rawUrl))
+                     .orElseFail(DatabricksError.ConfigError(s"Failed to decode URL for upload: $rawUrl"))
+      bytes     <- loadResource(resourceName)
+      _         <- ZIO
+                     .scoped {
+                       client
+                         .request(
+                           Request(
+                             method = Method.PUT,
+                             url = parsedUrl,
+                             body = Body.fromChunk(bytes)
                            )
-                       }
+                             .addHeader("Authorization", s"Bearer $token")
+                             .addHeader("Content-Type", "application/octet-stream")
+                         )
+                         .flatMap { response =>
+                           response.body.asString.flatMap { body =>
+                             if response.status.isSuccess then ZIO.logInfo(s"Uploaded $resourceName → $destPath")
+                             else
+                               ZIO.fail(
+                                 new RuntimeException(
+                                   s"Files API upload failed for $resourceName: " +
+                                     s"HTTP ${response.status.code} — $body"
+                                 )
+                               )
+                           }
+                         }
                      }
-                 }
-                 .mapError(DatabricksError.fromThrowable)
+                     .mapError(DatabricksError.fromThrowable)
     yield ()
 
   // Load a dataset file directly from src/main/resources/

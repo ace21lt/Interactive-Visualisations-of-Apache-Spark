@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useRef} from 'react';
 import './App.css';
 import Login from './components/Login';
 import Lab1Layout from "./components/visualisations/Lab1Layout";
@@ -11,7 +11,8 @@ function App() {
     const [error, setError] = useState(null);
     const [sessionError, setSessionError] = useState(null);
     const [lastExecutedStep, setLastExecutedStep] = useState(null);
-    const [runHistory, setRunHistory] = useState([]);  
+    const [runHistory, setRunHistory] = useState([]);
+    const loadInputRef = useRef(null);
 
     const apiUrl = process.env.REACT_APP_API_URL || '';
 
@@ -57,6 +58,15 @@ function App() {
         }
     };
 
+
+    // Receives a parsed trace object from Lab1Layout's Load button.
+    // Sets data directly — no Spark run needed.
+    const handleLoadTrace = (parsed) => {
+        if (!parsed?.spark_internals) return;
+        setData(parsed);
+        setLastExecutedStep(null);
+        setError(null);
+    };
 
     const triggerAnalysis = async ({step, editedCode} = {}) => {
         setLoading(true);
@@ -110,7 +120,7 @@ function App() {
                         timestamp: new Date().toLocaleTimeString(),
                     };
                     setRunHistory(prev => {
-                        // Keep latest entry per partition count 
+                        // Keep latest entry per partition count
                         const filtered = prev.filter(r => r.partitions !== entry.partitions);
                         return [...filtered, entry].slice(-8);
                     });
@@ -174,6 +184,40 @@ function App() {
                     >
                         {loading ? 'Running Spark Analysis...' : 'Run Spark Analysis'}
                     </button>
+                    <label
+                        title="Load a trace you saved from a previous run — opens the full visualisation without running Spark."
+                        style={{
+                            display: 'inline-flex', alignItems: 'center',
+                            padding: '8px 16px', borderRadius: '4px',
+                            border: '1px solid var(--grey-300)', background: 'var(--grey-50)',
+                            color: 'var(--grey-700)', cursor: 'pointer',
+                            fontSize: '14px', fontFamily: 'var(--font-mono)',
+                            whiteSpace: 'nowrap'
+                        }}
+                    >
+                        ↑ Load Trace
+                        <input
+                            ref={loadInputRef}
+                            type="file"
+                            accept=".json"
+                            style={{display: 'none'}}
+                            onChange={(e) => {
+                                const file = e.target.files[0];
+                                if (!file) return;
+                                const reader = new FileReader();
+                                reader.onload = (evt) => {
+                                    try {
+                                        const parsed = JSON.parse(evt.target.result);
+                                        handleLoadTrace(parsed);
+                                    } catch {
+                                        setError('Could not read trace file — make sure it is a JSON file saved from this tool.');
+                                    }
+                                    if (loadInputRef.current) loadInputRef.current.value = '';
+                                };
+                                reader.readAsText(file);
+                            }}
+                        />
+                    </label>
                 </div>
 
                 {error && (
@@ -184,7 +228,8 @@ function App() {
 
                 {data && data.spark_internals && (
                     <div className="results">
-                        <Lab1Layout data={data} onExecuteStep={triggerAnalysis} loading={loading}
+                        <Lab1Layout data={data} onExecuteStep={triggerAnalysis} onLoadTrace={handleLoadTrace}
+                                    loading={loading}
                                     lastExecutedStep={lastExecutedStep} runHistory={runHistory}/>
                     </div>
                 )}
