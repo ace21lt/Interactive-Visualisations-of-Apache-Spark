@@ -2,17 +2,13 @@ package models
 
 import zio.json.*
 
-// JSON models for Databricks REST API communication
-// All models use zio-json for type-safe serialisation/deserialisation
-// @jsonField annotations convert camelCase to snake_case for Databricks API
-
 // request models
 
 // Cluster configuration for creating new clusters
 case class NewCluster(
-    @jsonField("spark_version") sparkVersion: String, // Databricks runtime version
-    @jsonField("node_type_id") nodeTypeId: String,    // AWS/Azure instance type
-    @jsonField("num_workers") numWorkers: Int         // 0 = single-node cluster
+    @jsonField("spark_version") sparkVersion: String,
+    @jsonField("node_type_id") nodeTypeId: String,
+    @jsonField("num_workers") numWorkers: Int
 )
 
 object NewCluster:
@@ -21,8 +17,8 @@ object NewCluster:
 
 // Notebook task configuration specifying which notebook to run
 case class NotebookTask(
-    @jsonField("notebook_path") notebookPath: String,                                // Absolute path in workspace
-    @jsonField("base_parameters") baseParameters: Option[Map[String, String]] = None // Optional notebook params
+    @jsonField("notebook_path") notebookPath: String,
+    @jsonField("base_parameters") baseParameters: Option[Map[String, String]] = None
 )
 
 object NotebookTask:
@@ -32,7 +28,7 @@ object NotebookTask:
 // Task specification for MULTI_TASK format (required for serverless)
 case class TaskSpec(
     @jsonField("task_key") taskKey: String,
-    @jsonField("notebook_task") notebookTask: NotebookTask // Notebook to execute
+    @jsonField("notebook_task") notebookTask: NotebookTask
 )
 
 object TaskSpec:
@@ -42,8 +38,8 @@ object TaskSpec:
 // Request to submit a notebook run to Databricks
 case class NotebookRunRequest(
     @jsonField("run_name") runName: String,
-    tasks: Option[List[TaskSpec]] = None,                                  // For MULTI_TASK format
-    @jsonField("notebook_task") notebookTask: Option[NotebookTask] = None, // For SINGLE_TASK format
+    tasks: Option[List[TaskSpec]] = None,
+    @jsonField("notebook_task") notebookTask: Option[NotebookTask] = None,
     @jsonField("new_cluster") newCluster: Option[NewCluster] = None,
     @jsonField("timeout_seconds") timeoutSeconds: Option[Int] = None,
     format: Option[String] = None
@@ -53,13 +49,23 @@ object NotebookRunRequest:
   implicit val encoder: JsonEncoder[NotebookRunRequest] = DeriveJsonEncoder.gen[NotebookRunRequest]
   implicit val decoder: JsonDecoder[NotebookRunRequest] = DeriveJsonDecoder.gen[NotebookRunRequest]
 
-// === Response Models ===
-
-// Response from submitting a notebook run
-case class SubmitRunResponse(
-    @jsonField("run_id") runId: Long
+case class WorkspaceImportRequest(
+    path: String,
+    format: String = "SOURCE",
+    language: String = "PYTHON",
+    content: String,
+    overwrite: Boolean = true
 )
+object WorkspaceImportRequest:
+  implicit val encoder: JsonEncoder[WorkspaceImportRequest] = DeriveJsonEncoder.gen[WorkspaceImportRequest]
+  implicit val decoder: JsonDecoder[WorkspaceImportRequest] = DeriveJsonDecoder.gen[WorkspaceImportRequest]
 
+// Empty object returned on success from /workspace/import
+case class WorkspaceImportResponse()
+object WorkspaceImportResponse:
+  implicit val decoder: JsonDecoder[WorkspaceImportResponse] = DeriveJsonDecoder.gen[WorkspaceImportResponse]
+
+case class SubmitRunResponse(@jsonField("run_id") runId: Long)
 object SubmitRunResponse:
   implicit val encoder: JsonEncoder[SubmitRunResponse] = DeriveJsonEncoder.gen[SubmitRunResponse]
   implicit val decoder: JsonDecoder[SubmitRunResponse] = DeriveJsonDecoder.gen[SubmitRunResponse]
@@ -76,9 +82,13 @@ object RunState:
   implicit val decoder: JsonDecoder[RunState] = DeriveJsonDecoder.gen[RunState]
 
 // Response from polling run status
+// start_time and end_time are Unix ms timestamps from the Databricks API —
+// used to compute actual notebook execution duration.
 case class RunStatusResponse(
     @jsonField("run_id") runId: Long,
-    state: RunState
+    state: RunState,
+    @jsonField("start_time") startTime: Option[Long] = None,
+    @jsonField("end_time") endTime: Option[Long] = None
 )
 
 object RunStatusResponse:
@@ -150,5 +160,6 @@ case class NotebookOutput(
 case class RunOutput(
     runId: Long,
     state: String,
-    output: Option[NotebookOutput]
+    output: Option[NotebookOutput],
+    executionSeconds: Option[Long] = None // (end_time - start_time) / 1000 from Databricks API
 )

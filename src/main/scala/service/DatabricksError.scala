@@ -1,7 +1,5 @@
 package service
 
-// Structured error hierarchy for Databricks operations
-// Using sealed trait ensures exhaustive pattern matching and type-safe error handling
 sealed trait DatabricksError extends Throwable:
   // User-friendly error message that doesn't leak sensitive information
   def toUserMessage: String
@@ -10,7 +8,7 @@ sealed trait DatabricksError extends Throwable:
   def getMessage: String
 
 object DatabricksError:
-  // Configuration validation errors (e.g., invalid URL, token format)
+  // Configuration validation errors
   case class ConfigError(message: String) extends DatabricksError:
     override def toUserMessage: String =
       "Configuration error. Please verify DATABRICKS_HOST, DATABRICKS_TOKEN, and NOTEBOOK_PATH environment variables."
@@ -82,6 +80,21 @@ object DatabricksError:
 
     override def getMessage: String =
       s"Task not found for run_id=$runId: $message"
+
+  // User supplied invalid URL/token during PAT login (client-side input validation)
+  case class ValidationError(message: String) extends DatabricksError:
+    override def toUserMessage: String = message
+    override def getMessage: String    = message
+
+  // Failed to parse a request body
+  case class BadRequestError(message: String) extends DatabricksError:
+    override def toUserMessage: String = "Bad request. Please check your inputs and try again."
+    override def getMessage: String    = message
+
+  // Not authenticated / missing or expired session
+  case class NotAuthenticated(message: String = "Not authenticated") extends DatabricksError:
+    override def toUserMessage: String = "Not authenticated. Please log in again."
+    override def getMessage: String    = message
 
   // Helper to convert generic Throwable to DatabricksError
   def fromThrowable(error: Throwable): DatabricksError =
