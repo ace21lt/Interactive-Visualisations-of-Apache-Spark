@@ -1,7 +1,7 @@
-import React, { useRef, useEffect } from 'react';
+import React, {useRef, useEffect} from 'react';
 import * as d3 from 'd3';
 
-const DynamicVolumeBar = ({ pipelineData, currentStep }) => {
+const DynamicVolumeBar = ({pipelineData, currentStep}) => {
     const svgRef = useRef();
     const prevRowsRef = useRef(); // Tracks the previous value for the odometer effect
 
@@ -19,7 +19,7 @@ const DynamicVolumeBar = ({ pipelineData, currentStep }) => {
 
         // Setup dimensions
         const width = 600;
-        const margin = { top: 30, right: 120, bottom: 20, left: 20 };
+        const margin = {top: 30, right: 120, bottom: 20, left: 20};
         const innerWidth = width - margin.left - margin.right;
 
         const svg = d3.select(svgRef.current);
@@ -72,13 +72,13 @@ const DynamicVolumeBar = ({ pipelineData, currentStep }) => {
             .attr("fill", barColor);
 
         // 5. Animate the Number Interpolation and slide the text
-        const prevRows = prevRowsRef.current;
+        const prevRows = prevRowsRef.current ?? targetRows;
         svg.select(".dynamic-label")
             .transition(t)
             .attr("x", margin.left + xScale(targetRows) + 15)
-            .tween("text", function() {
+            .tween("text", function () {
                 const i = d3.interpolateRound(prevRows, targetRows);
-                return function(time) {
+                return function (time) {
                     this.textContent = d3.format(",")(i(time));
                 };
             });
@@ -89,8 +89,8 @@ const DynamicVolumeBar = ({ pipelineData, currentStep }) => {
     }, [pipelineData, currentStep]);
 
     return (
-        <div style={{ width: '100%', overflowX: 'auto' }}>
-            <svg ref={svgRef} width="600" height="100" viewBox="0 0 600 100" style={{ maxWidth: '100%' }}></svg>
+        <div style={{width: '100%', overflowX: 'auto'}}>
+            <svg ref={svgRef} width="600" height="100" viewBox="0 0 600 100" style={{maxWidth: '100%'}}></svg>
         </div>
     );
 };

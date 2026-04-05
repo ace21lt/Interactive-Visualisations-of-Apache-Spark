@@ -251,7 +251,7 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
                             color: 'var(--grey-600)', cursor: 'pointer'
                         }}
                     >
-                        ↓ Save Trace
+                        Save Trace
                     </button>
                 </div>
 

@@ -29,20 +29,6 @@ object Routes:
         // Health check
         Method.GET / "health" -> handler { (req: Request) =>
           ZIO.serviceWithZIO[HealthHandler](_.health(req))
-        },
-
-        // CORS preflight
-        Method.OPTIONS / "trigger"        -> handler { (_: Request) =>
-          ZIO.succeed(CorsHandler.preflight)
-        },
-        Method.OPTIONS / "api" / "me"     -> handler { (_: Request) =>
-          ZIO.succeed(CorsHandler.preflight)
-        },
-        Method.OPTIONS / "api" / "login"  -> handler { (_: Request) =>
-          ZIO.succeed(CorsHandler.preflight)
-        },
-        Method.OPTIONS / "api" / "logout" -> handler { (_: Request) =>
-          ZIO.succeed(CorsHandler.preflight)
         }
       )
     )

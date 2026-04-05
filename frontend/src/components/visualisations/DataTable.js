@@ -131,10 +131,6 @@ const Step1Table = ({data, highlightedPartition}) => {
     const isFiltered = highlightedPartition !== null && highlightedPartition !== undefined;
     const rows = isFiltered && highlightedPartition !== 0 ? [] : allRows;
 
-    // Small file vs big file context
-    const smallTotal  = data?.small_file?.total_lines ?? 100;
-    const bigTotal    = data?.filter_results?.total ?? 0;
-    const firstSmall  = data?.small_file?.first_row ?? '—';
 
     return (
         <>

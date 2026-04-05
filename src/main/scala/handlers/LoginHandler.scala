@@ -1,12 +1,14 @@
 package handlers
 
-import api.{CookieHelper, CorsHandler, ErrorResponses, PatLoginRequest}
+import api.{CookieHelper, ErrorResponses, PatLoginRequest}
 import config.{DatabricksConfig, TokenValidator, WorkspaceUrlValidation}
 import service.DatabricksError
 import session.{DatabricksCreds, SessionManager}
 import zio.*
 import zio.http.*
 import zio.json.*
+
+import java.security.MessageDigest
 
 // Handles login, logout, and authentication status endpoints
 trait LoginHandler:
@@ -19,6 +21,12 @@ case class LoginHandlerLive(
     sessionManager: SessionManager,
     urlValidation: WorkspaceUrlValidation
 ) extends LoginHandler:
+
+  // Mirrors the token produced by InMemorySessionManager so log lines correlate
+  // across the handler and session manager without exposing raw ID material.
+  private def logToken(sid: String): String =
+    val digest = MessageDigest.getInstance("SHA-256").digest(sid.getBytes("UTF-8"))
+    digest.take(4).map("%02x".format(_)).mkString
 
   override def login(req: Request): UIO[Response] =
     val now = Clock.currentTime(java.util.concurrent.TimeUnit.MILLISECONDS)
@@ -43,11 +51,10 @@ case class LoginHandlerLive(
           cleanTok <- ZIO.fromEither(TokenValidator.validate(loginReq.token))
 
           sid   <- sessionManager.createSession(DatabricksCreds(cleanUrl, cleanTok))
-          _     <- ZIO.logInfo(s"Session created successfully: ${sid.take(10)}... for workspace: $cleanUrl")
-          cookie = CookieHelper.createSidCookie(sid)
-          resp   =
-            CorsHandler.addHeaders(Response.json(s"""{"workspaceUrl":"$cleanUrl","mode":"pat"}""")).addCookie(cookie)
-          _     <- ZIO.logInfo(s"Sending login response with sid cookie")
+          _     <- ZIO.logInfo(s"Session created successfully: token=${logToken(sid)} workspace=$cleanUrl")
+          cookie = CookieHelper.createSidCookie(sid, config.secureCookies)
+          resp   = Response.json(s"""{"workspaceUrl":"$cleanUrl","mode":"pat"}""").addCookie(cookie)
+          _     <- ZIO.logInfo("Sending login response with sid cookie")
         yield resp).catchAll { e =>
           ZIO.logWarning(s"Login failed: ${e.getMessage}") *>
             now.map(ts => ErrorResponses.toResponse(DatabricksError.fromThrowable(e), ts))
@@ -61,41 +68,43 @@ case class LoginHandlerLive(
       case Some(sid) =>
         sessionManager
           .deleteSession(sid)
-          .as(
-            CorsHandler.addHeaders(CookieHelper.clearSidCookie(Response.status(Status.NoContent)))
-          )
+          .as(CookieHelper.clearSidCookie(Response.status(Status.NoContent), config.secureCookies))
       case None      =>
         ZIO
           .logInfo("Logout: no session cookie found")
-          .as(
-            CorsHandler.addHeaders(CookieHelper.clearSidCookie(Response.status(Status.NoContent)))
-          )
+          .as(CookieHelper.clearSidCookie(Response.status(Status.NoContent), config.secureCookies))
 
   override def me(req: Request): UIO[Response] =
     config.directCredentials match
       case Some((url, _)) =>
         ZIO
           .logInfo("Checking auth: direct mode")
-          .as(
-            CorsHandler.addHeaders(Response.json(s"""{"workspaceUrl":"$url","mode":"direct"}"""))
-          )
+          .as(Response.json(s"""{"workspaceUrl":"$url","mode":"direct"}"""))
       case None           =>
         ZIO.logInfo("Checking auth: PAT session mode") *>
           (CookieHelper.getSidCookie(req) match
             case Some(sid) =>
-              ZIO.logInfo(s"Found session cookie: ${sid.take(10)}...") *>
-                sessionManager.getSession(sid).map {
+              ZIO.logInfo(s"Found session cookie token=${logToken(sid)}") *>
+                sessionManager.getSession(sid).flatMap {
                   case Some(creds) =>
-                    CorsHandler.addHeaders(Response.json(s"""{"workspaceUrl":"${creds.workspaceUrl}","mode":"pat"}"""))
+                    ZIO.succeed(Response.json(s"""{"workspaceUrl":"${creds.workspaceUrl}","mode":"pat"}"""))
                   case None        =>
-                    CorsHandler.addHeaders(Response.text("Not authenticated").status(Status.Unauthorized))
+                    ZIO.logWarning(s"Session expired for token=${logToken(sid)}") *>
+                      Clock.currentTime(java.util.concurrent.TimeUnit.MILLISECONDS).map { ts =>
+                        CookieHelper.clearSidCookie(
+                          ErrorResponses.toResponse(DatabricksError.NotAuthenticated(), ts),
+                          config.secureCookies
+                        )
+                      }
                 }
             case None      =>
-              ZIO
-                .logWarning("No session cookie found in /api/me request")
-                .as(
-                  CorsHandler.addHeaders(Response.text("Not authenticated").status(Status.Unauthorized))
-                )
+              ZIO.logWarning("No session cookie found in /api/me request") *>
+                Clock.currentTime(java.util.concurrent.TimeUnit.MILLISECONDS).map { ts =>
+                  CookieHelper.clearSidCookie(
+                    ErrorResponses.toResponse(DatabricksError.NotAuthenticated(), ts),
+                    config.secureCookies
+                  )
+                }
           )
 
 object LoginHandler:

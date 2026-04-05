@@ -4,9 +4,8 @@ import service.DatabricksError
 import zio.*
 
 // Configuration for Databricks REST API integration.
-
-// Notebooks and datasets are loaded from the backend classpath and provisioned
-
+// Notebooks and datasets are loaded from the backend classpath and provisioned.
+//
 // Environment variables:
 //   DATABRICKS_HOST         — (optional) workspace URL for direct/demo mode
 //   DATABRICKS_TOKEN        — (optional) PAT for direct/demo mode
@@ -15,6 +14,8 @@ import zio.*
 //   MAX_POLL_ATTEMPTS       — (default: 30)
 //   POLL_INTERVAL_SECONDS   — (default: 2)
 //   TIMEOUT_SECONDS         — (default: 300)
+//   SECURE_COOKIES          — set to "true" when serving over HTTPS
+//   CORS_ALLOWED_ORIGINS    — comma-separated permitted frontend origins (default: http://localhost:3000)
 case class DatabricksConfig(
     workspaceUrl: Option[String] = None,
     token: Option[String] = None,
@@ -26,7 +27,9 @@ case class DatabricksConfig(
     timeoutSeconds: Int = 300,
     captureExecutionPlan: Boolean = true,
     capturePartitionInfo: Boolean = true,
-    slowDownFactor: Double = 1.0
+    slowDownFactor: Double = 1.0,
+    secureCookies: Boolean = false,
+    corsAllowedOrigins: Set[String] = Set("http://localhost:3000")
 ):
   def directCredentials: Option[(String, String)] =
     for
@@ -87,6 +90,18 @@ object DatabricksConfig:
         capPlan      <- ConfigReader.getOptionalEnvBoolean("CAPTURE_EXECUTION_PLAN", true)
         capParts     <- ConfigReader.getOptionalEnvBoolean("CAPTURE_PARTITION_INFO", true)
         slowDown     <- ConfigReader.getOptionalEnvDouble("SLOW_DOWN_FACTOR", 1.0, MinSlowDownFactor, MaxSlowDownFactor)
+
+        secureCookies <- ConfigReader.getOptionalEnvBoolean("SECURE_COOKIES", false)
+        _             <- ZIO.when(secureCookies)(ZIO.logInfo("Secure cookies enabled (HTTPS mode)"))
+        _             <- ZIO.when(!secureCookies)(
+                           ZIO.logInfo("Secure cookies disabled — set SECURE_COOKIES=true when serving over HTTPS")
+                         )
+
+        corsOriginsRaw    <- ConfigReader.getOptionalEnv("CORS_ALLOWED_ORIGINS")
+        corsAllowedOrigins = corsOriginsRaw
+                               .map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet)
+                               .getOrElse(Set("http://localhost:3000"))
+        _                 <- ZIO.logInfo(s"CORS allowed origins: ${corsAllowedOrigins.mkString(", ")}")
       yield DatabricksConfig(
         workspaceUrl = validHost,
         token = validToken,
@@ -98,6 +113,8 @@ object DatabricksConfig:
         timeoutSeconds = timeout,
         captureExecutionPlan = capPlan,
         capturePartitionInfo = capParts,
-        slowDownFactor = slowDown
+        slowDownFactor = slowDown,
+        secureCookies = secureCookies,
+        corsAllowedOrigins = corsAllowedOrigins
       )
     )

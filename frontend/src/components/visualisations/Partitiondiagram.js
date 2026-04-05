@@ -411,7 +411,6 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             {/*Partition data panel — appears when user clicks a partition bar */}
             {selectedPartition !== null && (() => {
                 // Step-aware row selection — shows different data per pipeline stage
-                const activeStep = pipeline?.[currentStep - 1];
                 const allTracked = data?.tracked_rows ?? [];
                 const trackedEntry = allTracked.find(t => t.partition_id === selectedPartition);
                 const trackedRows = trackedEntry?.rows ?? [];

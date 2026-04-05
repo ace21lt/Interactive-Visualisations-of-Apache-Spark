@@ -88,6 +88,32 @@ object CookieHelperSpec extends ZIOSpecDefault:
         val cookie = CookieHelper.createSidCookie("test-sid")
         assert(cookie.maxAge)(isNone)
       },
+      test("creates non-secure cookie by default") {
+        val cookie = CookieHelper.createSidCookie("test-sid")
+        assert(cookie.isSecure)(isFalse)
+      },
+      test("creates secure cookie when secure = true") {
+        val cookie = CookieHelper.createSidCookie("test-sid", secure = true)
+        assert(cookie.isSecure)(isTrue)
+      },
+      test("clear cookie is non-secure by default") {
+        val response = Response.text("test")
+        val cleared  = CookieHelper.clearSidCookie(response)
+        val isSecure = cleared.headers.exists { header =>
+          header.headerName.equalsIgnoreCase("set-cookie") &&
+          header.renderedValue.contains("Secure")
+        }
+        assert(isSecure)(isFalse)
+      },
+      test("clear cookie is secure when secure = true") {
+        val response = Response.text("test")
+        val cleared  = CookieHelper.clearSidCookie(response, secure = true)
+        val isSecure = cleared.headers.exists { header =>
+          header.headerName.equalsIgnoreCase("set-cookie") &&
+          header.renderedValue.contains("Secure")
+        }
+        assert(isSecure)(isTrue)
+      },
 
       // clearSidCookie tests
       test("clears sid cookie with empty content") {

@@ -31,10 +31,18 @@ case class WorkspaceImporterLive(client: Client) extends WorkspaceImporter:
   ): IO[DatabricksError, String] =
     // Extract the parent directory and ensure it exists before importing.
     // POST /api/2.0/workspace/mkdirs is idempotent — safe on every call.
-    val parentDir = workspacePath.substring(0, workspacePath.lastIndexOf('/'))
+    val slashIdx = workspacePath.lastIndexOf('/')
     for
-      _ <- mkdirs(workspaceUrl, token, parentDir)
-      _ <- doImport(workspaceUrl, token, workspacePath, source)
+      parentDir <-
+        ZIO
+          .fromOption(Option.when(slashIdx > 0)(workspacePath.substring(0, slashIdx)))
+          .orElseFail(
+            DatabricksError.ConfigError(
+              s"workspacePath must be an absolute path with at least one '/' separator, got: '$workspacePath'"
+            )
+          )
+      _         <- mkdirs(workspaceUrl, token, parentDir)
+      _         <- doImport(workspaceUrl, token, workspacePath, source)
     yield workspacePath
 
   private def mkdirs(
@@ -115,5 +123,6 @@ object WorkspaceImporter:
   // Produce a unique workspace destination path for each run so concurrent
   // users never overwrite each other's notebooks.
   def destinationPath(baseDir: String): String =
-    val ts = currentTimeMillis()
-    s"$baseDir/spark_viz_lab1_$ts"
+    val ts   = currentTimeMillis()
+    val base = baseDir.stripSuffix("/")
+    s"$base/spark_viz_lab1_$ts"

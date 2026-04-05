@@ -1,6 +1,8 @@
 package credentials
 
 import api.CookieHelper
+
+import java.security.MessageDigest
 import config.DatabricksConfig
 import service.DatabricksError
 import session.{DatabricksCreds, SessionManager}
@@ -13,6 +15,11 @@ trait CredentialResolver:
 
 case class CredentialResolverLive(config: DatabricksConfig, sessionManager: SessionManager) extends CredentialResolver:
 
+  // Mirrors the token produced by InMemorySessionManager for cross-component log correlation.
+  private def logToken(sid: String): String =
+    val digest = MessageDigest.getInstance("SHA-256").digest(sid.getBytes("UTF-8"))
+    digest.take(4).map("%02x".format(_)).mkString
+
   override def getCredentials(req: Request): IO[DatabricksError, (String, String)] =
     config.directCredentials match
       case Some((url, token)) =>
@@ -24,12 +31,12 @@ case class CredentialResolverLive(config: DatabricksConfig, sessionManager: Sess
     val sidOpt = CookieHelper.getSidCookie(req)
     sidOpt match
       case Some(sid) =>
-        ZIO.logInfo(s"Found session cookie: ${sid.take(10)}...") *>
+        ZIO.logInfo(s"Found session cookie token=${logToken(sid)}") *>
           sessionManager.getSession(sid).flatMap {
             case Some(creds) =>
               ZIO.logInfo(s"Session valid for workspace: ${creds.workspaceUrl}").as((creds.workspaceUrl, creds.token))
             case None        =>
-              ZIO.logWarning(s"Session not found or expired for sid: ${sid.take(10)}...") *>
+              ZIO.logWarning(s"Session not found or expired token=${logToken(sid)}") *>
                 ZIO.fail(DatabricksError.NotAuthenticated())
           }
       case None      =>

@@ -51,8 +51,8 @@ const StatsRow = ({currentStep, data}) => {
         const realCount = isDayStep
             ? (internals.partition_story?.daily_post_shuffle_partitions ?? internals.partition_story?.post_shuffle_partitions ?? dist.length)
             : (internals.partition_story?.post_shuffle_partitions ?? dist.length);
-        partCount = String(realCount || '—');
-        rowsPerPart = realCount
+        partCount = String(realCount ?? '—');
+        rowsPerPart = realCount != null
             ? `${(step.output_rows ?? 0).toLocaleString()} rows total`
             : '—';
         partSub = didCoalesce

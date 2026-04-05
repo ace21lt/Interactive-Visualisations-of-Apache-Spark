@@ -1,6 +1,7 @@
 package handlers
 
-import api.{CorsHandler, ErrorResponses, TriggerRequest, TriggerResponse}
+import api.{CookieHelper, ErrorResponses, TriggerRequest, TriggerResponse}
+import config.DatabricksConfig
 import credentials.CredentialResolver
 import service.{DatabricksError, DatabricksService}
 import zio.*
@@ -13,6 +14,7 @@ trait NotebookHandler:
   def trigger(req: Request): UIO[Response]
 
 case class NotebookHandlerLive(
+    config: DatabricksConfig,
     credentialResolver: CredentialResolver,
     databricksService: DatabricksService
 ) extends NotebookHandler:
@@ -39,13 +41,19 @@ case class NotebookHandlerLive(
 
         response = TriggerResponse(result.runId, result.state, result.output, result.executionSeconds)
         _       <- ZIO.logInfo("Sending response to frontend")
-      yield CorsHandler.addHeaders(Response.json(response.toJson))
+      yield Response.json(response.toJson)
 
     effect.catchAll {
       case error @ (_: DatabricksError.NotAuthenticated) =>
-        ZIO
-          .logWarning(error.getMessage)
-          .as(CorsHandler.addHeaders(Response.text("Not authenticated").status(Status.Unauthorized)))
+        ZIO.logWarning(error.getMessage) *>
+          Clock
+            .currentTime(java.util.concurrent.TimeUnit.MILLISECONDS)
+            .map { ts =>
+              CookieHelper.clearSidCookie(
+                ErrorResponses.toResponse(error, ts),
+                config.secureCookies
+              )
+            }
       case error                                         =>
         ZIO.logError(s"Notebook execution failed: ${error.getMessage}") *>
           Clock
@@ -54,5 +62,5 @@ case class NotebookHandlerLive(
     }
 
 object NotebookHandler:
-  val layer: ZLayer[CredentialResolver & DatabricksService, Nothing, NotebookHandler] =
+  val layer: ZLayer[DatabricksConfig & CredentialResolver & DatabricksService, Nothing, NotebookHandler] =
     ZLayer.fromFunction(NotebookHandlerLive.apply _)

@@ -195,7 +195,7 @@ function App() {
                             whiteSpace: 'nowrap'
                         }}
                     >
-                        ↑ Load Trace
+                        Load Trace
                         <input
                             ref={loadInputRef}
                             type="file"

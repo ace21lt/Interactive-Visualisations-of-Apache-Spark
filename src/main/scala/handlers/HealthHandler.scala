@@ -1,6 +1,5 @@
 package handlers
 
-import api.CorsHandler
 import zio.*
 import zio.http.*
 
@@ -11,7 +10,7 @@ trait HealthHandler:
 case class HealthHandlerLive() extends HealthHandler:
 
   override def health(req: Request): UIO[Response] =
-    ZIO.succeed(CorsHandler.addHeaders(Response.text("OK")))
+    ZIO.succeed(Response.text("OK"))
 
 object HealthHandler:
   val layer: ULayer[HealthHandler] =
