@@ -125,18 +125,27 @@ object Main extends ZIOAppDefault:
       _ <- ZIO.logInfo(s"Starting server on port $port")
       _ <- ZIO.logInfo(s"Serving static files from $PublicDir")
 
-      // API routes first, then static file fallback
+      // 1. Define base routes (API + Static)
       baseRoutes = (Routes.apply() ++ staticRoutes) @@ corsMiddleware
 
-      // Only apply password protection if DEV_PASSWORD environment variable is set
-      allRoutes = scala.sys.env.get("DEV_PASSWORD") match {
-                    case Some(pwd) if pwd.nonEmpty =>
-                      baseRoutes @@ Middleware.basicAuth { credentials =>
-                        credentials.uname == "admin" && credentials.upassword == pwd
-                      }
-                    case _                         =>
-                      baseRoutes
-                  }
+      // 2. Apply password protection if configured
+      protectedRoutes = scala.sys.env.get("DEV_PASSWORD") match {
+                          case Some(pwd) if pwd.nonEmpty =>
+                            baseRoutes @@ Middleware.basicAuth { credentials =>
+                              credentials.uname == "admin" && credentials.upassword == pwd
+                            }
+                          case _                         =>
+                            baseRoutes
+                        }
+
+      // 3. Create an UNPROTECTED health route for Railway
+      healthRoute     = zio.http.Routes(
+                          Method.GET / "health" -> handler { (req: Request) =>
+                            ZIO.serviceWithZIO[HealthHandler](_.health(req))
+                          }
+                        )
+
+      allRoutes = healthRoute ++ protectedRoutes
 
       _ <- Server.serve(allRoutes.toHttpApp)
     yield ())
