@@ -186,14 +186,7 @@ function App() {
                     </button>
                     <label
                         title="Load a trace you saved from a previous run — opens the full visualisation without running Spark."
-                        style={{
-                            display: 'inline-flex', alignItems: 'center',
-                            padding: '8px 16px', borderRadius: '4px',
-                            border: '1px solid var(--grey-300)', background: 'var(--grey-50)',
-                            color: 'var(--grey-700)', cursor: 'pointer',
-                            fontSize: '14px', fontFamily: 'var(--font-mono)',
-                            whiteSpace: 'nowrap'
-                        }}
+                        className="load-trace-btn"
                     >
                         Load Trace
                         <input

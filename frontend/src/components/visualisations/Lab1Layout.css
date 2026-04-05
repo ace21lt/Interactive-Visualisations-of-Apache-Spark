@@ -121,3 +121,18 @@
     color: var(--uos-purple);
     margin-right: 10px;
 }
+
+.trace-btn {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    border: 1px solid var(--grey-300);
+    background: var(--grey-50);
+    color: var(--grey-500);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.trace-btn:hover {
+    background: var(--grey-200);
+}
