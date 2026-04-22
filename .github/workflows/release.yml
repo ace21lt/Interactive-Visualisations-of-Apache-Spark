@@ -14,6 +14,6 @@ jobs:
         run: npm install -g @railway/cli
 
       - name: Deploy to prod
-        run: railway up --environment prod --service spark-viz
+        run: railway up --service Dissertation
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
