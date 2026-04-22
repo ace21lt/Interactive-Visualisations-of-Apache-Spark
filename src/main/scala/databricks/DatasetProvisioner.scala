@@ -22,7 +22,8 @@ case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
   // Dataset files bundled directly in src/main/resources/
   private val datasets = List(
     "NASA_Aug95_100.txt",
-    "NASA_access_log_Aug95.gz"
+    "NASA_access_log_Aug95.gz",
+    "Advertising.csv"
   )
 
   // Sentinel file inside the Delta log — present iff the table has been written.
@@ -55,7 +56,7 @@ case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
       exists <- checkExists(workspaceUrl, token, destPath)
       _      <- if exists then ZIO.logInfo(s"Dataset already exists, skipping upload: $destPath")
                 else
-                  ZIO.logInfo(s"Uploading dataset: $resourceName → $destPath") *>
+                  ZIO.logInfo(s"Uploading dataset: $resourceName -> $destPath") *>
                     uploadFile(workspaceUrl, token, resourceName, destPath)
     yield ()
 
@@ -114,7 +115,7 @@ case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
                          )
                          .flatMap { response =>
                            response.body.asString.flatMap { body =>
-                             if response.status.isSuccess then ZIO.logInfo(s"Uploaded $resourceName → $destPath")
+                             if response.status.isSuccess then ZIO.logInfo(s"Uploaded $resourceName -> $destPath")
                              else
                                ZIO.fail(
                                  new RuntimeException(

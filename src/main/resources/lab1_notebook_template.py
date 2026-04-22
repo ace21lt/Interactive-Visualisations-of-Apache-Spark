@@ -29,7 +29,7 @@ logs_raw = spark.read.text(big_path)
 
 # Serverless-safe way to get partition count (no .rdd allowed)
 gzip_partition_count = logs_raw.select(spark_partition_id()).distinct().count()
-print(f"\ngzip read → partitions: {gzip_partition_count}  (non-splittable format)")
+print(f"\ngzip read -> partitions: {gzip_partition_count}  (non-splittable format)")
 
 raw_sample = [row["value"] for row in logs_raw.limit(5).collect()]
 
@@ -92,7 +92,7 @@ partition_dist_after_read = (
 )
 # Derive partition count from collected result — no extra Spark job needed
 repartitioned_count = len(partition_dist_after_read)
-print(f"\nAfter Delta reload → partitions: {repartitioned_count}")
+print(f"\nAfter Delta reload -> partitions: {repartitioned_count}")
 
 # CELL 5 — Lab Task 4 core queries + Exercise answers
 
@@ -168,7 +168,7 @@ hosts_japan = logs.filter(logs.value.contains(".jp"))
 filter_predicate = INJECTED_FILTER_PREDICATE
 
 # SPARK-VIZ-STEP-4-BEGIN
-# count() is an action — triggers the full DAG: read → repartition → filter
+# count() is an action — triggers the full DAG: read -> repartition -> filter
 hostsJapan_big = hosts_japan.count()
 # SPARK-VIZ-STEP-4-END
 
@@ -191,13 +191,13 @@ else:
 # Without this, .first() puts a Row object into the JSON and breaks all downstream
 # arithmetic (NaN in filter counts, DV bar, partition sub-label, etc.).
 if isinstance(hostsJapan_big, int):
-    hostsJapan_big = hostsJapan_big        # .count()  → already an int
+    hostsJapan_big = hostsJapan_big        # .count()  -> already an int
 elif isinstance(hostsJapan_big, list):
-    hostsJapan_big = len(hostsJapan_big)   # .take(n)  → list of Rows
+    hostsJapan_big = len(hostsJapan_big)   # .take(n)  -> list of Rows
 elif hostsJapan_big is not None:
-    hostsJapan_big = 1                     # .first()  → single Row means ≥1 match
+    hostsJapan_big = 1                     # .first()  -> single Row means ≥1 match
 else:
-    hostsJapan_big = 0                     # .first()  on empty DF → None
+    hostsJapan_big = 0                     # .first()  on empty DF -> None
 
 # unique_hosts_15, unique_hosts_total, most_frequent_host removed —
 # each requires an expensive shuffle on 75k distinct hosts and none
@@ -399,7 +399,7 @@ for _grow in df_key_tracked:
 print("\nTracked rows through pipeline:")
 for tp in all_tracked_partitions:
     for r in tp["rows"]:
-        print(f"  Partition {tp['partition_id']} → {r['host']} | passes filter: {r['passes_japan_filter']}")
+        print(f"  Partition {tp['partition_id']} -> {r['host']} | passes filter: {r['passes_japan_filter']}")
 
 # CELL 8 — Build and emit the JSON output
 import json
@@ -528,7 +528,6 @@ json_output = {
             {
                 "step": 1,
                 "operation": "spark.read.text(big_path)",
-                "code_snippet": "logs_raw = spark.read.text(big_path)",
                 "type": "transformation",
                 "lazy": True,
                 "output_rows": total,
@@ -538,7 +537,6 @@ json_output = {
             {
                 "step": 2,
                 "operation": f"logs.repartition({NUM_PARTITIONS})",
-                "code_snippet": f"(logs_raw.repartition({NUM_PARTITIONS})\n .write.format('delta')\n .mode('overwrite')\n .save(optimised_path))\n\nlogs = spark.read.format('delta').load(optimised_path)",
                 "type": "transformation",
                 "lazy": True,
                 "partitions_before": gzip_partition_count,
@@ -549,7 +547,6 @@ json_output = {
             {
                 "step": 3,
                 "operation": f"logs.filter(contains('{filter_predicate}'))",
-                "code_snippet": f"hosts_japan = logs.filter(logs.value.contains('{filter_predicate}'))",
                 "type": "transformation",
                 "lazy": True,
                 "output_rows": None,
@@ -559,7 +556,6 @@ json_output = {
             {
                 "step": 4,
                 "operation": f"hosts_japan.{_action_method}",
-                "code_snippet": f"hostsJapan_big = hosts_japan.{_action_method}",
                 "type": "action",
                 "lazy": False,
                 "output_rows": hostsJapan_big,
@@ -569,7 +565,6 @@ json_output = {
             {
                 "step": 5,
                 "operation": "withColumn(regexp_extract) × 3",
-                "code_snippet": "df = (\n    logs\n    .withColumn('host',   regexp_extract(col('value'), r'^(\\S+)', 1))\n    .withColumn('status', regexp_extract(col('value'), r'\"\\s+(\\d{3})\\s+', 1))\n    .withColumn('day',    regexp_extract(col('value'), r'\\[(\\d{2})/Aug/1995', 1))\n    .select('host', 'status', 'day')\n)",
                 "type": "transformation",
                 "lazy": True,
                 "output_rows": total,
@@ -579,7 +574,6 @@ json_output = {
             {
                 "step": 6,
                 "operation": f"df.repartitionByRange().groupBy('{groupby_key}')",
-                "code_snippet": f"df_grouped = df.repartitionByRange(num_groupby_keys, '{groupby_key}')\nstatus_counts = df_grouped.groupBy('{groupby_key}').agg(count('*').alias('num'))",
                 "type": "action",
                 "lazy": False,
                 "shuffle": True,
@@ -622,7 +616,7 @@ json_output = {
         "stages": [
             {
                 "stage_id": 1,
-                "name": "Read → Repartition",
+                "name": "Read -> Repartition",
                 "operations": ["read", "repartition"],
                 "shuffle": True,
                 "rows_processed": total,
@@ -630,7 +624,7 @@ json_output = {
             },
             {
                 "stage_id": 2,
-                "name": "Filter → Parse Fields",
+                "name": "Filter -> Parse Fields",
                 "operations": ["filter", "withColumn", "regexp_extract"],
                 "shuffle": False,
                 "rows_processed": total,

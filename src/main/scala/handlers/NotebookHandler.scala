@@ -28,19 +28,22 @@ case class NotebookHandlerLive(
         bodyStr   <- req.body.asString.orElseSucceed("")
         triggerReq = bodyStr.fromJson[TriggerRequest].getOrElse(TriggerRequest())
 
+        lab = triggerReq.lab.getOrElse("lab1")
+
         _ <- ZIO.logInfo(
-               triggerReq.step.fold("Trigger: default template run")(s => s"Trigger: edited step $s")
+               triggerReq.step.fold(s"Trigger [$lab]: default template run")(s => s"Trigger [$lab]: edited step $s")
              )
 
         result <- databricksService.runLab(
                     workspaceUrl = workspaceUrl,
                     token = token,
+                    lab = lab,
                     step = triggerReq.step,
                     editedCode = triggerReq.editedCode
                   )
 
         response = TriggerResponse(result.runId, result.state, result.output, result.executionSeconds)
-        _       <- ZIO.logInfo("Sending response to frontend")
+        _       <- ZIO.logInfo(s"Sending response to frontend [$lab]")
       yield Response.json(response.toJson)
 
     effect.catchAll {

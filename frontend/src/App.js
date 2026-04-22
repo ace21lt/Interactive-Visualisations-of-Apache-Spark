@@ -2,11 +2,18 @@ import React, {useState, useEffect, useRef} from 'react';
 import './App.css';
 import Login from './components/Login';
 import Lab1Layout from "./components/visualisations/Lab1Layout";
+import Lab2Layout from "./components/visualisations/Lab2Layout";
+
+const LABS = [
+    {id: 'lab1', label: 'Lab 1 — Intro to Spark'},
+    {id: 'lab2', label: 'Lab 2 — DataFrame & ML Pipeline'},
+];
 
 function App() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [workspaceUrl, setWorkspaceUrl] = useState(null);
-    const [data, setData] = useState(null);
+    const [currentLab, setCurrentLab] = useState('lab1');
+    const [labData, setLabData] = useState({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [sessionError, setSessionError] = useState(null);
@@ -14,7 +21,13 @@ function App() {
     const [runHistory, setRunHistory] = useState([]);
     const loadInputRef = useRef(null);
 
-    const apiUrl = process.env.REACT_APP_API_URL || '';
+    const apiUrl = import.meta.env.VITE_API_URL || '';
+
+    // Current lab's data
+    const data = labData[currentLab] || null;
+    const setData = (newData) => {
+        setLabData(prev => ({...prev, [currentLab]: newData}));
+    };
 
     useEffect(() => {
         const checkSession = async () => {
@@ -53,17 +66,35 @@ function App() {
         } finally {
             setIsAuthenticated(false);
             setWorkspaceUrl(null);
-            setData(null);
+            setLabData({});
             setError(null);
         }
     };
 
+    const handleLabSwitch = (labId) => {
+        setCurrentLab(labId);
+        setLastExecutedStep(null);
+        setError(null);
+        // Data is preserved in labData — switching back shows cached results
+    };
 
-    // Receives a parsed trace object from Lab1Layout's Load button.
+
+    // Receives a parsed trace object from a layout's Load button.
     // Sets data directly — no Spark run needed.
     const handleLoadTrace = (parsed) => {
-        if (!parsed?.spark_internals) return;
-        setData(parsed);
+        let detectedLab = null;
+
+        // Primary: explicit stamp
+        if (parsed?._lab === 'lab1' || parsed?._lab === 'lab2') {
+            detectedLab = parsed._lab;
+        }
+        if (!detectedLab) {
+            setError('Unrecognised trace file — make sure this JSON was saved from the Lab 1 or Lab 2 "Save Trace" button.');
+            return;
+        }
+
+        setLabData(prev => ({...prev, [detectedLab]: parsed}));
+        setCurrentLab(detectedLab);
         setLastExecutedStep(null);
         setError(null);
     };
@@ -79,23 +110,32 @@ function App() {
         try {
             if (step != null) setLastExecutedStep(step);
             const hasEdit = step != null && editedCode && editedCode.trim().length > 0;
-            const body = hasEdit ? JSON.stringify({step, editedCode}) : undefined;
+            const body = JSON.stringify({
+                lab: currentLab,
+                ...(hasEdit ? {step, editedCode} : {})
+            });
 
             const response = await fetch(`${apiUrl}/trigger`, {
                 method: 'POST',
                 credentials: 'include',
                 headers: {'Content-Type': 'application/json'},
                 signal: controller.signal,
-                ...(body ? {body} : {}),
+                body,
             });
 
             if (!response.ok) {
                 if (response.status === 401) {
-                    // Token expired or invalid — clear session and return to login screen
                     setSessionError('Your Databricks access token has expired. Please generate a new token and log in again.');
                     setIsAuthenticated(false);
                     setWorkspaceUrl(null);
-                    setData(null);
+                    setLabData({});
+                    return;
+                }
+                else if (response.status === 403) {
+                    setSessionError('Your token is valid but lacks required Databricks permissions (Unity Catalog/workspace/jobs/clusters).');
+                    setIsAuthenticated(false);
+                    setWorkspaceUrl(null);
+                    setLabData({});
                     return;
                 }
                 const errBody = await response.json().catch(() => null);
@@ -110,20 +150,22 @@ function App() {
                 console.log('Parsed Spark data:', sparkData);
                 setData(sparkData);
 
-                const cfg = sparkData?.spark_config ?? {};
-                if (cfg.num_partitions != null) {
-                    const entry = {
-                        partitions: cfg.num_partitions,
-                        skipped: cfg.skip_repartition ?? false,
-                        executionSecs: result.executionSeconds ?? null,
-                        roundTripSecs: Math.round((Date.now() - _runStart) / 1000),
-                        timestamp: new Date().toLocaleTimeString(),
-                    };
-                    setRunHistory(prev => {
-                        // Keep latest entry per partition count
-                        const filtered = prev.filter(r => r.partitions !== entry.partitions);
-                        return [...filtered, entry].slice(-8);
-                    });
+                // Run history tracking
+                if (currentLab === 'lab1') {
+                    const cfg = sparkData?.spark_config ?? {};
+                    if (cfg.num_partitions != null) {
+                        const entry = {
+                            partitions: cfg.num_partitions,
+                            skipped: cfg.skip_repartition ?? false,
+                            executionSecs: result.executionSeconds ?? null,
+                            roundTripSecs: Math.round((Date.now() - _runStart) / 1000),
+                            timestamp: new Date().toLocaleTimeString(),
+                        };
+                        setRunHistory(prev => {
+                            const filtered = prev.filter(r => r.partitions !== entry.partitions);
+                            return [...filtered, entry].slice(-8);
+                        });
+                    }
                 }
             } else {
                 const errorDetails = {
@@ -175,6 +217,36 @@ function App() {
                 </div>
             </div>
 
+            {/* Lab selector tabs */}
+            <div style={{
+                maxWidth: '1280px', margin: '0 auto', padding: '16px 32px 0',
+                display: 'flex', gap: '0', borderBottom: '2px solid #e0e0e0'
+            }}>
+                {LABS.map(lab => (
+                    <button
+                        key={lab.id}
+                        onClick={() => handleLabSwitch(lab.id)}
+                        disabled={loading}
+                        style={{
+                            padding: '10px 24px',
+                            background: currentLab === lab.id ? 'var(--uos-purple, #440099)' : 'transparent',
+                            color: currentLab === lab.id ? '#fff' : '#555',
+                            border: 'none',
+                            borderBottom: currentLab === lab.id ? '3px solid var(--uos-purple, #440099)' : '3px solid transparent',
+                            cursor: loading ? 'wait' : 'pointer',
+                            fontWeight: currentLab === lab.id ? 'bold' : 'normal',
+                            fontSize: '14px',
+                            marginBottom: '-2px',
+                            borderRadius: '6px 6px 0 0',
+                            transition: 'all 0.15s ease'
+                        }}
+                    >
+                        {lab.label}
+                        {labData[lab.id] && <span style={{marginLeft: '6px', opacity: 0.6}}>●</span>}
+                    </button>
+                ))}
+            </div>
+
             <div className="results-container" style={{maxWidth: "1280px", margin: "0 auto", padding: "0 32px"}}>
                 <div className="controls">
                     <button
@@ -182,7 +254,7 @@ function App() {
                         disabled={loading}
                         className="trigger-btn"
                     >
-                        {loading ? 'Running Spark Analysis...' : 'Run Spark Analysis'}
+                        {loading ? 'Running Spark Analysis...' : `Run ${LABS.find(l => l.id === currentLab)?.label ?? 'Spark Analysis'}`}
                     </button>
                     <label
                         title="Load a trace you saved from a previous run — opens the full visualisation without running Spark."
@@ -219,11 +291,21 @@ function App() {
                     </div>
                 )}
 
-                {data && data.spark_internals && (
+                {/* Lab 1 */}
+                {currentLab === 'lab1' && data && data.spark_internals && (
                     <div className="results">
                         <Lab1Layout data={data} onExecuteStep={triggerAnalysis} onLoadTrace={handleLoadTrace}
                                     loading={loading}
                                     lastExecutedStep={lastExecutedStep} runHistory={runHistory}/>
+                    </div>
+                )}
+
+                {/* Lab 2 */}
+                {currentLab === 'lab2' && data && (data.dataframe || data.ml_pipeline) && (
+                    <div className="results">
+                        <Lab2Layout data={data} onExecuteStep={triggerAnalysis} onLoadTrace={handleLoadTrace}
+                                    loading={loading}
+                                    lastExecutedStep={lastExecutedStep}/>
                     </div>
                 )}
             </div>

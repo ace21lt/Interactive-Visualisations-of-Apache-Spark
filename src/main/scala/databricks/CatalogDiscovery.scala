@@ -160,11 +160,19 @@ object CatalogDiscovery:
           .flatMap { response =>
             response.body.asString.flatMap { body =>
               response.status.code match
-                case 401 | 403     =>
+                case 401           =>
                   ZIO.fail(
                     DatabricksError.NotAuthenticated(
-                      s"Databricks token is invalid or expired (HTTP ${response.status.code}). " +
+                      s"Databricks token is invalid or expired (HTTP 401). " +
                         s"Please log out and log in again with a valid access token."
+                    )
+                  )
+                case 403           =>
+                  ZIO.fail(
+                    DatabricksError.InsufficientPermissions(
+                      s"Access denied to Unity Catalog API (HTTP 403). " +
+                        s"Please ensure your Databricks token has the necessary API Scope of jobs, workspace, files, unity-catalog and clusters, " +
+                        s"and that your Databricks workspace has a writable catalog and schema available."
                     )
                   )
                 case c if c >= 400 =>

@@ -42,19 +42,17 @@ services:
     environment:
       # Development mode
       - NODE_ENV=development
-      # Disable React's browser auto-open
+      # Disable browser auto-open
       - BROWSER=none
       # Enable hot reloading to work in Docker
       - CHOKIDAR_USEPOLLING=true
-      # Allow connections from any host (needed for Docker)
-      - WDS_SOCKET_PORT=3000
-      # Use empty API URL so React uses relative URLs with proxy
-      - REACT_APP_API_URL=
+      # Use empty API URL so frontend uses relative URLs with Vite proxy
+      - VITE_API_URL=
     volumes:
-      # Mount source code for hot reloading
-      # Read-only for src to prevent container from modifying source
-      - ./frontend/src:/app/src:ro
-      - ./frontend/public:/app/public
+      # Mount full project so Vite picks up src, index.html, and config edits
+      - ./frontend:/app
+      # Keep container-installed dependencies isolated from host
+      - /app/node_modules
     depends_on:
       backend:
         condition: service_healthy

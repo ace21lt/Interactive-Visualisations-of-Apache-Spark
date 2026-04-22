@@ -1,0 +1,124 @@
+.lab2-cluster-view {
+    border: 1px solid var(--grey-300);
+    border-radius: 6px;
+    background: #fff;
+}
+
+.lab2-cluster-view__header {
+    padding: 10px 16px;
+    background: var(--grey-50);
+    border-bottom: 2px solid var(--uos-purple);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.lab2-cluster-view__title {
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--grey-900);
+    font-family: var(--font-mono);
+}
+
+.lab2-cluster-view__legend {
+    padding: 5px 16px;
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    border-bottom: 1px solid var(--grey-100);
+    font-size: 10px;
+    color: var(--grey-500);
+}
+
+.lab2-cluster-view__legend-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.lab2-cluster-view__svg-wrap {
+    padding: 8px 0;
+}
+
+.lab2-cluster-view__svg {
+    display: block;
+    width: 100%;
+    overflow: visible;
+}
+
+.lab2-cluster-view__annotation {
+    padding: 7px 16px 10px;
+    border-top: 1px solid var(--grey-100);
+    font-size: 11px;
+    color: var(--grey-600);
+    line-height: 1.55;
+}
+
+.lab2-cluster-view__panel {
+    margin: 0 16px 16px;
+    border: 1px solid var(--uos-purple);
+    border-radius: 6px;
+    overflow: hidden;
+    font-size: 12px;
+}
+
+.lab2-cluster-view__panel-header {
+    background: var(--uos-purple);
+    color: #fff;
+    padding: 8px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.lab2-cluster-view__panel-title {
+    font-weight: bold;
+    font-family: var(--font-mono);
+}
+
+.lab2-cluster-view__panel-subtitle {
+    font-size: 11px;
+    opacity: 0.85;
+    font-weight: normal;
+    margin-left: 8px;
+    flex: 1;
+    text-align: right;
+    margin-right: 10px;
+}
+
+.lab2-cluster-view__panel-close {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+}
+
+.lab2-cluster-view__panel-body {
+    padding: 12px 14px;
+    background: #fafafa;
+}
+
+.lab2-cluster-view__panel-copy-title {
+    font-weight: bold;
+    color: var(--grey-700);
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.lab2-cluster-view__terminal {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.lab2-cluster-view__terminal-line {
+    padding: 5px 10px;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
