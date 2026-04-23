@@ -58,6 +58,13 @@ object ErrorResponsesSpec extends ZIOSpecDefault:
         assert(response.status)(equalTo(Status.Forbidden))
       },
 
+      // InsufficientPermissions -> 403
+      test("maps InsufficientPermissions to 403 Forbidden") {
+        val error    = DatabricksError.InsufficientPermissions("Access denied")
+        val response = ErrorResponses.toResponse(error, System.currentTimeMillis())
+        assert(response.status)(equalTo(Status.Forbidden))
+      },
+
       // ApiResponseError 404 -> 404
       test("maps ApiResponseError 404 to 404 NotFound") {
         val error    = DatabricksError.ApiResponseError(404, "Not found")
