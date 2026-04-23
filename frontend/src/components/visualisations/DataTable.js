@@ -130,6 +130,8 @@ const Step1Table = ({data, highlightedPartition}) => {
 
     const isFiltered = highlightedPartition !== null && highlightedPartition !== undefined;
     const rows = isFiltered && highlightedPartition !== 0 ? [] : allRows;
+    const partitionCount = data?.spark_internals?.partition_distribution?.length ?? null;
+    const idleSlots = partitionCount != null ? Math.max(partitionCount - 1, 0) : null;
 
 
     return (
@@ -143,7 +145,7 @@ const Step1Table = ({data, highlightedPartition}) => {
                 explanation={
                     isFiltered && highlightedPartition !== 0
                         ? `Partition ${highlightedPartition} is empty — gzip is non-splittable so every row loads into Partition 0 only.`
-                        : `Because gzip is non-splittable, every single row loads into Partition 0. The other ${(data?.spark_internals?.partition_distribution?.length ?? 8) - 1} worker slots are idle.`
+                        : `Because gzip is non-splittable, every single row loads into Partition 0. ${idleSlots != null ? `The other ${idleSlots} worker slots are idle.` : 'Worker slot count is shown once notebook partition metadata is available.'}`
                 }
                 columns={['partition', 'value']}
                 rows={rows}
@@ -253,7 +255,7 @@ const Step4Table = ({data, highlightedPartition}) => {
     const isTake = step4Op.includes('take(');
 
     const pred = data?.spark_config?.filter_predicate ?? '.jp';
-    const partCount = data?.spark_internals?.partition_distribution?.length ?? 8;
+    const partCount = data?.spark_internals?.partition_distribution?.length ?? null;
 
     let rows;
     let explanation;
@@ -278,14 +280,14 @@ const Step4Table = ({data, highlightedPartition}) => {
             {metric: `Rows matching "${pred}"`, count: realMatchCount.toLocaleString()},
             {metric: 'Rows dropped by filter', count: (total - realMatchCount).toLocaleString()},
         ];
-        explanation = `count() is an aggregate action — Spark must scan every row on all ${partCount} partitions, compute a local count on each, then sum the results on the Driver. All partitions execute fully.`;
+        explanation = `count() is an aggregate action — Spark must scan every row${partCount != null ? ` on all ${partCount} partitions` : ''}, compute a local count on each, then sum the results on the Driver. All partitions execute fully.`;
     } else if (isFirst) {
         rows = [
             {metric: 'Rows returned to driver', count: '1'},
             {metric: `Total rows matching "${pred}" (actual)`, count: realMatchCount.toLocaleString()},
             {metric: 'Total rows scanned', count: total.toLocaleString()},
         ];
-        explanation = `first() is a retrieval action — Spark executes partitions and short-circuits the moment it finds the first matching row. It may never scan partitions 1–${partCount - 1} at all. Only 1 Row object travels to the Driver, not a count.`;
+        explanation = `first() is a retrieval action — Spark executes partitions and short-circuits the moment it finds the first matching row. ${partCount != null ? `It may never scan partitions 1-${Math.max(partCount - 1, 0)} at all.` : 'It may never scan all partitions.'} Only 1 Row object travels to the Driver, not a count.`;
         shortCircuitBanner = `first() found a match early and stopped — ${realMatchCount.toLocaleString()} rows actually match "${pred}" across all partitions, but Spark did not need to count them all.`;
     } else if (isTake) {
         rows = [
@@ -293,7 +295,7 @@ const Step4Table = ({data, highlightedPartition}) => {
             {metric: `Total rows matching "${pred}" (actual)`, count: realMatchCount.toLocaleString()},
             {metric: 'Total rows scanned', count: total.toLocaleString()},
         ];
-        explanation = `take(${returnedCount}) is a retrieval action — like first(), Spark short-circuits once it has collected enough rows. It scans partitions in order and stops early, so not all ${partCount} partitions may execute.`;
+        explanation = `take(${returnedCount}) is a retrieval action — like first(), Spark short-circuits once it has collected enough rows. It scans partitions in order and stops early, so ${partCount != null ? `not all ${partCount} partitions may execute` : 'not all partitions may execute'}.`;
         shortCircuitBanner = `take(${returnedCount}) collected ${returnedCount} row(s) and stopped — ${realMatchCount.toLocaleString()} rows actually match "${pred}" but Spark did not need to count them all.`;
     } else {
         // Unknown action — safe fallback
@@ -302,7 +304,7 @@ const Step4Table = ({data, highlightedPartition}) => {
             {metric: `Rows matching "${pred}"`, count: realMatchCount.toLocaleString()},
             {metric: 'Rows dropped by filter', count: (total - realMatchCount).toLocaleString()},
         ];
-        explanation = `The DAG has executed. Spark pushed the filter down to ${partCount} worker nodes.`;
+        explanation = `The DAG has executed. Spark pushed the filter down to ${partCount != null ? partCount : 'available'} worker nodes.`;
     }
 
     return (
@@ -419,7 +421,7 @@ const Step6Table = ({data, highlightedPartition}) => {
             <GlassBoxTable
                 title={`groupBy('${groupbyKey}').count() — Aggregation Result`}
                 badge="shuffle"
-                explanation={`repartitionByRange() routed all rows with the same '${groupbyKey}' value to the same partition before groupBy — ${partLabel} distinct keys → ${partLabel} partitions${isCapped ? ` (table capped at top ${displayCount})` : ''}. The groupBy then runs locally with no cross-partition data movement needed. Try changing groupby_col to 'day' or 'host' to see how key cardinality changes the partition layout.`}
+                explanation={`repartitionByRange() routed all rows with the same '${groupbyKey}' value to the same partition before groupBy — ${partLabel} distinct keys -> ${partLabel} partitions${isCapped ? ` (table capped at top ${displayCount})` : ''}. The groupBy then runs locally with no cross-partition data movement needed. Try changing groupby_col to 'day' or 'host' to see how key cardinality changes the partition layout.`}
                 columns={[groupbyKey, 'total_requests']}
                 rows={groupRows}
                 highlightCol={1}

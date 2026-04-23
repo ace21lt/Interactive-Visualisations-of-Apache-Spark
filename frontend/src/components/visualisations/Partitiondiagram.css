@@ -1,0 +1,225 @@
+.partition-diagram {
+    border: 1px solid var(--grey-300);
+    border-radius: 6px;
+    background: #fff;
+}
+
+.partition-diagram__header {
+    padding: 10px 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--grey-50);
+    border-bottom: 2px solid var(--uos-purple);
+}
+
+.partition-diagram__title {
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--grey-900);
+    font-family: var(--font-mono);
+}
+
+.partition-diagram__legend {
+    padding: 6px 16px;
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 1px solid var(--grey-200);
+    font-size: 11px;
+    color: #666;
+}
+
+.partition-diagram__legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.partition-diagram__svg-wrap {
+    width: 100%;
+    padding: 10px 0;
+}
+
+.partition-diagram__svg {
+    display: block;
+    overflow: visible;
+    width: 100%;
+    height: 390px;
+}
+
+.partition-diagram__panel {
+    margin: 0 16px 16px;
+    border: 1px solid var(--uos-purple);
+    border-radius: 6px;
+    overflow: hidden;
+    font-size: 12px;
+}
+
+.partition-diagram__panel-header {
+    background: var(--uos-purple);
+    color: #fff;
+    padding: 8px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+}
+
+.partition-diagram__panel-title {
+    font-weight: bold;
+    font-family: var(--font-mono);
+}
+
+.partition-diagram__panel-subtitle {
+    font-size: 11px;
+    opacity: 0.85;
+    flex: 1;
+}
+
+.partition-diagram__panel-close {
+    background: none;
+    border: none;
+    color: #fff;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 4px;
+}
+
+.partition-diagram__panel-body {
+    padding: 12px 14px;
+    background: #fafafa;
+}
+
+.partition-diagram__panel-section-title {
+    font-weight: bold;
+    color: var(--grey-700);
+    margin-bottom: 8px;
+    font-size: 12px;
+}
+
+.partition-diagram__panel-console {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    border-radius: 4px;
+    overflow: hidden;
+    margin-bottom: 14px;
+}
+
+.partition-diagram__panel-console-line {
+    padding: 5px 10px;
+    overflow-x: auto;
+    white-space: nowrap;
+}
+
+.partition-diagram__panel-console-line:not(:last-child) {
+    border-bottom: 1px solid #333;
+}
+
+.partition-diagram__panel-copy {
+    font-size: 12px;
+    color: var(--grey-600);
+    line-height: 1.6;
+}
+
+.partition-diagram__panel-agg-box {
+    font-family: var(--font-mono);
+    background: #f5f3ff;
+    border: 1px solid #ddd6fe;
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-bottom: 10px;
+}
+
+.partition-diagram__panel-note {
+    font-size: 11px;
+    color: var(--grey-500);
+    line-height: 1.5;
+}
+
+.partition-diagram__table-wrap {
+    overflow-x: auto;
+    margin-bottom: 12px;
+}
+
+.partition-diagram__table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.partition-diagram__table-head-row {
+    background: #e8e0f0;
+}
+
+.partition-diagram__table-head-cell {
+    padding: 6px 10px;
+    text-align: left;
+    border-bottom: 2px solid var(--uos-purple);
+    font-family: var(--font-mono);
+    font-weight: bold;
+    color: var(--grey-800);
+    white-space: nowrap;
+}
+
+.partition-diagram__table-host {
+    padding: 5px 10px;
+    font-family: var(--font-mono);
+    border-bottom: 1px solid var(--grey-200);
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.partition-diagram__table-cell {
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--grey-200);
+}
+
+.partition-diagram__table-row {
+    background: #fff;
+}
+
+.partition-diagram__table-row:nth-child(even) {
+    background: #f9f7fc;
+}
+
+.partition-diagram__status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.partition-diagram__status--pass {
+    background: #dcfce7;
+    color: #15803d;
+}
+
+.partition-diagram__status--fail {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.partition-diagram__predicate-note {
+    display: block;
+    margin-top: 6px;
+    color: #78350f;
+    background: #fff8e1;
+    padding: 6px 8px;
+    border-radius: 4px;
+    border-left: 3px solid #e69f00;
+}
+
+.partition-diagram__panel-empty {
+    padding: 12px 14px;
+    color: var(--grey-500);
+    font-style: italic;
+}
+
+

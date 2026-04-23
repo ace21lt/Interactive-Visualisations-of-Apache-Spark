@@ -29,6 +29,7 @@ object RoutesSpec extends ZIOSpecDefault:
         override def runLab(
             workspaceUrl: String,
             token: String,
+            lab: String = "lab1",
             step: Option[Int] = None,
             editedCode: Option[String] = None
         ): IO[DatabricksError, models.RunOutput] =

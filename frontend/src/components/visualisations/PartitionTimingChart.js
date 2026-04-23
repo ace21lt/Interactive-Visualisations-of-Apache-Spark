@@ -50,7 +50,7 @@ const PartitionTimingChart = ({runHistory}) => {
             <div style={{padding: '16px'}}>
                 {/* Bar chart */}
                 <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
-                    {sorted.map((run, i) => {
+                    {sorted.map((run) => {
                         // Use Databricks API execution time if available, else round-trip
                         const displaySecs = run.executionSecs ?? run.roundTripSecs;
                         const pct = Math.max((displaySecs / maxSecs) * 100, 4);
@@ -141,7 +141,7 @@ const PartitionTimingChart = ({runHistory}) => {
                     <strong>What to look for:</strong> Fewer partitions means less parallelism but less shuffle
                     overhead.
                     More partitions means more parallel workers but higher coordination cost.
-                    The sweet spot for this dataset is usually 8–16 partitions on Databricks Serverless.
+                    Use the chart to find the sweet spot for your own run configuration.
                     Runs marked <em>(cached)</em> reused the existing Delta table — the write time was skipped.
                 </div>
             </div>

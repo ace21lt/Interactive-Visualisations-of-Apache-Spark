@@ -15,7 +15,7 @@ const DynamicVolumeBar = ({pipelineData, currentStep}) => {
         if (targetRows == null && currentStep > 1) {
             targetRows = pipelineData[currentStep - 2].output_rows;
         }
-        if (targetRows == null) targetRows = 1569898; // Fallback safety
+        if (targetRows == null) targetRows = 0;
 
         // Setup dimensions
         const width = 600;
@@ -51,7 +51,7 @@ const DynamicVolumeBar = ({pipelineData, currentStep}) => {
         }
 
         // 2. Define the Linear Scale
-        const maxRows = Math.max(...pipelineData.map(d => d.output_rows || 0), 1569898);
+        const maxRows = Math.max(...pipelineData.map(d => d.output_rows ?? 0), targetRows, 1);
         const xScale = d3.scaleLinear()
             .domain([0, maxRows])
             .range([5, innerWidth]);
@@ -79,7 +79,7 @@ const DynamicVolumeBar = ({pipelineData, currentStep}) => {
             .tween("text", function () {
                 const i = d3.interpolateRound(prevRows, targetRows);
                 return function (time) {
-                    this.textContent = d3.format(",")(i(time));
+                    d3.select(this).text(d3.format(",")(i(time)));
                 };
             });
 

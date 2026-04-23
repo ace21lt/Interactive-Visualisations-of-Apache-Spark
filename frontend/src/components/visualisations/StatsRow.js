@@ -76,7 +76,7 @@ const StatsRow = ({currentStep, data}) => {
             : 0;
         rowsPerPart = avg ? `~${avg.toLocaleString()} rows/partition` : '—';
         if (step.partitions_after != null && step.partitions != null && step.partitions !== step.partitions_after) {
-            partSub = `${step.partitions} → ${step.partitions_after} partitions (shuffle)`;
+            partSub = `${step.partitions} -> ${step.partitions_after} partitions (shuffle)`;
         } else if (step.lazy) {
             partSub = 'partition state unchanged — no execution yet';
         }
@@ -119,7 +119,7 @@ const StatsRow = ({currentStep, data}) => {
         shuffleContent = (
             <div style={{display: 'flex', gap: '24px', flexWrap: 'wrap'}}>
                 <StatCell label="Before" value={String(step.partitions ?? 1)} sub="partitions"/>
-                <span style={{alignSelf: 'center', fontSize: '20px', color: 'var(--grey-400)'}}>→</span>
+                <span style={{alignSelf: 'center', fontSize: '20px', color: 'var(--grey-400)'}}>{'->'}</span>
                 <StatCell label="After" value={String(step.partitions_after)} sub="partitions" accent/>
                 <StatCell label="Type" value="WIDE" sub="full shuffle across network"/>
             </div>

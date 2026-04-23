@@ -7,7 +7,7 @@ import DynamicVolumeBar from './DynamicVolumeBar';
 import PartitionDiagram from './Partitiondiagram';
 import StatsRow from './StatsRow';
 
-// ── Okabe-Ito colour helper (mirrors Partitiondiagram palette) ────────────────
+// Okabe-Ito colour helper
 function stepColour(step, stepIndex) {
     if (stepIndex === 1) return '#D55E00';
     if (step?.shuffle) return '#E69F00';
@@ -16,7 +16,7 @@ function stepColour(step, stepIndex) {
     return '#56B4E9';
 }
 
-// ── Key concept text ──────────────────────────────────────────────────────────
+//  Key concept text
 function deriveKeyConcept(step, data) {
     if (!step) return '';
     const partCount = data?.spark_internals?.partition_distribution?.length
@@ -39,7 +39,7 @@ function deriveKeyConcept(step, data) {
 
     if (step.partitions_after != null) {
         return `WIDE transformation — repartition() triggers a full shuffle. ` +
-            `Data moves across the network from ${step.partitions ?? 1} → ${step.partitions_after} partition(s), ` +
+            `Data moves across the network from ${step.partitions ?? 1} -> ${step.partitions_after} partition(s), ` +
             `restoring the parallelism lost because gzip files are non-splittable. ` +
             `On non-Serverless Spark you would call .cache() here to keep the repartitioned data in memory. ` +
             `On Databricks Serverless, cache() is unavailable so the Delta write-and-reload achieves the same effect: ` +
@@ -55,9 +55,8 @@ function deriveKeyConcept(step, data) {
     return step.description ?? '';
 }
 
-// ── Parallel Tasks Panel ──────────────────────────────────────────────────────
-// Shows N concurrent task boxes — makes parallelism concrete rather than
-// just showing a partition count number.
+// Parallel Tasks Panel
+// Shows N concurrent task boxes
 // Shown on Step 2 (repartition write) and Step 4 (count() action).
 const ParallelTasksPanel = ({numPartitions, stepType, colour}) => {
     const n = Math.min(numPartitions ?? 8, 16);
@@ -104,11 +103,10 @@ const ParallelTasksPanel = ({numPartitions, stepType, colour}) => {
     );
 };
 
-// ── Exercise Answers Panel ────────────────────────────────────────────────────
-// Collapsible panel on Step 4 — lets students verify their Task 5 answers
+// Exercise Answers Panel
+// Panel on Step 4 — lets students verify their Task 5 answers
 // against the actual numbers Spark computed on their cluster.
 const ExerciseAnswersPanel = ({data}) => {
-    const [open, setOpen] = useState(false);
     const fr = data?.filter_results ?? {};
     const rows = [
         {q: 'Q1 — Total requests in the log', a: (fr.total ?? 0).toLocaleString()},
@@ -119,54 +117,28 @@ const ExerciseAnswersPanel = ({data}) => {
         {q: 'Q6 — 404 errors from timken on 15 Aug', a: (fr.errors_404_15th_timken ?? 0).toLocaleString()},
     ];
     return (
-        <div style={{border: '1px solid #ddd6fe', borderRadius: '6px', background: '#faf5ff', overflow: 'hidden'}}>
-            <button
-                onClick={() => setOpen(o => !o)}
-                style={{
-                    width: '100%', padding: '10px 16px',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    fontSize: '12px', fontWeight: 'bold', color: '#4c1d95'
-                }}
-            >
-                <span>✓ Lab 1 Task 5 Exercise Answers — verify your solutions</span>
-                <span style={{fontSize: '11px', fontWeight: 'normal', color: '#7c3aed'}}>
-                    {open ? '▲ hide' : '▼ show'}
-                </span>
-            </button>
-            {open && (
-                <div style={{padding: '0 16px 12px'}}>
-                    <p style={{margin: '0 0 8px', fontSize: '11px', color: '#6d28d9', lineHeight: 1.5}}>
-                        Computed by Spark on your cluster from the full <code>NASA_access_log_Aug95.gz</code>.
-                        Compare with your own Task 5 answers.
-                    </p>
-                    <table style={{
-                        width: '100%',
-                        borderCollapse: 'collapse',
-                        fontSize: '12px',
-                        fontFamily: 'var(--font-mono)'
-                    }}>
-                        <tbody>
-                        {rows.map(({q, a}) => (
-                            <tr key={q} style={{borderBottom: '1px solid #ede9fe'}}>
-                                <td style={{padding: '6px 8px', color: '#5b21b6'}}>{q}</td>
-                                <td style={{
-                                    padding: '6px 8px',
-                                    fontWeight: 'bold',
-                                    color: '#1e1b4b',
-                                    textAlign: 'right'
-                                }}>{a}</td>
-                            </tr>
-                        ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+        <div style={{border: '1px solid #ddd6fe', borderRadius: '6px', background: '#faf5ff', padding: '14px 16px'}}>
+            <div style={{fontSize: '13px', fontWeight: 'bold', color: '#4c1d95', marginBottom: '8px'}}>
+                ✓ Lab 1 Task 5 Exercise Answers
+            </div>
+            <p style={{margin: '0 0 8px', fontSize: '11px', color: '#6d28d9', lineHeight: 1.5}}>
+                Computed by Spark on your cluster from the full <code>NASA_access_log_Aug95.gz</code>.
+            </p>
+            <table style={{width: '100%', borderCollapse: 'collapse', fontSize: '12px', fontFamily: 'var(--font-mono)'}}>
+                <tbody>
+                {rows.map(({q, a}) => (
+                    <tr key={q} style={{borderBottom: '1px solid #ede9fe'}}>
+                        <td style={{padding: '6px 8px', color: '#5b21b6'}}>{q}</td>
+                        <td style={{padding: '6px 8px', fontWeight: 'bold', color: '#1e1b4b', textAlign: 'right'}}>{a}</td>
+                    </tr>
+                ))}
+                </tbody>
+            </table>
         </div>
     );
 };
 
-// ── Lab1Layout ────────────────────────────────────────────────────────────────
+//Lab1Layout 
 const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [highlightedPartition, setHighlightedPartition] = useState(null);
@@ -195,11 +167,13 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
     // Save trace — download the JSON that was just returned from Databricks.
     // Students can reload this later without re-running Spark (see Load Trace).
     const handleSaveTrace = () => {
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        // Stamp _lab so Load Trace can route unambiguously without relying on heuristics.
+        const traceWithMeta = {...data, _lab: 'lab1'};
+        const blob = new Blob([JSON.stringify(traceWithMeta, null, 2)], {type: 'application/json'});
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `spark-trace-${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `spark-trace-lab1-${new Date().toISOString().slice(0, 10)}.json`;
         a.click();
         URL.revokeObjectURL(url);
     };
@@ -207,7 +181,7 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
     return (
         <div className="layout-container">
 
-            {/* ── Stepper — keep exact original structure so step-btn flex:1 works ── */}
+            {/*Stepper — keep exact original structure so step-btn flex:1 works*/}
             <div className="header">
                 {pipeline.map(stepData => (
                     <button
@@ -223,7 +197,7 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
                 ))}
             </div>
 
-            {/* ── Code panel ── */}
+            {/*Code panel*/}
             <div className="code-panel">
                 <CodePanel
                     currentStep={currentStep}
@@ -233,7 +207,7 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
                 />
             </div>
 
-            {/* ── Data panel ── */}
+            {/*Data panel*/}
             <div className="data-panel">
 
                 {/* Trace row — Save only; Load Trace is in the top controls bar */}
@@ -298,7 +272,7 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
                 />
 
                 {/* Exercise answers — Step 4 only */}
-                {currentStep === 4 && (
+                {currentStep === 4 && data?.filter_results && (
                     <ExerciseAnswersPanel data={data}/>
                 )}
 
@@ -331,7 +305,7 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
                     <DynamicVolumeBar pipelineData={pipeline} currentStep={currentStep}/>
                 </div>
 
-                {/* Partition diagram — click to cross-filter */}
+                {/* Partition diagram */}
                 <PartitionDiagram
                     currentStep={currentStep}
                     data={data}
@@ -347,7 +321,7 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
                 )}
             </div>
 
-            {/* ── Key concept footer ── */}
+            {/* Key concept footer  */}
             <div className="bottom-panel">
                 <div className="concept-text">
                     <span className="concept-label">KEY CONCEPT —</span>
