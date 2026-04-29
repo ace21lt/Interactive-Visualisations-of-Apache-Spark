@@ -1,11 +1,13 @@
 import React, {useState, useEffect} from 'react';
+import { useJoyride, STATUS } from 'react-joyride';
 import './Lab1Layout.css';
+import './Lab2Layout.css';
 import CodePanel from './CodePanel';
 import Lab2ClusterView from './Lab2ClusterView';
 import {Step1Panel, Step2Panel, Step3Panel, Step4Panel, Step5Panel, Step6Panel, Step7Panel} from './StepPanels';
+import { useTour } from '../../context/TourContext';
+import { lab2Steps, joyrideConfig } from '../../config/tourSteps';
 
-
-//Key concept text
 function deriveKeyConcept(stepIndex, data) {
     switch (stepIndex) {
         case 1:
@@ -52,71 +54,45 @@ function deriveKeyConcept(stepIndex, data) {
     }
 }
 
-//Step badge
-// Step 1: RDD conceptual reference
-// Steps 2-4: Spark distributed operations
-// Steps 5-7: Driver (scikit-learn) operations
+// Step 1 = RDD concepts (reference only), 2–4 = Spark distributed, 5–7 = driver/scikit-learn
 function stepBadge(currentStep) {
-    if (currentStep === 1) return {label: 'RDD CONCEPTS — SERVERLESS SAFE', bg: '#fff3e0', colour: '#e65100'};
-    if (currentStep <= 4) return {label: 'SPARK DISTRIBUTED', bg: '#e6f1fb', colour: '#0072B2'};
-    return {label: 'DRIVER — SCIKIT-LEARN', bg: '#fce4ec', colour: '#880e4f'};
+    if (currentStep === 1) return {label: 'RDD CONCEPTS — SERVERLESS SAFE', cls: 'badge--rdd'};
+    if (currentStep <= 4) return {label: 'SPARK DISTRIBUTED', cls: 'badge--spark'};
+    return {label: 'DRIVER — SCIKIT-LEARN', cls: 'badge--driver'};
 }
 
-const Lab2Layout = ({data, onExecuteStep, loading: _loading, lastExecutedStep}) => {
+const Lab2Layout = ({data, onExecuteStep, loading: _loading, lastExecutedStep, piHistory = [], regHistory = [], splitHistory = []}) => {
     const [currentStep, setCurrentStep] = useState(1);
-    // Accumulated regularisation history
-    const [regHistory, setRegHistory] = useState([]);
-    // Accumulated pi run history: one entry per (partitions, samples) combination
-    const [piHistory, setPiHistory] = useState([]);
+    const { runTour, currentLabTour, startTour, endTour } = useTour();
 
-    const toFiniteNumber = (value) => {
-        const n = typeof value === 'number' ? value : Number(value);
-        return Number.isFinite(n) ? n : null;
-    };
+    const { Tour } = useJoyride({
+        steps: lab2Steps,
+        run: runTour && currentLabTour === 'lab2',
+        continuous: true,
+        showProgress: true,
+        showSkipButton: true,
+        scrollOffset: 80,
+        locale: joyrideConfig.locale,
+        styles: joyrideConfig.styles,
+        onEvent: (eventData) => {
+            if ([STATUS.FINISHED, STATUS.SKIPPED].includes(eventData.status)) {
+                endTour();
+            }
+        },
+    });
 
     useEffect(() => {
         if (lastExecutedStep != null) setCurrentStep(lastExecutedStep);
     }, [data, lastExecutedStep]);
 
-    // Accumulate history entry each time a new run arrives
+    // Auto-start tour on first visit
     useEffect(() => {
-        const lr = data?.linear_regression;
-        const regParam = toFiniteNumber(lr?.reg_param);
-        if (!Array.isArray(lr?.coefficients) || !Array.isArray(lr?.feature_cols) || regParam == null) return;
-        const entry = {
-            regParam,
-            coefficients: lr.coefficients,
-            featureCols: lr.feature_cols,
-            testRmse: toFiniteNumber(lr?.test_rmse),
-            timestamp: new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}),
-        };
-        setRegHistory(prev => {
-            const filtered = prev.filter(r => r.regParam !== entry.regParam);
-            return [...filtered, entry].sort((a, b) => a.regParam - b.regParam);
-        });
-    }, [data]);
-
-    // Accumulate pi run history — keyed by (partitions, samples) so re-running
-    // the same combination refreshes timing rather than duplicating.
-    useEffect(() => {
-        const pi = data?.pi_estimation;
-        if (!pi || pi.elapsed_ms == null || pi.num_partitions == null || pi.num_samples == null) return;
-        const entry = {
-            partitions: pi.num_partitions,
-            samples: pi.num_samples,
-            estimate: pi.estimate,
-            error: pi.error ?? Math.abs((pi.estimate ?? 0) - Math.PI),
-            elapsedMs: pi.elapsed_ms,
-            timestamp: new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}),
-        };
-        setPiHistory(prev => {
-            const key = `${entry.partitions}-${entry.samples}`;
-            const filtered = prev.filter(r => `${r.partitions}-${r.samples}` !== key);
-            return [...filtered, entry].slice(-10);
-        });
-    }, [data]);
-
-    const combinedRegHistory = regHistory;
+        const seen = localStorage.getItem('lab2_tour_seen') === 'true';
+        if (!seen) {
+            const timer = setTimeout(() => startTour('lab2'), 800);
+            return () => clearTimeout(timer);
+        }
+    }, []);
 
     const pipeline = data?.spark_internals?.transformation_pipeline ?? [];
 
@@ -127,9 +103,7 @@ const Lab2Layout = ({data, onExecuteStep, loading: _loading, lastExecutedStep}) 
     const badge = stepBadge(currentStep);
 
     const handleSaveTrace = () => {
-        // Stamp _lab so Load Trace can route unambiguously without relying on heuristics
-        const traceWithMeta = {...data, _lab: 'lab2'};
-        const blob = new Blob([JSON.stringify(traceWithMeta, null, 2)], {type: 'application/json'});
+        const blob = new Blob([JSON.stringify({...data, _lab: 'lab2'}, null, 2)], {type: 'application/json'});
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -138,7 +112,6 @@ const Lab2Layout = ({data, onExecuteStep, loading: _loading, lastExecutedStep}) 
         URL.revokeObjectURL(url);
     };
 
-    //Step-specific data panel content
     const renderStepContent = () => {
         switch (currentStep) {
             case 1:
@@ -148,9 +121,9 @@ const Lab2Layout = ({data, onExecuteStep, loading: _loading, lastExecutedStep}) 
             case 3:
                 return <Step3Panel data={data}/>;
             case 4:
-                return <Step4Panel data={data}/>;
+                return <Step4Panel data={data} splitHistory={splitHistory}/>;
             case 5:
-                return <Step5Panel data={data} regHistory={combinedRegHistory}/>;
+                return <Step5Panel data={data} regHistory={regHistory}/>;
             case 6:
                 return <Step6Panel data={data}/>;
             case 7:
@@ -160,102 +133,73 @@ const Lab2Layout = ({data, onExecuteStep, loading: _loading, lastExecutedStep}) 
         }
     };
 
-    // ClusterView renders above step content on every step except Step 1, 3 and 7
-    const renderDataPanel = () => (<>
-        {currentStep !== 1 && currentStep !== 7 && currentStep !== 3 &&(<Lab2ClusterView
-            currentStep={currentStep}
-            data={data}
-            sampleRows={data?.dataframe?.sample_rows}
-            trainSample={data?.train_test_split?.train_sample}
-            testSample={data?.train_test_split?.test_sample}
-        />)}
-        {renderStepContent()}
-    </>);
+    const renderDataPanel = () => (
+        <>
+            {currentStep !== 1 && currentStep !== 3 && currentStep !== 7 && (
+                <Lab2ClusterView
+                    currentStep={currentStep}
+                    data={data}
+                    sampleRows={data?.dataframe?.sample_rows}
+                    trainSample={data?.train_test_split?.train_sample}
+                    testSample={data?.train_test_split?.test_sample}
+                />
+            )}
+            {renderStepContent()}
+        </>
+    );
 
-    return (<div className="layout-container">
-
-        {/*Stepper*/}
-        <div className="header">
-            {pipeline.map(s => (<button
-                key={s.step}
-                className={`step-btn ${currentStep === s.step ? 'active' : ''}`}
-                onClick={() => setCurrentStep(s.step)}
-            >
-                Step {s.step}
-            </button>))}
-        </div>
-
-        {/*Code panel*/}
-        <div className="code-panel">
-            <CodePanel
-                currentStep={currentStep}
-                onExecuteStep={onExecuteStep}
-                data={data}
-            />
-        </div>
-
-        {/*Data panel*/}
-        <div className="data-panel">
-
-            {/* Trace row */}
-            <div style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0'
-            }}>
-                <div className="panel-title" style={{margin: 0}}>Data Panel</div>
-                <button onClick={handleSaveTrace} className="trace-btn">Save Trace</button>
+    return (
+        <div className="layout-container">
+            {Tour}
+            <div className="header">
+                {pipeline.map(s => (
+                    <button
+                        key={s.step}
+                        className={`step-btn ${currentStep === s.step ? 'active' : ''}`}
+                        onClick={() => setCurrentStep(s.step)}
+                    >
+                        Step {s.step}
+                    </button>
+                ))}
             </div>
 
-            {/* Step header */}
-            <div style={{
-                border: '1px solid var(--grey-200)', padding: '14px 16px', borderRadius: '6px', background: '#fff'
-            }}>
-                <div style={{
-                    display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px'
-                }}>
-                    <h2 style={{
-                        margin: 0, fontSize: '15px', fontFamily: 'var(--font-mono)', color: 'var(--grey-900)'
-                    }}>
-                        {activeStepData.operation}
-                    </h2>
-                    <span style={{
-                        fontSize: '11px',
-                        fontWeight: 'bold',
-                        background: activeStepData.lazy ? '#f0e6ff' : '#e8f5e9',
-                        color: activeStepData.lazy ? '#440099' : '#1b5e20',
-                        padding: '3px 8px',
-                        borderRadius: '4px'
-                    }}>
-                        {activeStepData.lazy ? 'LAZY' : 'ACTION'}
-                    </span>
-                    <span style={{
-                        fontSize: '11px',
-                        fontWeight: 'bold',
-                        background: badge.bg,
-                        color: badge.colour,
-                        padding: '3px 8px',
-                        borderRadius: '4px'
-                    }}>
-                        {badge.label}
-                    </span>
+            <div className="code-panel">
+                <CodePanel
+                    currentStep={currentStep}
+                    onExecuteStep={onExecuteStep}
+                    data={data}
+                />
+            </div>
+
+            <div className="data-panel">
+                <div className="data-panel-header">
+                    <div className="panel-title" style={{margin: 0}}>Data Panel</div>
+                    <button onClick={handleSaveTrace} className="trace-btn">Save Trace</button>
                 </div>
-                <p style={{margin: 0, fontSize: '13px', color: 'var(--grey-600)'}}>
-                    {activeStepData.description}
-                </p>
+
+                <div className="step-header">
+                    <div className="step-header-top">
+                        <h2 className="step-header-title">{activeStepData.operation}</h2>
+                        <span className={`badge ${activeStepData.lazy ? 'badge--lazy' : 'badge--action'}`}>
+                            {activeStepData.lazy ? 'LAZY' : 'ACTION'}
+                        </span>
+                        <span className={`badge ${badge.cls}`}>{badge.label}</span>
+                    </div>
+                    <p className="step-header-desc">{activeStepData.description}</p>
+                </div>
+
+                {renderDataPanel()}
             </div>
 
-            {/* Step-specific visualisations */}
-            {renderDataPanel()}
-        </div>
-
-        {/*Key concept footer*/}
-        <div className="bottom-panel">
-            <div className="concept-text">
-                <span className="concept-label">KEY CONCEPT —</span>
-                {keyConcept}
+            <div className="bottom-panel">
+                <div className="concept-text">
+                    <span className="concept-label">KEY CONCEPT —</span>
+                    {keyConcept}
+                </div>
             </div>
         </div>
-
-    </div>);
+    );
 };
 
 export default Lab2Layout;
+

@@ -3,14 +3,6 @@ import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './PipelineFlowDiagram.css';
 
-// Teaches the single key insight from Lab 2 Section 3:
-//
-//   "An Estimator implements a method fit(), which accepts a DataFrame
-//    and produces a Model, which is a Transformer. For example,
-//    LogisticRegression is an Estimator, and calling fit() trains a
-//    LogisticRegressionModel, which is a Model and hence a Transformer."
-//
-
 
 const TF = '#0072B2';   // Okabe-Ito blue   — Transformer
 const EST = '#D55E00';   // Okabe-Ito vermillion — Estimator
@@ -279,25 +271,25 @@ function DocumentTrace({pred, trace}) {
     ];
 
     return (
-        <div className="pipeline-flow__trace-wrap">
-            <div className="pipeline-flow__trace-title">
+        <div className="pipeline-flow-trace-wrap">
+            <div className="pipeline-flow-trace-title">
                 model.transform — tracing document ID {pred.id} through the pipeline
             </div>
-            <div className="pipeline-flow__trace-row">
+            <div className="pipeline-flow-trace-row">
                 {steps.map((s, i) => (
                     <React.Fragment key={i}>
                         {/* Stage cell */}
                         <div
-                            className="pipeline-flow__stage-cell"
+                            className="pipeline-flow-stage-cell"
                             style={{border: `1.5px solid ${s.colour}`, background: `${s.colour}0d`}}
                         >
-                            <div className="pipeline-flow__stage-name" style={{color: s.colour}}>{s.stage}</div>
-                            <div className="pipeline-flow__stage-value">{s.value}</div>
-                            <div className="pipeline-flow__stage-sub">{s.sub}</div>
+                            <div className="pipeline-flow-stage-name" style={{color: s.colour}}>{s.stage}</div>
+                            <div className="pipeline-flow-stage-value">{s.value}</div>
+                            <div className="pipeline-flow-stage-sub">{s.sub}</div>
                         </div>
                         {/* Arrow between stages */}
                         {i < steps.length - 1 && (
-                            <div className="pipeline-flow__stage-arrow">{'->'}</div>
+                            <div className="pipeline-flow-stage-arrow">{'->'}</div>
                         )}
                     </React.Fragment>
                 ))}
@@ -327,22 +319,22 @@ const PipelineFlowDiagram = ({stages, traces, predictions, view = 'full'}) => {
         <div className="pipeline-flow">
 
             {/*Card header*/}
-            <div className="pipeline-flow__header">
-                <span className="pipeline-flow__title">
+            <div className="pipeline-flow-header">
+                <span className="pipeline-flow-title">
                     ML Pipeline — Estimator {'->'} Model
                 </span>
 
-                {/* Document selector — hidden in 'types' view since no trace is shown */}
+                {/* Document selector */}
                 {view !== 'types' && (
-                    <div className="pipeline-flow__doc-selector">
-                    <span className="pipeline-flow__doc-label">
+                    <div className="pipeline-flow-doc-selector">
+                    <span className="pipeline-flow-doc-label">
                         Trace document:
                     </span>
                         {predictions.map((p, i) => (
                             <button
                                 key={i}
                                 onClick={() => setSelectedDoc(i)}
-                                className="pipeline-flow__doc-btn"
+                                className="pipeline-flow-doc-btn"
                                 style={{
                                     border: selectedDoc === i ? '2px solid var(--uos-purple)' : '1px solid var(--grey-300)',
                                     background: selectedDoc === i ? '#f0e6ff' : '#fff',
@@ -357,16 +349,16 @@ const PipelineFlowDiagram = ({stages, traces, predictions, view = 'full'}) => {
                 )}
             </div>
 
-            {/*Type diagram — hidden in 'trace' view*/}
+            {/*Type diagram w*/}
             {view !== 'trace' && (
                 <div ref={wrapRef} style={{padding: '16px 16px 4px'}}>
                     <TypeDiagram width={width - 32} stages={stages}/>
                 </div>
             )}
 
-            {/*Lab quote callout — hidden in 'trace' view*/}
+            {/*Lab quote callout */}
             {view !== 'trace' && (
-                <div className="pipeline-flow__quote" style={{borderLeft: `4px solid ${MODEL}`}}>
+                <div className="pipeline-flow-quote" style={{borderLeft: `4px solid ${MODEL}`}}>
                     "An Estimator implements a method fit(), which accepts a DataFrame and produces a
                     Model, which is a Transformer. For example, a learning algorithm such as{' '}
                     <strong style={{fontStyle: 'normal', color: EST}}>LogisticRegression</strong>{' '}
@@ -374,29 +366,29 @@ const PipelineFlowDiagram = ({stages, traces, predictions, view = 'full'}) => {
                     <strong style={{fontStyle: 'normal', color: MODEL}}>LogisticRegressionModel</strong>,
                     which is a Model and hence a{' '}
                     <strong style={{fontStyle: 'normal', color: TF}}>Transformer</strong>."
-                    <div className="pipeline-flow__quote-source">
+                    <div className="pipeline-flow-quote-source">
                         — Apache Spark ML Pipeline documentation / COM6012 Lab 2
                     </div>
                 </div>
             )}
 
-            {/*Divider — only when both sections are showing*/}
+            {/*Divider */}
             {view === 'full' && (
-                <div className="pipeline-flow__divider"/>
+                <div className="pipeline-flow-divider"/>
             )}
 
-            {/*Document trace — hidden in 'types' view*/}
+            {/*Document trace */}
             {view !== 'types' && <DocumentTrace pred={pred} trace={trace}/>}
 
             {/*Legend*/}
-            <div className="pipeline-flow__legend">
+            <div className="pipeline-flow-legend">
                 {[
                     {colour: TF, label: 'Transformer'},
                     {colour: EST, label: 'Estimator'},
                     {colour: MODEL, label: 'Model (was Estimator)'},
                 ].map(({colour, label}) => (
-                    <span key={label} className="pipeline-flow__legend-item">
-                        <span className="pipeline-flow__legend-swatch" style={{background: colour}}/>
+                    <span key={label} className="pipeline-flow-legend-item">
+                        <span className="pipeline-flow-legend-swatch" style={{background: colour}}/>
                         {label}
                     </span>
                 ))}

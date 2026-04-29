@@ -42,4 +42,5 @@ yarn.lock
 .DS_Store
 .claude
 AGENTS.md
-
+skills-lock.json
+.agents

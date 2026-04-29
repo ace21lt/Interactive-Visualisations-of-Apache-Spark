@@ -6,12 +6,6 @@ import {oneDark} from '@codemirror/theme-one-dark';
 import './Lab1Layout.css';
 
 
-// Step 1 — spark.read.text()         READ ONLY  (gzip non-splittability demo)
-// Step 2 — NUM_PARTITIONS + delta    EDITABLE   (repartition config)
-// Step 3 — hosts_japan = filter(.jp) EDITABLE   (lazy transformation)
-// Step 4 — hosts_japan.count()       READ ONLY   (action that fires DAG)
-// Step 5 — df = withColumn × 3       READ ONLY  (parsing — complex, don't break)
-// Step 6 — repartitionByRange + groupBy(groupby_col)  EDITABLE
 
 const lab1CodeTemplates = {
     1: {
@@ -108,7 +102,7 @@ pi_estimate = 4.0 * pi_count / NUM_SAMPLES
 pi_elapsed_ms = int((_time.time() - _pi_start) * 1000)
 pi_error = abs(pi_estimate - _math.pi)`,
         readOnly: false,
-        desc: "Lab Section 5 (optional). Try NUM_PARTITIONS = 2, 4, 8, 16 — elapsed_ms drops until the cluster saturates, then rises again from scheduling overhead. Try NUM_SAMPLES = 100_000 up to 10_000_000 — error drops by roughly √N while time grows linearly. The history panel records every combination."
+        desc: "Lab Section 5 (optional). Try NUM_PARTITIONS = 2, 4, 8, 16. Try NUM_SAMPLES = 100_000 up to 10_000_000. The history panel records every combination."
     },
     2: {
         title: "Load Advertising CSV",
@@ -117,7 +111,7 @@ pi_error = abs(pi_estimate - _math.pi)`,
 df_raw = spark.read.load(csv_path, format="csv", inferSchema="true", header="true")
 df = df_raw.drop("_c0")  # Remove the unnamed index column`,
         readOnly: true,
-        desc: "Spark infers the schema from the CSV header and data types. The unnamed first column (_c0) is the original row index — we drop it. Notice the column types: all features are DoubleType."
+        desc: "Spark infers the schema from the CSV header and data types. The unnamed first column (_c0) is the original row index so we drop it. Notice the column types: all features are DoubleType."
     },
     3: {
         title: "Feature Column Selection (VectorAssembler)",
@@ -127,7 +121,7 @@ feature_cols = ["TV", "radio", "newspaper"]
 label_col = "sales"
 df_selected = df.select(*feature_cols, col(label_col).alias("label"))`,
         readOnly: false,
-        desc: "VectorAssembler packs feature columns into a single dense vector for spark.ml. On HPC this produces a features column of type Vector. On Serverless via Jobs API, spark.ml constructors are blocked — we select columns and convert to pandas. Try removing 'newspaper' from feature_cols to see its effect on predictions."
+        desc: "VectorAssembler packs feature columns into a single dense vector for spark.ml. On HPC this produces a features column of type Vector. On Serverless via Jobs API, spark.ml constructors are blocked so we select columns and convert to pandas. Try removing 'newspaper' from feature_cols to see its effect on predictions."
     },
     4: {
         title: "Train/Test Split",
@@ -137,7 +131,7 @@ split_ratio = [0.6, 0.4]
 split_seed = 6012
 (trainingData, testData) = df_selected.randomSplit(split_ratio, split_seed)`,
         readOnly: false,
-        desc: "randomSplit is a narrow transformation — no shuffle. Each partition independently hashes rows into buckets. Try [0.8, 0.2] or change the seed."
+        desc: "randomSplit is a narrow transformation meaning there is no shuffle. Each partition independently hashes rows into buckets. Try [0.8, 0.2] or change the seed."
     },
     5: {
         title: "Linear Regression — Fit",
@@ -154,7 +148,7 @@ else:
     lr = Ridge(alpha=reg_param * len(X_train_scaled))
 lr.fit(X_train_scaled, y_train)`,
         readOnly: false,
-        desc: "Change reg_param (try 0.1, 1.0) and click Run. Watch the coefficient chart update — TV and radio shrink under Ridge regularisation. Newspaper may grow — it shares variance with radio and absorbs what radio releases. Equivalent to spark.ml LinearRegression(regParam=reg_param, elasticNetParam=0.0)"
+        desc: "Change reg_param (try 0.1, 1.0) and click Run. Watch the coefficient chart update, TV and radio shrink under Ridge regularisation. Newspaper may grow as it shares variance with radio and absorbs what radio releases. Equivalent to spark.ml LinearRegression(regParam=reg_param, elasticNetParam=0.0)"
     },
     6: {
         title: "Prediction & Evaluation",

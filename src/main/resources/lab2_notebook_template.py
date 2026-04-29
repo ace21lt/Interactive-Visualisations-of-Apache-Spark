@@ -427,6 +427,7 @@ spark_internals = {
         },
         {
             "step": 4,
+            "operation": f"(trainingData, testData) = df_selected.randomSplit({split_ratio}, seed={split_seed})",
             "lazy": True, "spark_step": True,
             "partitions_before": csv_partition_count, "partitions_after": csv_partition_count,
             "output_rows": train_count + test_count,

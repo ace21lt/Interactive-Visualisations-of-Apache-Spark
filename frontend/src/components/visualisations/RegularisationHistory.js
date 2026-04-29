@@ -1,5 +1,4 @@
-//RegularisationHistory
-//Accumulated bar chart comparing coefficients and RMSE across reg_param runs this session
+import './Lab2Layout.css';
 
 const FEAT_COLOURS = ['#0072B2', '#E69F00', '#CC79A7'];
 
@@ -31,180 +30,94 @@ function RegularisationHistory({regHistory, currentRegParam}) {
     const minRmse = rmseValues.length ? Math.min(...rmseValues) : null;
 
     return (
-        <div style={{border: '1px solid var(--grey-300)', borderRadius: '6px', background: '#fff'}}>
-
-            {/* Header */}
-            <div style={{
-                padding: '10px 16px',
-                background: 'var(--grey-50)',
-                borderBottom: '2px solid var(--uos-purple)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center'
-            }}>
+        <div className="viz-card">
+            <div className="viz-card-header">
                 <div>
-                    <span style={{
-                        fontSize: '13px', fontWeight: 'bold', color: 'var(--grey-900)', fontFamily: 'var(--font-mono)'
-                    }}>
-                        Regularisation History
-                    </span>
+                    <span className="viz-card-title">Regularisation History</span>
                     <span style={{fontSize: '11px', color: 'var(--grey-500)', marginLeft: '10px'}}>
                         try reg_param = 0.0, 0.1, 1.0
                     </span>
                 </div>
-                <span style={{fontSize: '11px', color: 'var(--grey-400)'}}>
+                <span className="glass-table-badge">
                     {sorted.length} run{sorted.length !== 1 ? 's' : ''} this session
                 </span>
             </div>
 
-            <div style={{padding: '12px 16px'}}>
-
-                {/* Legend */}
-                <div style={{
-                    display: 'flex', gap: '14px', marginBottom: '12px', fontSize: '10px', color: 'var(--grey-500)'
-                }}>
+            <div className="viz-card-body">
+                <div className="legend-row" style={{marginBottom: '12px'}}>
                     {['TV', 'radio', 'newspaper'].map((f, i) => (
-                        <span key={f} style={{display: 'flex', alignItems: 'center', gap: 4}}>
-                            <span style={{
-                                width: 10,
-                                height: 10,
-                                background: FEAT_COLOURS[i],
-                                borderRadius: 2,
-                                display: 'inline-block'
-                            }}/>
+                        <span key={f} className="legend-item">
+                            <span
+                                className="legend-item-dot"
+                                style={{background: FEAT_COLOURS[i], borderRadius: 2}}
+                            />
                             {f}
-                        </span>))}
-                    <span style={{marginLeft: 'auto', fontFamily: 'var(--font-mono)'}}>Test RMSE</span>
+                        </span>
+                    ))}
+                    <span style={{marginLeft: 'auto', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--grey-500)'}}>
+                        Test RMSE
+                    </span>
                 </div>
 
-                {/* One row per regParam the student has run */}
-                <div style={{display: 'flex', flexDirection: 'column', gap: '10px'}}>
+                <div className="reg-history-rows">
                     {sorted.map(run => {
                         const current = Number(currentRegParam);
                         const isCurrent = Number.isFinite(current) && run.regParam === current;
                         const isBest = minRmse != null && run.testRmse === minRmse;
-                        return (<div key={run.regParam} style={{
-                            border: isCurrent ? '1.5px solid var(--uos-purple)' : '1px solid var(--grey-100)',
-                            borderRadius: '5px',
-                            padding: '8px 10px',
-                            background: isCurrent ? '#faf5ff' : '#fff'
-                        }}>
-                            {/* Row header */}
-                            <div style={{display: 'flex', alignItems: 'center', marginBottom: '6px'}}>
-                                    <span style={{
-                                        fontFamily: 'var(--font-mono)',
-                                        fontSize: '12px',
-                                        fontWeight: 'bold',
-                                        color: 'var(--uos-purple)',
-                                        width: '100px',
-                                        flexShrink: 0
-                                    }}>
-                                        regParam={run.regParam}
-                                    </span>
-                                <span style={{
-                                    fontFamily: 'var(--font-mono)',
-                                    fontSize: '13px',
-                                    fontWeight: 'bold',
-                                    color: '#009E73',
-                                    marginLeft: 'auto'
-                                }}>
+                        return (
+                            <div
+                                key={run.regParam}
+                                className={`reg-history-run ${isCurrent ? 'reg-history-run--current' : ''}`}
+                            >
+                                <div className="reg-history-run-header">
+                                    <span className="reg-history-param">regParam={run.regParam}</span>
+                                    <span className="reg-history-rmse">
                                         {run.testRmse != null ? run.testRmse.toFixed(4) : 'n/a'}
                                     </span>
-                                {isBest && (<span style={{
-                                    marginLeft: '6px',
-                                    fontSize: '10px',
-                                    fontWeight: 'bold',
-                                    color: '#15803d',
-                                    background: '#dcfce7',
-                                    padding: '1px 5px',
-                                    borderRadius: '3px'
-                                }}>lowest RMSE</span>)}
-                                {isCurrent && (<span style={{
-                                    marginLeft: '6px',
-                                    fontSize: '10px',
-                                    fontWeight: 'bold',
-                                    color: 'var(--uos-purple)',
-                                    background: '#f0e6ff',
-                                    padding: '1px 5px',
-                                    borderRadius: '3px'
-                                }}>current</span>)}
-                                <span style={{
-                                    marginLeft: '8px',
-                                    fontSize: '10px',
-                                    color: 'var(--grey-400)',
-                                    fontFamily: 'var(--font-mono)'
-                                }}>{run.timestamp}</span>
-                            </div>
+                                    {isBest && (
+                                        <span className="reg-history-badge reg-history-badge--best">lowest RMSE</span>
+                                    )}
+                                    {isCurrent && (
+                                        <span className="badge badge--current">current</span>
+                                    )}
+                                    <span className="reg-history-timestamp">{run.timestamp}</span>
+                                </div>
 
-                            {/* Coefficient bars — one per feature */}
-                            <div style={{display: 'flex', flexDirection: 'column', gap: '4px'}}>
-                                {run.featureCols.map((feat, fi) => {
-                                    const rawVal = Number(run.coefficients[fi]);
-                                    const val = Number.isFinite(rawVal) ? rawVal : 0;
-                                    const pct = Math.max((Math.abs(val) / maxCoeff) * 100, 2);
-                                    const col = FEAT_COLOURS[fi];
-                                    return (
-                                        <div key={feat} style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
-                                                <span style={{
-                                                    width: '72px',
-                                                    flexShrink: 0,
-                                                    textAlign: 'right',
-                                                    fontSize: '11px',
-                                                    color: 'var(--grey-600)',
-                                                    fontFamily: 'var(--font-mono)'
-                                                }}>{feat}</span>
-                                            <div style={{
-                                                flex: 1,
-                                                background: 'var(--grey-100)',
-                                                borderRadius: '3px',
-                                                height: '20px',
-                                                position: 'relative'
-                                            }}>
-                                                <div style={{
-                                                    width: `${pct}%`,
-                                                    height: '100%',
-                                                    background: col,
-                                                    borderRadius: '3px',
-                                                    transition: 'width 0.5s ease',
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    paddingLeft: '6px',
-                                                    boxSizing: 'border-box',
-                                                    minWidth: '30px'
-                                                }}>
-                                                        <span style={{
-                                                            color: '#fff',
-                                                            fontSize: '10px',
-                                                            fontFamily: 'var(--font-mono)',
-                                                            fontWeight: 'bold',
-                                                            whiteSpace: 'nowrap'
-                                                        }}>{val.toFixed(3)}</span>
+                                <div className="reg-history-bars">
+                                    {run.featureCols.map((feat, fi) => {
+                                        const rawVal = Number(run.coefficients[fi]);
+                                        const val = Number.isFinite(rawVal) ? rawVal : 0;
+                                        const pct = Math.max((Math.abs(val) / maxCoeff) * 100, 2);
+                                        const col = FEAT_COLOURS[fi];
+                                        return (
+                                            <div key={feat} className="reg-history-bar-row">
+                                                <span className="reg-history-bar-label">{feat}</span>
+                                                <div className="reg-history-bar-track">
+                                                    <div
+                                                        className="reg-history-bar-fill"
+                                                        style={{width: `${pct}%`, background: col}}
+                                                    >
+                                                        <span className="reg-history-bar-value">{val.toFixed(3)}</span>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>);
-                                })}
+                                        );
+                                    })}
+                                </div>
                             </div>
-                        </div>);
+                        );
                     })}
                 </div>
 
-                {/* Guidance callout */}
-                <div style={{
-                    marginTop: '12px',
-                    padding: '8px 12px',
-                    background: '#f0f9ff',
-                    borderLeft: '3px solid #0ea5e9',
-                    borderRadius: '4px',
-                    fontSize: '11px',
-                    color: '#0369a1'
-                }}>
+                <div className="callout callout--info" style={{marginTop: '12px'}}>
                     <strong>What to observe:</strong>{' '}TV and radio shrink under Ridge regularisation.
                     Newspaper grows — it shares variance with radio (r=0.35) and absorbs what radio releases.
                     RMSE rises monotonically: this 200-row dataset has no overfitting to fight.
                     On a large, high-dimensional dataset you would see RMSE dip before rising.
                 </div>
             </div>
-        </div>);
+        </div>
+    );
 }
 
 export default RegularisationHistory;

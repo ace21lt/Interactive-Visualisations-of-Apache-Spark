@@ -2,14 +2,14 @@ import React from 'react';
 
 // Shows execution time comparison across partition count changes.
 // Builds up as the student reruns Step 2 with different NUM_PARTITIONS values.
-// Up to 8 entries stored — latest per partition count wins.
+// Up to 5 entries stored
 const PartitionTimingChart = ({runHistory}) => {
     if (!runHistory || runHistory.length === 0) return null;
 
     const sorted = [...runHistory].sort((a, b) => a.partitions - b.partitions);
     const maxSecs = Math.max(...sorted.map(r => r.executionSecs ?? r.roundTripSecs), 1);
 
-    // Colour scale: fewer partitions = warmer (more bottleneck risk)
+    // Colour scale: fewer partitions = warmer
     const barColour = (partitions) => {
         if (partitions <= 2) return '#ef4444'; // red — very few, likely bottleneck
         if (partitions <= 6) return '#f97316'; // orange

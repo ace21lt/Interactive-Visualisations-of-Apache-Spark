@@ -6,14 +6,15 @@ import PredictionScatter from './PredictionScatter';
 import PipelineFlowDiagram from './PipelineFlowDiagram';
 import FeatureScatter from './FeatureScatter';
 import SplitPartitionDiagram from './SplitPartitionDiagram';
+import SplitHistoryChart from './SplitHistoryChart';
 import ToPandasDiagram from './ToPandasDiagram';
 import PiEstimationDiagram from './PiEstimationDiagram';
 import RDDConceptsPanel from './RDDConceptsPanel';
 import RegularisationHistory from './RegularisationHistory';
 import PiHistoryChart from './PiHistoryChart';
 import LabVisualisationErrorBoundary from './LabVisualisationErrorBoundary';
+import './Lab2Layout.css';
 
-//Step 1: RDD Concepts + Monte Carlo π animation + optional exercise history chart
 export function Step1Panel({data, piHistory}) {
     return (<>
         <LabVisualisationErrorBoundary
@@ -27,8 +28,6 @@ export function Step1Panel({data, piHistory}) {
             />
         </LabVisualisationErrorBoundary>
 
-        {/* Optional Exercise (Lab Section 5) — history chart builds up as the
-            student reruns with different NUM_PARTITIONS / NUM_SAMPLES combinations. */}
         <PiHistoryChart piHistory={piHistory}/>
 
         <RDDConceptsPanel
@@ -38,10 +37,9 @@ export function Step1Panel({data, piHistory}) {
     </>);
 }
 
-//Step 2: Load CSV — schema, describe, sample
 export function Step2Panel({data}) {
     const df = data.dataframe;
-    if (!df) return <p style={{color: 'var(--grey-500)'}}>Run the notebook to see results.</p>;
+    if (!df) return <p className="empty-state">Run the notebook to see results.</p>;
     return (<>
         <StatsCard>
             <StatCell label="Rows" value={df.total_rows?.toLocaleString()} accent/>
@@ -66,10 +64,9 @@ export function Step2Panel({data}) {
     </>);
 }
 
-//Step 3: Feature Selection / VectorAssembler
 export function Step3Panel({data}) {
     const fe = data.feature_engineering;
-    if (!fe) return <p style={{color: 'var(--grey-500)'}}>Run the notebook to see results.</p>;
+    if (!fe) return <p className="empty-state">Run the notebook to see results.</p>;
     return (<>
         <StatsCard>
             <StatCell label="Feature columns" value={fe.feature_cols?.join(', ')} accent/>
@@ -77,30 +74,10 @@ export function Step3Panel({data}) {
             <StatCell label="Label" value="sales"/>
         </StatsCard>
 
-        {/* VectorAssembler concept callout */}
-        <div style={{
-            border: '1px solid #d9c8ff',
-            borderRadius: '6px',
-            borderLeft: '4px solid #0072B2',
-            padding: '12px 16px',
-            background: '#f0f8ff',
-            fontSize: '12px',
-            color: 'var(--grey-700)'
-        }}>
-            <strong style={{color: '#0072B2', fontFamily: 'var(--font-mono)'}}>
-                VectorAssembler
-            </strong>{' '}
+        <div className="callout--spark">
+            <strong className="callout--spark-title">VectorAssembler</strong>{' '}
             packs feature columns into a single dense Vector column. On HPC:
-            <pre style={{
-                background: '#1e1e1e',
-                color: '#d4d4d4',
-                padding: '8px 10px',
-                borderRadius: '4px',
-                fontSize: '11px',
-                margin: '8px 0 4px',
-                lineHeight: 1.5,
-                overflowX: 'auto'
-            }}>
+            <pre className="code-block">
 {`assembler = VectorAssembler(
     inputCols=["TV", "radio", "newspaper"],
     outputCol="features"
@@ -117,35 +94,24 @@ assembled = assembler.transform(df)
             columns={fe.feature_cols ? [...fe.feature_cols, 'label'] : []}
             rows={fe.sample}/>
 
-        {/* No coefficients passed — shows raw data clouds only.
-            Regression lines and coefficient labels appear at Step 5 once the model has been fitted.
-            key encodes the column set so React fully remounts when columns change, preventing
-            stale D3 event handlers showing values for removed columns on hover. */}
         <FeatureScatter
             key={'step3-' + (fe.feature_cols?.join(',') ?? '')}
             allRows={fe.all_rows}
             featureCols={fe.feature_cols}
         />
 
-        {fe.note && (<div style={{
-            border: '1px solid var(--grey-300)',
-            borderRadius: '6px',
-            padding: '10px 14px',
-            background: '#fff',
-            borderLeft: '4px solid #E69F00',
-            fontSize: '12px',
-            color: 'var(--grey-600)'
-        }}>
-            <strong style={{color: '#b45309'}}>Serverless constraint:</strong>{' '}
-            {fe.note}
-        </div>)}
+        {fe.note && (
+            <div className="callout--orange">
+                <strong className="callout--orange-title">Serverless constraint:</strong>{' '}
+                {fe.note}
+            </div>
+        )}
     </>);
 }
 
-//Step 4: Train/Test Split
-export function Step4Panel({data}) {
+export function Step4Panel({data, splitHistory = []}) {
     const s = data.train_test_split;
-    if (!s) return <p style={{color: 'var(--grey-500)'}}>Run the notebook to see results.</p>;
+    if (!s) return <p className="empty-state">Run the notebook to see results.</p>;
     return (<>
         <StatsCard>
             <StatCell label="Training rows" value={`${s.train_count} (${s.actual_train_pct}%)`} accent/>
@@ -153,46 +119,22 @@ export function Step4Panel({data}) {
             <StatCell label="Seed" value={s.seed}/>
         </StatsCard>
 
-        {/* Split bar */}
-        <div style={{
-            border: '1px solid var(--grey-300)',
-            borderRadius: '6px',
-            overflow: 'hidden',
-            background: '#fff'
-        }}>
-            <div style={{
-                padding: '10px 16px',
-                background: 'var(--grey-50)',
-                borderBottom: '2px solid var(--uos-purple)',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px'
-            }}>
-                <span style={{
-                    fontSize: '13px', fontWeight: 'bold', fontFamily: 'var(--font-mono)', color: 'var(--grey-900)'
-                }}>Data Split</span>
-                <span style={{
-                    fontSize: '10px', fontWeight: 'bold', padding: '2px 6px', borderRadius: '4px',
-                    background: '#fff3e0', color: '#e65100', border: '1px solid #ffe0b2'
-                }}>NARROW — NO SHUFFLE</span>
+        <div className="split-bar">
+            <div className="viz-card-header">
+                <span className="viz-card-title">Data Split</span>
+                <span className="badge badge--blocked">NARROW — NO SHUFFLE</span>
             </div>
             <div style={{padding: '16px'}}>
-                <div style={{display: 'flex', borderRadius: '4px', overflow: 'hidden', height: '36px'}}>
-                    <div style={{
-                        flex: s.actual_train_pct, background: '#0072B2', color: '#fff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '13px', fontWeight: 'bold', fontFamily: 'var(--font-mono)'
-                    }}>Train {s.actual_train_pct}%
+                <div className="split-bar-track">
+                    <div className="split-bar-segment split-bar-segment--train" style={{flex: s.actual_train_pct}}>
+                        Train {s.actual_train_pct}%
                     </div>
-                    <div style={{
-                        flex: s.actual_test_pct, background: '#D55E00', color: '#fff',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '13px', fontWeight: 'bold', fontFamily: 'var(--font-mono)'
-                    }}>Test {s.actual_test_pct}%
+                    <div className="split-bar-segment split-bar-segment--test" style={{flex: s.actual_test_pct}}>
+                        Test {s.actual_test_pct}%
                     </div>
                 </div>
-                <p style={{margin: '10px 0 0', fontSize: '12px', color: 'var(--grey-500)'}}>
-                    Each partition independently hashes rows into buckets — no data moves between
+                <p className="split-bar-note">
+                    Each partition independently hashes rows into buckets so no data moves between
                     partitions. .toPandas() then collects the small splits to the driver for scikit-learn.
                 </p>
             </div>
@@ -211,38 +153,20 @@ export function Step4Panel({data}) {
             />
         </LabVisualisationErrorBoundary>
 
-        {/* Seeding explainer */}
-        <div style={{border: '1px solid var(--grey-300)', borderRadius: '6px', background: '#fff'}}>
-            <div style={{
-                padding: '10px 16px', background: 'var(--grey-50)',
-                borderBottom: '2px solid var(--uos-purple)', display: 'flex', alignItems: 'center', gap: '8px'
-            }}>
-                <span style={{
-                    fontSize: '13px', fontWeight: 'bold', fontFamily: 'var(--font-mono)', color: 'var(--grey-900)'
-                }}>
-                    Why seed = {s.seed}?
-                </span>
-                <span style={{
-                    fontSize: '10px', fontWeight: 'bold', padding: '2px 6px',
-                    borderRadius: '4px', background: '#f0e6ff', color: '#440099'
-                }}>
-                    REPRODUCIBILITY
-                </span>
+        <div className="seed-explainer">
+            <div className="viz-card-header">
+                <span className="viz-card-title">Why seed = {s.seed}?</span>
+                <span className="badge badge--lazy">REPRODUCIBILITY</span>
             </div>
-            <div style={{padding: '12px 16px', fontSize: '12px', color: 'var(--grey-700)', lineHeight: 1.6}}>
+            <div className="seed-explainer-body">
                 <p style={{margin: '0 0 10px'}}>
                     <code>randomSplit([0.6, 0.4], seed={s.seed})</code> is deterministic meaning that
                     given the same DataFrame, same ratio and same seed, Spark always assigns
                     the <strong>same rows</strong> to train and test. The seed initialises the
                     per-partition hash function that decides each row's bucket.
                 </p>
-                <div style={{
-                    background: '#f8faff', border: '1px solid #d0e1f9',
-                    borderRadius: '4px', padding: '8px 12px', marginBottom: '10px'
-                }}>
-                    <div style={{fontWeight: 'bold', color: 'var(--grey-700)', marginBottom: '4px'}}>
-                        What happens if you change the seed?
-                    </div>
+                <div className="seed-explainer-callout">
+                    <div className="seed-explainer-callout-title">What happens if you change the seed?</div>
                     <ul style={{margin: '4px 0 0 16px', padding: 0}}>
                         <li><strong>Same 60/40 split proportion</strong> (approximately).</li>
                         <li><strong>Different rows land in each bucket.</strong> A row assigned to TRAIN
@@ -256,7 +180,7 @@ export function Step4Panel({data}) {
                         </li>
                     </ul>
                 </div>
-                <p style={{margin: 0, fontSize: '11px', color: 'var(--grey-500)'}}>
+                <p className="seed-explainer-try">
                     <strong>Try it:</strong> change <code>split_seed = {s.seed}</code> to{' '}
                     <code>42</code> or <code>2024</code> in the code panel, click Run, then click
                     the train and test bars above to see that the first-five rows have changed.
@@ -265,6 +189,20 @@ export function Step4Panel({data}) {
                 </p>
             </div>
         </div>
+
+        {splitHistory.length > 0 && (
+            <>
+                <SplitHistoryChart
+                    splitHistory={splitHistory}
+                    currentSeed={s.seed}
+                    currentRatio={s.split_ratio}
+                />
+
+                <div className="split-history-note">
+                    <strong>Note:</strong> Same seed keeps the hashes stable. Changing the ratio moves the cutoff, so rows near it can switch sides.
+                </div>
+            </>
+        )}
 
         <GlassTable title="Training Sample" badge="FIRST 5"
                     columns={s.train_sample?.[0] ? Object.keys(s.train_sample[0]) : []}
@@ -276,10 +214,9 @@ export function Step4Panel({data}) {
     </>);
 }
 
-//Step 5: LR Fit + Regularisation history
 export function Step5Panel({data, regHistory}) {
     const lr = data.linear_regression;
-    if (!lr) return <p style={{color: 'var(--grey-500)'}}>Run the notebook to see results.</p>;
+    if (!lr) return <p className="empty-state">Run the notebook to see results.</p>;
     return (<>
         <StatsCard>
             <StatCell label="Train RMSE" value={lr.train_rmse?.toFixed(4)} accent/>
@@ -299,7 +236,6 @@ export function Step5Panel({data, regHistory}) {
             />
         </LabVisualisationErrorBoundary>
 
-        {/* key forces remount when column set changes, preventing stale D3 bars for removed columns */}
         <CoefficientChart
             key={lr.feature_cols?.join(',') ?? ''}
             coefficients={lr.coefficients}
@@ -307,9 +243,6 @@ export function Step5Panel({data, regHistory}) {
             intercept={lr.intercept}
         />
 
-        {/* Same scatter as Step 3 — now with regression lines added.
-            Students see the same data they explored at feature selection,
-            and can now read why each coefficient has the value it does. */}
         <FeatureScatter
             key={'step5-' + (lr.feature_cols?.join(',') ?? '')}
             allRows={data?.feature_engineering?.all_rows}
@@ -318,7 +251,6 @@ export function Step5Panel({data, regHistory}) {
             coefficientsOriginalScale={lr.coefficients_original_scale}
         />
 
-        {/* Regularisation history — appears after the first run with reg_param */}
         {regHistory.length > 0 && (<RegularisationHistory
             regHistory={regHistory}
             currentRegParam={data?.linear_regression?.reg_param}
@@ -341,10 +273,9 @@ export function Step5Panel({data, regHistory}) {
     </>);
 }
 
-//Step 6: Prediction & Evaluation
 export function Step6Panel({data}) {
     const lr = data.linear_regression;
-    if (!lr) return <p style={{color: 'var(--grey-500)'}}>Run the notebook to see results.</p>;
+    if (!lr) return <p className="empty-state">Run the notebook to see results.</p>;
     return (<>
         <StatsCard>
             <StatCell label="Test RMSE" value={lr.test_rmse?.toFixed(4)} accent/>
@@ -366,14 +297,10 @@ export function Step6Panel({data}) {
     </>);
 }
 
-//Step 7: ML Pipeline — split into three pedagogical sub-steps that mirror the lab
-//  7a — New example introduction, training data, pipeline stage definitions
-//  7b — fit() as type transformation: Estimator -> Model
-//  7c — transform() on test data, Exercise 5
 export function Step7Panel({data}) {
     const pl = data.ml_pipeline;
     const [subStep, setSubStep] = useState('7a');
-    if (!pl) return <p style={{color: 'var(--grey-500)'}}>Run the notebook to see results.</p>;
+    if (!pl) return <p className="empty-state">Run the notebook to see results.</p>;
 
     const tabs = [
         {id: '7a', label: '7a — Training data'},
@@ -382,29 +309,17 @@ export function Step7Panel({data}) {
     ];
 
     return (<>
-        {/* Prominent banner + sub-step tabs at the very top of the data panel
-            — makes it unmistakable that step 7 is a separate exercise split into three views */}
-        <div style={{
-            border: '2px solid var(--uos-purple)', borderRadius: '6px',
-            background: '#faf5ff', padding: '12px 14px'
-        }}>
-            <div style={{
-                fontSize: '11px', fontWeight: 'bold', color: 'var(--uos-purple)',
-                textTransform: 'uppercase', letterSpacing: '0.5px',
-                marginBottom: '8px', fontFamily: 'var(--font-mono)'
-            }}>
+        <div className="pipeline-banner">
+            <div className="pipeline-banner-title">
                 ML Pipeline exercise — separate from steps 3–6 (Advertising). Follow 7a → 7b → 7c.
             </div>
-            <div style={{display: 'flex', gap: '6px', flexWrap: 'wrap'}}>
+            <div className="step-tabs">
                 {tabs.map(t => (
-                    <button key={t.id} onClick={() => setSubStep(t.id)} style={{
-                        padding: '8px 14px', borderRadius: '4px', cursor: 'pointer',
-                        border: subStep === t.id ? '2px solid var(--uos-purple)' : '1px solid var(--grey-300)',
-                        background: subStep === t.id ? 'var(--uos-purple)' : '#fff',
-                        color: subStep === t.id ? '#fff' : 'var(--grey-700)',
-                        fontWeight: 'bold',
-                        fontFamily: 'var(--font-mono)', fontSize: '12px'
-                    }}>{t.label}</button>
+                    <button
+                        key={t.id}
+                        onClick={() => setSubStep(t.id)}
+                        className={`step-tab ${subStep === t.id ? 'step-tab--active' : ''}`}
+                    >{t.label}</button>
                 ))}
             </div>
         </div>
@@ -416,14 +331,9 @@ export function Step7Panel({data}) {
             <StatCell label="spark.ml equiv" value="Tokenizer  HashingTF  LR"/>
         </StatsCard>
 
-        {/* 7a — training data and pipeline definition */}
         {subStep === '7a' && (<>
-            <div style={{
-                border: '1px solid #d9c8ff', borderRadius: '6px',
-                borderLeft: '4px solid var(--uos-purple)', padding: '12px 16px',
-                background: '#faf5ff', fontSize: '13px', color: 'var(--grey-700)'
-            }}>
-                <strong style={{color: 'var(--uos-purple)'}}>New example.</strong>{' '}
+            <div className="callout--purple">
+                <strong className="callout--purple-title">New example.</strong>{' '}
                 Classifying short text documents as <em>Spark-related</em> (1) or <em>not</em> (0).
                 This is a separate example from steps 3–6, which used the Advertising dataset
                 to predict sales. Here the model sees short strings of space-separated words
@@ -435,46 +345,33 @@ export function Step7Panel({data}) {
                 columns={['id', 'text', 'label']}
                 rows={pl.training_data}/>
 
-            {/* spark.ml <-> scikit-learn stage mapping */}
-            {pl.stages && pl.stages.length > 0 && (<div style={{
-                border: '1px solid #d9c8ff', borderRadius: '6px',
-                borderLeft: '4px solid #0072B2', padding: '12px 16px', background: '#f0f8ff'
-            }}>
-                <div style={{
-                    fontSize: '10px', fontWeight: 'bold', color: '#0072B2', textTransform: 'uppercase',
-                    letterSpacing: '0.5px', marginBottom: '10px', fontFamily: 'var(--font-mono)'
-                }}>
-                    Pipeline stages — spark.ml equivalent on HPC
+            {pl.stages && pl.stages.length > 0 && (
+                <div className="pipeline-stages">
+                    <div className="pipeline-stages-title">
+                        Pipeline stages — spark.ml equivalent on HPC
+                    </div>
+                    <div className="pipeline-stages-list">
+                        {pl.stages.map((stg, i) => (
+                            <div key={i} className="pipeline-stage">
+                                <span className="pipeline-stage-num">{i + 1}.</span>
+                                <div>
+                                    <strong className="pipeline-stage-name">{stg.name}</strong>
+                                    <span className="pipeline-stage-arrow">→</span>
+                                    <span style={{fontFamily: 'var(--font-mono)', color: 'var(--grey-500)', fontSize: '11px'}}>
+                                        spark.ml:{' '}
+                                    </span>
+                                    <strong className="pipeline-stage-spark">{stg.spark_equivalent}</strong>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                    <p style={{margin: '10px 0 0', fontSize: '11px', color: 'var(--grey-400)'}}>
+                        These stages are defined but not yet fitted. Move to tab 7b to see what fit() does to them.
+                    </p>
                 </div>
-                <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
-                    {pl.stages.map((s, i) => (<div key={i} style={{
-                        display: 'flex', alignItems: 'flex-start', gap: '12px', fontSize: '12px'
-                    }}>
-                        <span style={{
-                            fontFamily: 'var(--font-mono)', fontWeight: 'bold',
-                            color: 'var(--grey-400)', minWidth: 20
-                        }}>{i + 1}.</span>
-                        <div>
-                            <strong style={{fontFamily: 'var(--font-mono)', color: 'var(--grey-800)'}}>
-                                {s.name}
-                            </strong>
-                            <span style={{color: 'var(--grey-400)', margin: '0 8px'}}>→</span>
-                            <span style={{fontFamily: 'var(--font-mono)', color: 'var(--grey-500)', fontSize: '11px'}}>
-                                spark.ml:{' '}
-                            </span>
-                            <strong style={{fontFamily: 'var(--font-mono)', color: '#0072B2'}}>
-                                {s.spark_equivalent}
-                            </strong>
-                        </div>
-                    </div>))}
-                </div>
-                <p style={{margin: '10px 0 0', fontSize: '11px', color: 'var(--grey-400)'}}>
-                    These stages are defined but not yet fitted. Move to tab 7b to see what fit() does to them.
-                </p>
-            </div>)}
+            )}
         </>)}
 
-        {/* 7b — fit() as type transformation, isolated from the trace */}
         {subStep === '7b' && (
             <LabVisualisationErrorBoundary
                 title="Pipeline Flow Diagram unavailable"
@@ -484,14 +381,9 @@ export function Step7Panel({data}) {
             </LabVisualisationErrorBoundary>
         )}
 
-        {/* 7c — Exercise 5: transform() predictions on test data */}
         {subStep === '7c' && (<>
-            <div style={{
-                border: '1px solid #ffe0b2', borderRadius: '6px',
-                borderLeft: '4px solid #E69F00', padding: '10px 14px',
-                background: '#fff8e1', fontSize: '12px', color: 'var(--grey-700)'
-            }}>
-                <strong style={{color: '#b45309'}}>Exercise 5:</strong>{' '}
+            <div className="callout--orange">
+                <strong className="callout--orange-title">Exercise 5:</strong>{' '}
                 the code panel defaults to the three exercise documents.
                 Predict each label from the training data, then click Run and check.
             </div>
@@ -516,13 +408,8 @@ export function Step7Panel({data}) {
                     prob_0: r.probability?.[0], prob_1: r.probability?.[1]
                 }))}/>
 
-            <div style={{
-                border: '1px solid var(--grey-300)', borderRadius: '6px',
-                borderLeft: '4px solid #009E73', padding: '10px 14px',
-                background: '#f0fdf4', fontSize: '12px', color: 'var(--grey-700)',
-                lineHeight: 1.6
-            }}>
-                <strong style={{color: '#15803d'}}>Reading the table:</strong>{' '}
+            <div className="callout--green">
+                <strong className="callout--green-title">Reading the table:</strong>{' '}
                 <code>prob_0</code> is the model's confidence the document is <em>not</em> Spark-related,{' '}
                 <code>prob_1</code> is its confidence the document <em>is</em> Spark-related. They always sum to 1.
                 The <code>prediction</code> column is whichever is higher — so{' '}

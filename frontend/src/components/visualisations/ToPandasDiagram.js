@@ -1,9 +1,8 @@
 import React, {useRef, useEffect} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
+import './Lab2Layout.css';
 
-// Visualises the .toPandas() boundary — the moment data leaves Spark's
-// distributed partitions and converges to a single pandas DataFrame on the driver.
 const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
     const wrapRef = useRef();
     const svgRef = useRef();
@@ -34,7 +33,6 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
         const ml = 20, mr = 20, mt = 20, mb = 20;
         const IW = W - ml - mr;
 
-        // Arrow marker
         const defs = svg.append('defs');
         defs.append('marker')
             .attr('id', 'topd-arrow').attr('viewBox', '0 0 8 8')
@@ -44,7 +42,6 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
             .append('path').attr('d', 'M0,0 L8,4 L0,8 z').attr('fill', '#0072B2');
 
         const g = svg.append('g').attr('transform', `translate(${ml},${mt})`);
-
 
         const realParts = partitionDist.length;
         const nParts = realParts;
@@ -57,7 +54,6 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
 
         for (let i = 0; i < nParts; i++) {
             const px = partStartX + i * (partW + partGap);
-            // Accept either row_count (new spark_internals schema) or count (legacy)
             const part = partitionDist[i];
             const count = part.row_count ?? part.count;
 
@@ -84,14 +80,12 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
                 .text(`${count} rows`);
         }
 
-        // "Spark DataFrame" label
         g.append('text')
             .attr('x', IW / 2).attr('y', partY + partH + 14)
             .attr('text-anchor', 'middle').attr('font-size', 9)
             .attr('fill', 'var(--grey-400)').attr('font-family', 'var(--font-mono)')
             .text('SPARK DATAFRAME (distributed)');
 
-        // Top: Driver / pandas node
         const driverW = 220;
         const driverH = 44;
         const driverX = (IW - driverW) / 2;
@@ -115,11 +109,9 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
             .attr('fill', '#ffffffcc').attr('font-family', 'var(--font-mono)')
             .text(`pandas DataFrame · ${(trainCount ?? 0) + (testCount ?? 0)} rows`);
 
-        // Convergence arrows: partitions -> driver
         const arrowTargetY = driverY + driverH + 4;
         const arrowSourceY = partY - 4;
 
-        // Only animate arrows from real (data-holding) partitions, not idle ones.
         for (let i = 0; i < realParts; i++) {
             const srcX = partStartX + i * (partW + partGap) + partW / 2;
             const destX = driverX + driverW / 2;
@@ -134,7 +126,6 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
                 .attr('opacity', 0.7);
         }
 
-        // ".toPandas()" label on the boundary
         const midY = (arrowSourceY + arrowTargetY) / 2;
         g.append('line')
             .attr('x1', 0).attr('y1', midY)
@@ -165,29 +156,15 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
     }
 
     return (
-        <div style={{border: '1px solid var(--grey-300)', borderRadius: '6px', background: '#fff'}}>
-            <div style={{
-                padding: '10px 16px', background: 'var(--grey-50)',
-                borderBottom: '2px solid var(--uos-purple)'
-            }}>
-                <span style={{
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    color: 'var(--grey-900)',
-                    fontFamily: 'var(--font-mono)'
-                }}>
-                    Distributed {'->'} Single-Node Boundary
-                </span>
-                <span style={{
-                    fontSize: '10px', fontWeight: 'bold', marginLeft: '8px',
-                    padding: '2px 6px', borderRadius: '4px',
-                    background: '#fce4ec', color: '#880e4f', border: '1px solid #f8bbd0'
-                }}>PARALLELISM ENDS HERE</span>
+        <div className="viz-card">
+            <div className="viz-card-header">
+                <span className="viz-card-title">Distributed → Single-Node Boundary</span>
+                <span className="badge badge--driver">PARALLELISM ENDS HERE</span>
             </div>
             <div ref={wrapRef} style={{padding: '10px 0'}}>
-                <svg ref={svgRef} style={{display: 'block', width: '100%', height: '220px'}}/>
+                <svg ref={svgRef} style={{display: 'block', width: '100%', height: '220px'}} />
             </div>
-            <div style={{padding: '4px 16px 10px', fontSize: '11px', color: 'var(--grey-500)'}}>
+            <div className="viz-card-footer">
                 All partition data converges to the driver node via .toPandas(). With 200 rows this is trivial — for
                 large datasets this would cause an OutOfMemoryError. scikit-learn then runs ML on this single machine.
             </div>

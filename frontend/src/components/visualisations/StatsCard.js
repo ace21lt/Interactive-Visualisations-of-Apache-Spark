@@ -1,33 +1,23 @@
-//Stat cell — single labelled metric used inside StatsCard
+import './Lab2Layout.css';
+
 export function StatCell({label, value, accent = false}) {
-    return (<div style={{display: 'flex', flexDirection: 'column', gap: '2px'}}>
-            <span style={{
-                fontSize: '10px', color: 'var(--grey-500)', textTransform: 'uppercase', letterSpacing: '0.5px'
-            }}>
-                {label}
-            </span>
-        <span style={{
-            fontSize: '15px',
-            fontWeight: 'bold',
-            color: accent ? 'var(--uos-purple)' : 'var(--grey-900)',
-            fontFamily: 'var(--font-mono)'
-        }}>
+    return (
+        <div className="stat-cell">
+            <span className="stat-cell-label">{label}</span>
+            <span
+                className="stat-cell-value"
+                style={accent ? {color: 'var(--uos-purple)'} : undefined}
+            >
                 {value}
             </span>
-    </div>);
+        </div>
+    );
 }
 
-//StatsCard — horizontal strip of StatCell metrics
 export function StatsCard({children}) {
-    return (<div style={{
-        display: 'flex',
-        gap: '24px',
-        flexWrap: 'wrap',
-        border: '1px solid var(--grey-200)',
-        padding: '14px 16px',
-        borderRadius: '6px',
-        background: '#fff'
-    }}>
-        {children}
-    </div>);
+    return (
+        <div className="stat-group">
+            {children}
+        </div>
+    );
 }

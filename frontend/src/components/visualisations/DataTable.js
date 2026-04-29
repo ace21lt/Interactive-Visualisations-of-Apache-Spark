@@ -230,15 +230,13 @@ const Step3Table = ({data, highlightedPartition}) => {
 
 // Step 4: count() action
 
-// Step 4: action — title, rows and explanation all update based on which action the student used
+
 
 const Step4Table = ({data, highlightedPartition}) => {
     const total = data?.filter_results?.total ?? 0;
     const isFiltered = highlightedPartition !== null && highlightedPartition !== undefined;
 
-    // Real total match count from filter_partition_distribution — always accurate
-    // regardless of which action the student used. filter_results.hosts_japan is
-    // unreliable: .first() normalises to 1, .take(n) normalises to n.
+    // Real total match count from filter_partition_distribution
     const filterDist = data?.spark_internals?.filter_partition_distribution ?? [];
     const realMatchCount = filterDist.length > 0
         ? filterDist.reduce((sum, p) => sum + (p.row_count ?? 0), 0)
@@ -298,7 +296,7 @@ const Step4Table = ({data, highlightedPartition}) => {
         explanation = `take(${returnedCount}) is a retrieval action — like first(), Spark short-circuits once it has collected enough rows. It scans partitions in order and stops early, so ${partCount != null ? `not all ${partCount} partitions may execute` : 'not all partitions may execute'}.`;
         shortCircuitBanner = `take(${returnedCount}) collected ${returnedCount} row(s) and stopped — ${realMatchCount.toLocaleString()} rows actually match "${pred}" but Spark did not need to count them all.`;
     } else {
-        // Unknown action — safe fallback
+        // safe fallback
         rows = [
             {metric: 'Total rows scanned', count: total.toLocaleString()},
             {metric: `Rows matching "${pred}"`, count: realMatchCount.toLocaleString()},
@@ -374,22 +372,20 @@ const Step5Table = ({data, highlightedPartition}) => {
     );
 };
 
-// Step 6: single editable groupBy — title, column and explanation update dynamically
+// Step 6: single editable groupBy
 const Step6Table = ({data, highlightedPartition}) => {
     const groupbyKey = data?.spark_config?.groupby_key ?? 'status';
 
-    // Real distinct key count from partition_story — not capped at serialisation time
+    // distinct key count from partition_story
     const realPartCount = data?.spark_internals?.partition_story?.post_shuffle_partitions ?? null;
 
-    // status_distribution holds whatever the student grouped by (may be capped to 200).
-    // Each object now uses the generic field name "key" (notebook patch) rather than
-    // the hardcoded "status" field that was wrong when groupby_key = "host" or "day".
+    // status_distribution holds whatever the student grouped by
     const groupRows = (data?.status_distribution ?? []).map(r => ({
         [groupbyKey]: r.key ?? '—',
         total_requests: r.count.toLocaleString()
     }));
 
-    // Shown count vs real count — surface a "top N of X" note when capped
+    // Shown count vs real count
     const displayCount = groupRows.length;
     const isCapped = realPartCount !== null && displayCount < realPartCount;
     const partLabel = realPartCount?.toLocaleString() ?? displayCount.toLocaleString();
