@@ -29,11 +29,13 @@ object DatabricksError:
   case class ApiResponseError(statusCode: Int, message: String) extends DatabricksError:
     override def toUserMessage: String =
       statusCode match {
-        case 401 | 403 =>
+        case 401 =>
           "Authentication failed. Please verify your DATABRICKS_TOKEN is valid and has not expired."
-        case 404       =>
+        case 403 =>
+          "Access denied. Please ensure your Databricks token has the necessary API Scope of jobs, workspace, files, unity-catalog and clusters"
+        case 404 =>
           "Resource not found. Please verify NOTEBOOK_PATH exists in your Databricks workspace."
-        case _         =>
+        case _   =>
           s"Databricks API error (HTTP $statusCode). Please check your configuration and try again."
       }
 
@@ -94,6 +96,12 @@ object DatabricksError:
   // Not authenticated / missing or expired session
   case class NotAuthenticated(message: String = "Not authenticated") extends DatabricksError:
     override def toUserMessage: String = "Not authenticated. Please log in again."
+    override def getMessage: String    = message
+
+  // Incorrect token permissions or insufficient API scopes
+  case class InsufficientPermissions(message: String) extends DatabricksError:
+    override def toUserMessage: String =
+      "Insufficient permissions. Please ensure your Databricks token has the necessary API Scope of jobs, workspace, files, unity-catalog and clusters."
     override def getMessage: String    = message
 
   // Helper to convert generic Throwable to DatabricksError

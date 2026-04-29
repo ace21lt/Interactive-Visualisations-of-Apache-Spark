@@ -27,6 +27,7 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
     override def runLab(
         workspaceUrl: String,
         token: String,
+        lab: String = "lab1",
         step: Option[Int] = None,
         editedCode: Option[String] = None
     ): IO[DatabricksError, models.RunOutput] =
@@ -36,6 +37,7 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
     override def runLab(
         workspaceUrl: String,
         token: String,
+        lab: String = "lab1",
         step: Option[Int] = None,
         editedCode: Option[String] = None
     ): IO[DatabricksError, models.RunOutput] =
@@ -179,9 +181,6 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
         )
         val request = Request.post(URL(Path("/trigger")), Body.fromString("{not-json}"))
         for response <- handler.trigger(request)
-        yield assert(response.status)(equalTo(Status.Ok)) // Falls back to default request
+        yield assert(response.status)(equalTo(Status.Ok))
       }
-      // Note: CORS header tests are intentionally absent. CORS is handled entirely by
-      // Middleware.cors in Main and is not the responsibility of individual handlers.
-      // CORS behaviour is covered by integration tests (RoutesSpec).
     )

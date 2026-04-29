@@ -20,7 +20,8 @@ object NotebookTemplate:
   private val TemplatePath = "/Volumes/main/default/sparkml_tmp"
 
   private val templates: Map[String, String] = Map(
-    "lab1" -> "lab1_notebook_template.py"
+    "lab1" -> "lab1_notebook_template.py",
+    "lab2" -> "lab2_notebook_template.py"
   )
 
   private val DefaultLab = "lab1"
@@ -37,7 +38,7 @@ object NotebookTemplate:
       case Some(name) =>
         loadResource(name)
           .map(injectDatasetPath(_, datasetVolumePath))
-          .map(injectSkipRepartition(_, skipRepartition))
+          .map(t => if lab == "lab1" then injectSkipRepartition(t, skipRepartition) else t)
 
   // Load the template, substitute the dataset path, then substitute a step block.
   // skipRepartition is always false here — if the student is editing step 2,
@@ -48,13 +49,13 @@ object NotebookTemplate:
       lab: String = DefaultLab,
       datasetVolumePath: String = TemplatePath
   ): IO[DatabricksError, String] =
-    val skipRepartition = step != 2 // only rewrite Delta when student edits step 2
+    val skipRepartition = lab == "lab1" && step != 2 // only rewrite Delta when student edits lab1 step 2
     for
       template <- loadDefault(lab, datasetVolumePath, skipRepartition)
       result   <- ZIO
                     .fromEither(substituteStep(template, step, editedCode))
                     .mapError(DatabricksError.ConfigError(_))
-    yield injectFilterPredicate(result, step, editedCode)
+    yield if lab == "lab1" then injectFilterPredicate(result, step, editedCode) else result
 
   // Replace the hardcoded template path with the student's configured volume path.
   // All three path variables in CELL 1 are updated in one pass.

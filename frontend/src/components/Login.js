@@ -21,7 +21,7 @@ const Login = ({sessionError = null}) => {
         return v.length >= 10 && v.startsWith('dapi');
     };
 
-    const apiBase = process.env.REACT_APP_API_URL || '';
+    const apiBase = import.meta.env.VITE_API_URL || '';
 
     const handleConnect = async () => {
         const cleanUrl = workspaceUrl.trim().replace(/\/+$/, '');
@@ -160,7 +160,10 @@ const Login = ({sessionError = null}) => {
                                 <li>In Databricks: click your profile icon</li>
                                 <li>Go to <strong>Settings</strong> ' <strong>Developer</strong></li>
                                 <li>Click <strong>Manage</strong> next to <strong>Access tokens</strong></li>
-                                <li>Generate a token and paste it here</li>
+                                <li>Name the token and set an expiration (e.g. <strong>90 days</strong>)</li>
+                                <li>Set API scope(s) to <strong>jobs, workspace, files, unity-catalog and clusters</strong></li>
+                                <li>Generate a token and <strong>make a note of it</strong> (As you cannot view a previously created PAT)</li>
+                                <li>Paste it here</li>
                             </ol>
                         </details>
                     </div>

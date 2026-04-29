@@ -1,13 +1,16 @@
 import React, {useState, useEffect} from 'react';
+import { useJoyride, STATUS } from 'react-joyride';
 import PartitionTimingChart from './PartitionTimingChart';
 import './Lab1Layout.css';
+import './Lab2Layout.css';
 import CodePanel from './CodePanel';
 import DataTable from './DataTable';
 import DynamicVolumeBar from './DynamicVolumeBar';
 import PartitionDiagram from './Partitiondiagram';
 import StatsRow from './StatsRow';
+import { useTour } from '../../context/TourContext';
+import { lab1Steps, joyrideConfig } from '../../config/tourSteps';
 
-// ── Okabe-Ito colour helper (mirrors Partitiondiagram palette) ────────────────
 function stepColour(step, stepIndex) {
     if (stepIndex === 1) return '#D55E00';
     if (step?.shuffle) return '#E69F00';
@@ -16,7 +19,6 @@ function stepColour(step, stepIndex) {
     return '#56B4E9';
 }
 
-// ── Key concept text ──────────────────────────────────────────────────────────
 function deriveKeyConcept(step, data) {
     if (!step) return '';
     const partCount = data?.spark_internals?.partition_distribution?.length
@@ -39,7 +41,7 @@ function deriveKeyConcept(step, data) {
 
     if (step.partitions_after != null) {
         return `WIDE transformation — repartition() triggers a full shuffle. ` +
-            `Data moves across the network from ${step.partitions ?? 1} → ${step.partitions_after} partition(s), ` +
+            `Data moves across the network from ${step.partitions ?? 1} -> ${step.partitions_after} partition(s), ` +
             `restoring the parallelism lost because gzip files are non-splittable. ` +
             `On non-Serverless Spark you would call .cache() here to keep the repartitioned data in memory. ` +
             `On Databricks Serverless, cache() is unavailable so the Delta write-and-reload achieves the same effect: ` +
@@ -55,10 +57,6 @@ function deriveKeyConcept(step, data) {
     return step.description ?? '';
 }
 
-// ── Parallel Tasks Panel ──────────────────────────────────────────────────────
-// Shows N concurrent task boxes — makes parallelism concrete rather than
-// just showing a partition count number.
-// Shown on Step 2 (repartition write) and Step 4 (count() action).
 const ParallelTasksPanel = ({numPartitions, stepType, colour}) => {
     const n = Math.min(numPartitions ?? 8, 16);
     const label = stepType === 'repartition'
@@ -68,47 +66,24 @@ const ParallelTasksPanel = ({numPartitions, stepType, colour}) => {
         ? 'Each task writes its slice of rows to Delta Lake independently. No task waits for another.'
         : 'Each task scans its partition and counts local matches. Results are summed on the Driver — the only communication in the whole operation.';
     return (
-        <div style={{
-            border: `1.5px solid ${colour}`,
-            borderRadius: '6px',
-            padding: '14px 16px',
-            background: colour + '08'
-        }}>
-            <div style={{
-                fontSize: '11px', fontWeight: 'bold', color: colour,
-                textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '10px'
-            }}>
+        <div className="parallel-tasks" style={{color: colour, background: colour + '08'}}>
+            <div className="parallel-tasks-header">
                 Parallel Execution — {n} {label}
                 {numPartitions > 16 && <span style={{fontWeight: 'normal'}}> (showing 16 of {numPartitions})</span>}
             </div>
-            <div style={{display: 'flex', flexWrap: 'wrap', gap: '5px', marginBottom: '10px'}}>
+            <div className="parallel-tasks-grid">
                 {Array.from({length: n}, (_, i) => (
-                    <div key={i} style={{
-                        background: colour + '18',
-                        border: `1px solid ${colour}`,
-                        borderRadius: '4px',
-                        padding: '4px 8px',
-                        fontSize: '11px',
-                        fontFamily: 'var(--font-mono)',
-                        color: colour,
-                        fontWeight: 'bold'
-                    }}>
+                    <div key={i} className="parallel-tasks-task" style={{background: colour + '18'}}>
                         Task {i}
                     </div>
                 ))}
             </div>
-            <p style={{margin: 0, fontSize: '11px', color: 'var(--grey-600)', lineHeight: 1.6}}>
-                {detail}
-            </p>
+            <p className="parallel-tasks-desc">{detail}</p>
         </div>
     );
 };
 
-// ── Exercise Answers Panel ────────────────────────────────────────────────────
-// Collapsible panel on Step 4 — lets students verify their Task 5 answers
-// against the actual numbers Spark computed on their cluster.
 const ExerciseAnswersPanel = ({data}) => {
-    const [open, setOpen] = useState(false);
     const fr = data?.filter_results ?? {};
     const rows = [
         {q: 'Q1 — Total requests in the log', a: (fr.total ?? 0).toLocaleString()},
@@ -119,64 +94,61 @@ const ExerciseAnswersPanel = ({data}) => {
         {q: 'Q6 — 404 errors from timken on 15 Aug', a: (fr.errors_404_15th_timken ?? 0).toLocaleString()},
     ];
     return (
-        <div style={{border: '1px solid #ddd6fe', borderRadius: '6px', background: '#faf5ff', overflow: 'hidden'}}>
-            <button
-                onClick={() => setOpen(o => !o)}
-                style={{
-                    width: '100%', padding: '10px 16px',
-                    background: 'none', border: 'none', cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    fontSize: '12px', fontWeight: 'bold', color: '#4c1d95'
-                }}
-            >
-                <span>✓ Lab 1 Task 5 Exercise Answers — verify your solutions</span>
-                <span style={{fontSize: '11px', fontWeight: 'normal', color: '#7c3aed'}}>
-                    {open ? '▲ hide' : '▼ show'}
-                </span>
-            </button>
-            {open && (
-                <div style={{padding: '0 16px 12px'}}>
-                    <p style={{margin: '0 0 8px', fontSize: '11px', color: '#6d28d9', lineHeight: 1.5}}>
-                        Computed by Spark on your cluster from the full <code>NASA_access_log_Aug95.gz</code>.
-                        Compare with your own Task 5 answers.
-                    </p>
-                    <table style={{
-                        width: '100%',
-                        borderCollapse: 'collapse',
-                        fontSize: '12px',
-                        fontFamily: 'var(--font-mono)'
-                    }}>
-                        <tbody>
-                        {rows.map(({q, a}) => (
-                            <tr key={q} style={{borderBottom: '1px solid #ede9fe'}}>
-                                <td style={{padding: '6px 8px', color: '#5b21b6'}}>{q}</td>
-                                <td style={{
-                                    padding: '6px 8px',
-                                    fontWeight: 'bold',
-                                    color: '#1e1b4b',
-                                    textAlign: 'right'
-                                }}>{a}</td>
-                            </tr>
-                        ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
+        <div className="exercise-answers">
+            <div className="exercise-answers-title">✓ Lab 1 Task 5 Exercise Answers</div>
+            <p className="exercise-answers-subtitle">
+                Computed by Spark on your cluster from the full <code>NASA_access_log_Aug95.gz</code>.
+            </p>
+            <table className="exercise-answers-table">
+                <tbody>
+                    {rows.map(({q, a}) => (
+                        <tr key={q} className="exercise-answers-row">
+                            <td className="exercise-answers-question">{q}</td>
+                            <td className="exercise-answers-answer">{a}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 };
 
-// ── Lab1Layout ────────────────────────────────────────────────────────────────
 const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) => {
     const [currentStep, setCurrentStep] = useState(1);
     const [highlightedPartition, setHighlightedPartition] = useState(null);
-    // Navigate to the re-run step immediately after execution
+    const { runTour, currentLabTour, startTour, endTour } = useTour();
+
+    const { Tour } = useJoyride({
+        steps: lab1Steps,
+        run: runTour && currentLabTour === 'lab1',
+        continuous: true,
+        showProgress: true,
+        showSkipButton: true,
+        scrollOffset: 80,
+        locale: joyrideConfig.locale,
+        styles: joyrideConfig.styles,
+        onEvent: (eventData) => {
+            if ([STATUS.FINISHED, STATUS.SKIPPED].includes(eventData.status)) {
+                endTour();
+            }
+        },
+    });
+
     useEffect(() => {
         if (lastExecutedStep != null) {
             setCurrentStep(lastExecutedStep);
             setHighlightedPartition(null);
         }
     }, [data, lastExecutedStep]);
+
+    // Auto-start tour on first visit
+    useEffect(() => {
+        const seen = localStorage.getItem('lab1_tour_seen') === 'true';
+        if (!seen) {
+            const timer = setTimeout(() => startTour('lab1'), 800);
+            return () => clearTimeout(timer);
+        }
+    }, []);
 
     const pipeline = data?.spark_internals?.transformation_pipeline ?? [];
 
@@ -192,22 +164,20 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
         setHighlightedPartition(prev => prev === pid ? null : pid);
     };
 
-    // Save trace — download the JSON that was just returned from Databricks.
-    // Students can reload this later without re-running Spark (see Load Trace).
     const handleSaveTrace = () => {
-        const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+        const traceWithMeta = {...data, _lab: 'lab1'};
+        const blob = new Blob([JSON.stringify(traceWithMeta, null, 2)], {type: 'application/json'});
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `spark-trace-${new Date().toISOString().slice(0, 10)}.json`;
+        a.download = `spark-trace-lab1-${new Date().toISOString().slice(0, 10)}.json`;
         a.click();
         URL.revokeObjectURL(url);
     };
 
     return (
         <div className="layout-container">
-
-            {/* ── Stepper — keep exact original structure so step-btn flex:1 works ── */}
+            {Tour}
             <div className="header">
                 {pipeline.map(stepData => (
                     <button
@@ -223,7 +193,6 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
                 ))}
             </div>
 
-            {/* ── Code panel ── */}
             <div className="code-panel">
                 <CodePanel
                     currentStep={currentStep}
@@ -233,76 +202,41 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
                 />
             </div>
 
-            {/* ── Data panel ── */}
             <div className="data-panel">
-
-                {/* Trace row — Save only; Load Trace is in the top controls bar */}
-                <div style={{
-                    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                    padding: '6px 0'
-                }}>
-                    <div className="panel-title" style={{margin: 0}}>Data Panel</div>
+                <div className="data-panel-header">
+                    <div className="panel-title">Data Panel</div>
                     <button
                         onClick={handleSaveTrace}
-                        title="Download this run's execution trace as a JSON file — reload it any time using the Load Trace button above without re-running Spark."
+                        title="Download this run's execution trace as a JSON file"
                         className="trace-btn"
                     >
                         Save Trace
                     </button>
                 </div>
 
-                {/* Step header */}
-                <div style={{
-                    border: '1px solid var(--grey-200)',
-                    padding: '14px 16px',
-                    borderRadius: '6px',
-                    background: '#fff'
-                }}>
-                    <div style={{display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px'}}>
-                        <h2 style={{
-                            margin: 0,
-                            fontSize: '15px',
-                            fontFamily: 'var(--font-mono)',
-                            color: 'var(--grey-900)'
-                        }}>
-                            {activeStepData.operation}
-                        </h2>
-                        <span style={{
-                            fontSize: '11px', fontWeight: 'bold',
-                            background: activeStepData.lazy ? '#f0e6ff' : '#e8f5e9',
-                            color: activeStepData.lazy ? '#440099' : '#1b5e20',
-                            padding: '3px 8px', borderRadius: '4px'
-                        }}>
+                <div className="step-header">
+                    <div className="step-header-top">
+                        <h2 className="step-header-title">{activeStepData.operation}</h2>
+                        <span className={`badge ${activeStepData.lazy ? 'badge--lazy' : 'badge--action'}`}>
                             {activeStepData.lazy ? 'LAZY' : 'ACTION'}
                         </span>
                         {activeStepData.shuffle && (
-                            <span style={{
-                                fontSize: '11px', fontWeight: 'bold',
-                                background: '#fce4ec', color: '#880e4f',
-                                padding: '3px 8px', borderRadius: '4px'
-                            }}>
-                                SHUFFLE
-                            </span>
+                            <span className="badge badge--shuffle">SHUFFLE</span>
                         )}
                     </div>
-                    <p style={{margin: 0, fontSize: '13px', color: 'var(--grey-600)'}}>
-                        {activeStepData.description}
-                    </p>
+                    <p className="step-header-desc">{activeStepData.description}</p>
                 </div>
 
-                {/* Data table with real cross-filtering */}
                 <DataTable
                     currentStep={currentStep}
                     data={data}
                     highlightedPartition={highlightedPartition}
                 />
 
-                {/* Exercise answers — Step 4 only */}
-                {currentStep === 4 && (
-                    <ExerciseAnswersPanel data={data}/>
+                {currentStep === 4 && data?.filter_results && (
+                    <ExerciseAnswersPanel data={data} />
                 )}
 
-                {/* Parallel tasks visual — Steps 2 and 4 */}
                 {(currentStep === 2 || currentStep === 4) && (
                     <ParallelTasksPanel
                         numPartitions={numParts}
@@ -311,27 +245,17 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
                     />
                 )}
 
-                {/* Stats row — partition counts + shuffle info */}
-                <StatsRow currentStep={currentStep} data={data}/>
+                <StatsRow currentStep={currentStep} data={data} />
 
-                {/* Data volume bar — original div wrapper preserved */}
-                <div style={{
-                    border: '1px solid var(--grey-200)',
-                    padding: '14px 16px',
-                    background: '#fff',
-                    borderRadius: '6px'
-                }}>
-                    <h3 style={{
-                        marginTop: 0, marginBottom: '10px', fontSize: '13px',
-                        fontWeight: 'bold', color: 'var(--grey-700)',
-                        textTransform: 'uppercase', letterSpacing: '0.5px'
-                    }}>
-                        Data Volume (Rows Processed)
-                    </h3>
-                    <DynamicVolumeBar pipelineData={pipeline} currentStep={currentStep}/>
+                <div className="viz-card">
+                    <div className="viz-card-header">
+                        <span className="viz-card-title">Data Volume (Rows Processed)</span>
+                    </div>
+                    <div className="viz-card-body">
+                        <DynamicVolumeBar pipelineData={pipeline} currentStep={currentStep} />
+                    </div>
                 </div>
 
-                {/* Partition diagram — click to cross-filter */}
                 <PartitionDiagram
                     currentStep={currentStep}
                     data={data}
@@ -339,22 +263,19 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
                     onPartitionClick={handlePartitionClick}
                 />
 
-                {/* Partition timing chart — Step 2 only, when run history exists */}
                 {currentStep === 2 && runHistory.length > 0 && (
                     <div style={{marginTop: '8px'}}>
-                        <PartitionTimingChart runHistory={runHistory}/>
+                        <PartitionTimingChart runHistory={runHistory} />
                     </div>
                 )}
             </div>
 
-            {/* ── Key concept footer ── */}
             <div className="bottom-panel">
                 <div className="concept-text">
                     <span className="concept-label">KEY CONCEPT —</span>
                     {keyConcept}
                 </div>
             </div>
-
         </div>
     );
 };

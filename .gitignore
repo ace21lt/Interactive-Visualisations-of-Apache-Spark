@@ -17,6 +17,8 @@ node_modules/
 frontend/node_modules/
 build/
 frontend/build/
+dist/
+frontend/dist/
 .pnp
 .pnp.js
 coverage/
@@ -38,3 +40,6 @@ yarn.lock
 
 # OS-specific
 .DS_Store
+
+
+
