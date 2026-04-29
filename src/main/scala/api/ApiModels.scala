@@ -28,8 +28,12 @@ object PatLoginRequest:
   implicit val decoder: JsonDecoder[PatLoginRequest] = DeriveJsonDecoder.gen[PatLoginRequest]
 
 // Request body for POST /trigger
+// lab: which lab notebook to run (default "lab1")
+// step: which editable step block to substitute (None = run default template)
+// editedCode: the student's edited code for that step
 
 final case class TriggerRequest(
+    lab: Option[String] = None,
     step: Option[Int] = None,
     editedCode: Option[String] = None
 )

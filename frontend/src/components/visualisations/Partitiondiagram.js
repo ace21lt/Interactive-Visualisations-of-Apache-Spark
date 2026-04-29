@@ -1,8 +1,10 @@
 import React, {useRef, useEffect, useState} from 'react';
 import * as d3 from 'd3';
+import useContainerWidth from '../../hooks/useContainerWidth';
+import PartitionDetailPanel from './PartitionDetailPanel';
+import './Partitiondiagram.css';
 
 // Step routing
-// Uses step index and JSON step flags only
 function getPartitionsForStep(stepIndex, pipeline, internals) {
     if (!internals || !pipeline) return [];
     const step = pipeline[stepIndex - 1];
@@ -10,7 +12,7 @@ function getPartitionsForStep(stepIndex, pipeline, internals) {
 
     // Step 1: gzip bottleneck — single partition
     if (stepIndex === 1)
-        return [{partition_id: 0, row_count: step.output_rows ?? 1569898}];
+        return [{partition_id: 0, row_count: step.output_rows ?? 0}];
 
     // Shuffle steps (groupBy): use post-shuffle distribution
     // Distinguish day vs status by checking which operation comes later in the pipeline
@@ -25,22 +27,16 @@ function getPartitionsForStep(stepIndex, pipeline, internals) {
         return internals.partition_distribution ?? [];
     }
 
-    // Action step (count()), not a shuffle — filter has fired across partitions
+    // Action step (count()), not a shuffle
     if (step.type === 'action' && !step.shuffle)
         return internals.filter_partition_distribution?.length
             ? internals.filter_partition_distribution
             : internals.partition_distribution ?? [];
 
-    // All lazy transformations (filter, withColumn, repartition):
-    // partition state is the balanced post-repartition distribution
     return internals.partition_distribution ?? [];
 }
 
-// Colour logic
-// Reads from JSON step flags only. Uses partitions_after to detect repartition
-// (which the JSON marks as lazy:true but visually belongs to the purple/wide category).
 // Okabe-Ito colour-blind-safe palette
-// Avoids red/green pairing — safe for deuteranopia and protanopia
 function resolveStepColor(step, stepIndex) {
     if (stepIndex === 1) return '#D55E00'; // vermillion  — gzip bottleneck
     if (step.shuffle) return '#E69F00';    // orange      — shuffle / wide
@@ -53,16 +49,8 @@ function resolveStepColor(step, stepIndex) {
 const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionClick}) => {
     const svgRef = useRef();
     const wrapRef = useRef();
-    const [dims, setDims] = useState({width: 600});
+    const width = useContainerWidth(wrapRef, 600);
     const [selectedPartition, setSelectedPartition] = useState(null);
-
-    // Responsive width via ResizeObserver
-    useEffect(() => {
-        if (!wrapRef.current) return;
-        const ro = new ResizeObserver(e => setDims({width: e[0].contentRect.width}));
-        ro.observe(wrapRef.current);
-        return () => ro.disconnect();
-    }, []);
 
     // D3 draw
     useEffect(() => {
@@ -77,7 +65,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
         if (!partitions.length) return;
 
         const trackedRows = data.tracked_rows ?? [];
-        const GLOBAL_MAX = data.filter_results?.total ?? 1569898;
+        const GLOBAL_MAX = data.filter_results?.total ?? 0;
         const color = resolveStepColor(activeStep, currentStep);
         const isLazy = !!activeStep.lazy;
         const isShuffle = !!activeStep.shuffle;
@@ -87,7 +75,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
         const driverActive = isAction || isShuffle;
 
         // Canvas
-        const W = dims.width;
+        const W = width;
         const H = 390;
         const ml = 20, mr = 20, mt = 20, mb = 40;
         const IW = W - ml - mr;
@@ -121,7 +109,6 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             .attr('fill', driverActive ? '#fff' : 'var(--grey-500)')
             .text('DRIVER NODE');
 
-        // "result collected here" label — only when action fired
         if (driverActive) {
             g.append('text')
                 .attr('x', dX + dW / 2).attr('y', -6)
@@ -153,9 +140,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
         // Partition layout
         const DIAGRAM_CAP = 35;
         const realN = partitions.length;
-        // Cap to DIAGRAM_CAP — when groupby_col = "host" there can be 75k partitions
-        // which makes the diagram unusable. We show the top DIAGRAM_CAP by row count
-        // (the dist is already sorted desc) and display a banner explaining the cap.
+        // Cap to DIAGRAM_CAP
         const n = Math.min(realN, DIAGRAM_CAP);
         const displayedPartitions = partitions.slice(0, n);
         const isCapped = realN > DIAGRAM_CAP;
@@ -163,14 +148,16 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             ? (internals.partition_story?.post_shuffle_partitions ?? realN)
             : realN;
 
-        const slotsN = isBottleneck ? (pipeline[1]?.partitions_after ?? 8) : n;
+        const slotsN = isBottleneck ? (pipeline[1]?.partitions_after ?? n) : n;
         const gap = slotsN === 1 ? 0 : 8;
         // Anchor box width to max(slotsN, 8) so boxes don't grow too wide for small counts
         const maxN = Math.max(slotsN, 8);
         const boxW = Math.min(68, (IW - gap * (maxN - 1)) / maxN);
         const pY = execLabelY + 14;
         const maxBarH = H - mt - mb - pY - 16;
-        const sqrtScale = d3.scaleSqrt().domain([0, GLOBAL_MAX]).range([0, maxBarH - 16]);
+        const sqrtScale = d3.scaleSqrt()
+            .domain([0, Math.max(GLOBAL_MAX, 1)])
+            .range([0, maxBarH - 16]);
 
         const groupW = slotsN * boxW + gap * (slotsN - 1);
         const startX = (IW - groupW) / 2;
@@ -190,7 +177,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
         }
 
         // Shuffle convergence arrows
-        // Travel upward from partition zone → through boundary → toward driver
+        // Travel upward from partition zone  through boundary  toward driver
         if (isShuffle) {
             const prevParts = getPartitionsForStep(currentStep - 1, pipeline, internals);
             const ghostN = Math.max(prevParts.length, 1);
@@ -322,7 +309,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             .attr('text-anchor', 'middle').attr('font-size', 11).attr('fill', '#666')
             .text(activeStep.description ?? '');
 
-    }, [currentStep, data, highlightedPartition, dims, onPartitionClick]);
+    }, [currentStep, data, highlightedPartition, width, onPartitionClick]);
 
     // Reset selection when step changes
     useEffect(() => {
@@ -347,20 +334,11 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             : 'ACTION';
 
     return (
-        <div style={{border: '1px solid var(--grey-300)', borderRadius: '6px', background: '#fff'}}>
+        <div className="partition-diagram">
 
-            {/* ── Header ── */}
-            <div style={{
-                padding: '10px 16px', display: 'flex',
-                justifyContent: 'space-between', alignItems: 'center',
-                background: 'var(--grey-50)', borderBottom: '2px solid var(--uos-purple)'
-            }}>
-                <span style={{
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    color: 'var(--grey-900)',
-                    fontFamily: 'var(--font-mono)'
-                }}>
+            {/*Header*/}
+            <div className="partition-diagram-header">
+                <span className="partition-diagram-title">
                     Cluster Execution
                 </span>
                 <span style={{
@@ -371,11 +349,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                 </span>
             </div>
 
-            <div style={{
-                padding: '6px 16px', display: 'flex', gap: '14px', flexWrap: 'wrap',
-                alignItems: 'center', borderBottom: '1px solid var(--grey-200)',
-                fontSize: '11px', color: '#666'
-            }}>
+            <div className="partition-diagram-legend">
                 {[
                     {s: {width: 12, height: 12, background: '#D55E00', borderRadius: 2}, label: 'Bottleneck'},
                     {s: {width: 12, height: 12, background: '#CC79A7', borderRadius: 2}, label: 'Repartition'},
@@ -397,260 +371,30 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                         label: 'Filtered out'
                     },
                 ].map(({s, label}) => (
-                    <span key={label} style={{display: 'flex', alignItems: 'center', gap: 5}}>
+                    <span key={label} className="partition-diagram-legend-item">
                         <span style={s}/>{label}
                     </span>
                 ))}
             </div>
 
-            {/* ── SVG ── */}
-            <div ref={wrapRef} style={{width: '100%', padding: '10px 0'}}>
-                <svg ref={svgRef} style={{display: 'block', overflow: 'visible', width: '100%', height: '390px'}}/>
+            {/*SVG*/}
+            <div ref={wrapRef} className="partition-diagram-svg-wrap">
+                <svg ref={svgRef} className="partition-diagram-svg"/>
             </div>
 
 
             {/*Partition data panel — appears when user clicks a partition bar */}
-            {selectedPartition !== null && (() => {
-                // Step-aware row selection — shows different data per pipeline stage
-                const allTracked = data?.tracked_rows ?? [];
-                const trackedEntry = allTracked.find(t => t.partition_id === selectedPartition);
-                const trackedRows = trackedEntry?.rows ?? [];
-
-                // Choose partition distribution based on current step
-                const partDist = (() => {
-                    if (currentStep === 4) return internals?.filter_partition_distribution ?? internals?.partition_distribution ?? [];
-                    if (currentStep === 6 && pipeline?.slice(0, currentStep - 1).some(s => s.shuffle))
-                        return internals?.daily_partition_distribution ?? internals?.post_shuffle_distribution ?? [];
-                    if (currentStep === 6) return internals?.post_shuffle_distribution ?? [];
-                    return internals?.partition_distribution ?? [];
-                })();
-                const partInfo = partDist.find(p => p.partition_id === selectedPartition);
-
-                // What to show depends on the step
-                const stepLabel = (() => {
-                    if (currentStep === 1) return 'Raw gzip data (single partition holds everything)';
-                    if (currentStep === 2) return 'After repartition — rows distributed round-robin';
-                    if (currentStep === 3) return 'Filter predicate in DAG — same data as Step 2, not yet executed';
-                    if (currentStep === 4) return 'After filter executed — only matching rows remain';
-                    if (currentStep === 5) return 'After withColumn — rows now have host, status, day columns';
-                    if (currentStep === 6) return `After repartitionByRange — partition owns rows with the same ${data?.spark_config?.groupby_key ?? 'key'} value`;
-                    return '';
-                })();
-
-                // Steps 1-5: use tracked_rows; step 6: use grouped_tracked_rows from df_grouped
-                const partRows = (() => {
-                    if (currentStep === 6) {
-                        const grouped = data?.grouped_tracked_rows ?? [];
-                        return grouped.find(t => t.partition_id === selectedPartition)?.rows ?? [];
-                    }
-                    return currentStep <= 5 ? trackedRows : [];
-                })();
-
-                return (
-                    <div style={{
-                        margin: '0 16px 16px',
-                        border: '1px solid var(--uos-purple)',
-                        borderRadius: '6px',
-                        overflow: 'hidden',
-                        fontSize: '12px',
-                    }}>
-                        {/* Panel header */}
-                        <div style={{
-                            background: 'var(--uos-purple)', color: '#fff',
-                            padding: '8px 14px', display: 'flex',
-                            justifyContent: 'space-between', alignItems: 'center'
-                        }}>
-                            <span style={{fontWeight: 'bold', fontFamily: 'var(--font-mono)'}}>
-                                Partition {selectedPartition}
-                                {partInfo ? ` — ${partInfo.row_count.toLocaleString()} rows` : ''}
-                                {partRows.length > 0 ? ` · ${partRows.length} samples` : ''}
-                            </span>
-                            <span style={{fontSize: '11px', opacity: 0.85, fontWeight: 'normal', marginLeft: '8px'}}>
-                                {stepLabel}
-                            </span>
-                            <button
-                                onClick={() => {
-                                    setSelectedPartition(null);
-                                    onPartitionClick?.(null);
-                                }}
-                                style={{
-                                    background: 'none',
-                                    border: 'none',
-                                    color: '#fff',
-                                    cursor: 'pointer',
-                                    fontSize: '14px',
-                                    padding: '0 4px'
-                                }}
-                                aria-label="Close partition detail"
-                            >✕
-                            </button>
-                        </div>
-
-                        {partRows.length > 0 ? (
-                            <div style={{padding: '12px 14px', background: '#fafafa'}}>
-
-                                {/* Raw log lines */}
-                                <div style={{
-                                    fontWeight: 'bold',
-                                    color: 'var(--grey-700)',
-                                    marginBottom: '8px',
-                                    fontSize: '12px'
-                                }}>
-                                    {currentStep === 3
-                                        ? 'Rows in this partition (filter NOT yet executed — Step 4 will trigger it):'
-                                        : currentStep === 4
-                                            ? 'Rows in this partition BEFORE filter (Step 4 has now executed on these):'
-                                            : currentStep === 5
-                                                ? 'Rows in this partition (now have parsed host/status/day columns):'
-                                                : currentStep === 6
-                                                    ? `Sample rows — all share the same ${data?.spark_config?.groupby_key ?? 'key'} value:`
-                                                    : 'Raw log entries in this partition:'}
-                                </div>
-                                <div style={{
-                                    fontFamily: 'var(--font-mono)', fontSize: '11px',
-                                    background: '#1e1e1e', color: '#d4d4d4',
-                                    borderRadius: '4px', overflow: 'hidden',
-                                    marginBottom: '14px'
-                                }}>
-                                    {partRows.map((row, i) => (
-                                        <div key={i} style={{
-                                            padding: '5px 10px',
-                                            borderBottom: i < partRows.length - 1 ? '1px solid #333' : 'none',
-                                            overflowX: 'auto', whiteSpace: 'nowrap'
-                                        }}>
-                                            {currentStep === 6
-                                                ? `${row.host}  |  status: ${row.status}  |  day: ${row.day}`
-                                                : row.raw_value}
-                                        </div>
-                                    ))}
-                                </div>
-
-                                {currentStep === 6 ? (
-                                    <div style={{fontSize: '12px', color: 'var(--grey-600)', lineHeight: '1.6'}}>
-                                        <div
-                                            style={{fontWeight: 'bold', color: 'var(--grey-700)', marginBottom: '8px'}}>
-                                            Aggregated result for this partition:
-                                        </div>
-                                        <div style={{
-                                            fontFamily: 'var(--font-mono)',
-                                            background: '#f5f3ff',
-                                            border: '1px solid #ddd6fe',
-                                            borderRadius: '4px',
-                                            padding: '8px 12px',
-                                            marginBottom: '10px'
-                                        }}>
-                                            {partRows[0] && (
-                                                <span><strong>{data?.spark_config?.groupby_key ?? 'key'}:</strong> {partRows[0][data?.spark_config?.groupby_key ?? 'status']} &nbsp;|&nbsp;
-                                                    <strong>total rows:</strong> {partInfo?.row_count?.toLocaleString() ?? '?'}</span>
-                                            )}
-                                        </div>
-                                        <div style={{fontSize: '11px', color: 'var(--grey-500)'}}>
-                                            Showing {partRows.length} sample rows from this partition. All rows in this
-                                            partition share the
-                                            same <code>{data?.spark_config?.groupby_key ?? 'key'}</code> value —
-                                            repartitionByRange guaranteed this before groupBy ran.
-                                        </div>
-                                    </div>
-                                ) : (
-                                    <>
-                                        {/* Filter result per row — the key pedagogical point */}
-                                        <div style={{
-                                            fontWeight: 'bold',
-                                            color: 'var(--grey-700)',
-                                            marginBottom: '8px',
-                                            fontSize: '12px'
-                                        }}>
-                                            {currentStep === 3
-                                                ? 'Predicted filter outcome (DAG recorded, not yet executed):'
-                                                : currentStep === 4
-                                                    ? 'Filter result — which rows survived:'
-                                                    : 'Filter result (from Step 3/4) — same rows, now also have parsed columns in DataTable ↗:'}
-                                        </div>
-                                        <div style={{overflowX: 'auto', marginBottom: '12px'}}>
-                                            <table
-                                                style={{width: '100%', borderCollapse: 'collapse', fontSize: '11px'}}>
-                                                <thead>
-                                                <tr style={{background: '#e8e0f0'}}>
-                                                    {['host', currentStep === 3 ? 'would pass filter?' : 'passes filter'].map(f => (
-                                                        <th key={f} style={{
-                                                            padding: '6px 10px',
-                                                            textAlign: 'left',
-                                                            borderBottom: '2px solid var(--uos-purple)',
-                                                            fontFamily: 'var(--font-mono)',
-                                                            fontWeight: 'bold',
-                                                            color: 'var(--grey-800)',
-                                                            whiteSpace: 'nowrap'
-                                                        }}>{f}</th>
-                                                    ))}
-                                                </tr>
-                                                </thead>
-                                                <tbody>
-                                                {partRows.map((row, i) => (
-                                                    <tr key={i} style={{background: i % 2 === 0 ? '#fff' : '#f9f7fc'}}>
-                                                        <td style={{
-                                                            padding: '5px 10px',
-                                                            fontFamily: 'var(--font-mono)',
-                                                            borderBottom: '1px solid var(--grey-200)',
-                                                            maxWidth: '220px',
-                                                            overflow: 'hidden',
-                                                            textOverflow: 'ellipsis',
-                                                            whiteSpace: 'nowrap'
-                                                        }}>
-                                                            {row.host ?? '—'}
-                                                        </td>
-                                                        <td style={{
-                                                            padding: '5px 10px',
-                                                            borderBottom: '1px solid var(--grey-200)'
-                                                        }}>
-                                                            <span style={{
-                                                                padding: '2px 8px',
-                                                                borderRadius: '4px',
-                                                                fontSize: '11px',
-                                                                fontWeight: 'bold',
-                                                                background: row.passes_japan_filter ? '#dcfce7' : '#fee2e2',
-                                                                color: row.passes_japan_filter ? '#15803d' : '#b91c1c'
-                                                            }}>
-                                                                {currentStep === 3
-                                                                    ? (row.passes_japan_filter ? '✓ would pass (DAG only)' : '✗ would be dropped (DAG only)')
-                                                                    : (row.passes_japan_filter ? '✓ passed filter' : '✗ filtered out')}
-                                                            </span>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        <div style={{fontSize: '11px', color: 'var(--grey-500)', lineHeight: '1.5'}}>
-                                            Showing {partRows.length} of {partInfo?.row_count?.toLocaleString() ?? '?'} rows
-                                            in this partition.
-                                            {data?.spark_config?.filter_predicate === '.jp' && (
-                                                <span style={{
-                                                    display: 'block',
-                                                    marginTop: '6px',
-                                                    color: '#78350f',
-                                                    background: '#fff8e1',
-                                                    padding: '6px 8px',
-                                                    borderRadius: '4px',
-                                                    borderLeft: '3px solid #E69F00'
-                                                }}>
-                                                    <strong>Why does .contains("{data?.spark_config?.filter_predicate ?? '.jp'}") match some unexpected rows?</strong>{' '}
-                                                    Spark&apos;s <code>.contains()</code> searches the <em>entire raw log line</em> as a flat string not just the host field.
-                                                    This means a request for a <code>.jpeg</code> image (e.g. <code>livevideo.jpeg</code>) also matches <code>.jp</code> because &ldquo;jpeg&rdquo; contains &ldquo;jp&rdquo; as a substring.
-                                                    This is the same behaviour as the Lab 1 code — <code>logFile.filter(logFile.value.contains(".jp"))</code> and is why Step 5&apos;s <code>regexp_extract</code> is needed to isolate just the host field for more precise filtering.
-                                                </span>
-                                            )}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        ) : (
-                            <div style={{padding: '12px 14px', color: 'var(--grey-500)', fontStyle: 'italic'}}>
-                                No sample data available for this partition. Run the notebook first.
-                            </div>
-                        )}
-                    </div>
-                );
-            })()}
+            <PartitionDetailPanel
+                selectedPartition={selectedPartition}
+                currentStep={currentStep}
+                data={data}
+                internals={internals}
+                pipeline={pipeline}
+                onClose={() => {
+                    setSelectedPartition(null);
+                    onPartitionClick?.(null);
+                }}
+            />
         </div>
     );
 };

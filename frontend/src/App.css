@@ -9,8 +9,11 @@
     --grey-100: #f4f4f4;
     --grey-200: #e8e8e8;
     --grey-300: #d0d0d0;
+    --grey-400: #aaaaaa;
     --grey-500: #888888;
+    --grey-600: #666666;
     --grey-700: #444444;
+    --grey-800: #333333;
     --grey-900: #1a1a1a;
 
     --success-bg: #e8f5e9;
@@ -120,6 +123,24 @@ body {
     border-color: rgba(255, 255, 255, 0.75);
 }
 
+.tour-btn {
+    padding: 6px 14px;
+    background: var(--uos-yellow);
+    border: 1px solid var(--uos-yellow);
+    color: var(--grey-900);
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    letter-spacing: 0.2px;
+    transition: background 0.15s, opacity 0.15s;
+}
+
+.tour-btn:hover {
+    opacity: 0.85;
+}
+
 
 .controls {
     max-width: var(--max-w);
@@ -174,6 +195,44 @@ body {
     background: var(--grey-200);
 }
 
+.lab-tabs {
+    max-width: var(--max-w);
+    margin: 0 auto;
+    padding: 16px 32px 0;
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.lab-tab {
+    padding: 10px 24px;
+    background: transparent;
+    color: #555;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: normal;
+    margin-bottom: -2px;
+    border-radius: 6px 6px 0 0;
+    transition: all 0.15s ease;
+}
+
+.lab-tab:disabled {
+    cursor: wait;
+}
+
+.lab-tab--active {
+    background: var(--uos-purple);
+    color: #fff;
+    border-bottom: 3px solid var(--uos-purple);
+    font-weight: bold;
+}
+
+.lab-tab__indicator {
+    margin-left: 6px;
+    opacity: 0.6;
+}
 
 .error-box {
     max-width: var(--max-w);
