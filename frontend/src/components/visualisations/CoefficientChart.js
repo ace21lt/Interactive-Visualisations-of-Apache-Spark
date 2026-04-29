@@ -1,6 +1,7 @@
 import React, {useRef, useEffect} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
+import './Lab2Layout.css';
 
 const CoefficientChart = ({coefficients, featureCols, intercept}) => {
     const svgRef = useRef();
@@ -28,14 +29,12 @@ const CoefficientChart = ({coefficients, featureCols, intercept}) => {
         const x = d3.scaleLinear().domain([-maxAbs * 0.1, maxAbs * 1.15]).range([0, IW]);
         const y = d3.scaleBand().domain(labels).range([0, IH]).padding(0.35);
 
-        // Zero line
         g.append('line')
             .attr('x1', x(0)).attr('y1', 0)
             .attr('x2', x(0)).attr('y2', IH)
             .attr('stroke', 'var(--grey-300)').attr('stroke-width', 1)
             .attr('stroke-dasharray', '4,3');
 
-        // Bars
         const barColours = ['#0072B2', '#E69F00', '#CC79A7', '#56B4E9'];
         g.selectAll('.coeff-bar')
             .data(values)
@@ -49,7 +48,6 @@ const CoefficientChart = ({coefficients, featureCols, intercept}) => {
             .transition().duration(600).ease(d3.easeCubicOut)
             .attr('width', d => Math.abs(x(d) - x(0)));
 
-        // Value labels
         g.selectAll('.coeff-label')
             .data(values)
             .enter().append('text')
@@ -65,7 +63,6 @@ const CoefficientChart = ({coefficients, featureCols, intercept}) => {
             .attr('opacity', 1)
             .text(d => d.toFixed(4));
 
-        // Y axis labels
         g.selectAll('.feat-label')
             .data(labels)
             .enter().append('text')
@@ -82,32 +79,22 @@ const CoefficientChart = ({coefficients, featureCols, intercept}) => {
 
     if (!coefficients || !featureCols) return null;
 
-    return (<div style={{border: '1px solid var(--grey-300)', borderRadius: '6px', background: '#fff'}}>
-            <div style={{
-                padding: '10px 16px', background: 'var(--grey-50)', borderBottom: '2px solid var(--uos-purple)'
-            }}>
-                <span style={{
-                    fontSize: '13px', fontWeight: 'bold', color: 'var(--grey-900)', fontFamily: 'var(--font-mono)'
-                }}>
-                    Model Coefficients
-                </span>
-                <span style={{
-                    fontSize: '10px',
-                    fontWeight: 'bold',
-                    marginLeft: '8px',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    background: '#e8f5e9',
-                    color: '#1b5e20'
-                }}>CURRENT RUN</span>
-                <span style={{
-                    fontSize: '10px', marginLeft: '8px', color: 'var(--grey-400)', fontStyle: 'italic'
-                }}>standardised — larger bar = stronger predictor</span>
+    return (
+        <div className="viz-card">
+            <div className="viz-card-header">
+                <div>
+                    <span className="viz-card-title">Model Coefficients</span>
+                    <span className="badge badge--live" style={{marginLeft: '8px'}}>CURRENT RUN</span>
+                    <span style={{fontSize: '10px', marginLeft: '8px', color: 'var(--grey-400)', fontStyle: 'italic'}}>
+                        standardised — larger bar = stronger predictor
+                    </span>
+                </div>
             </div>
             <div ref={wrapRef} style={{padding: '10px 0'}}>
-                <svg ref={svgRef} style={{display: 'block', width: '100%', height: '200px'}}/>
+                <svg ref={svgRef} style={{display: 'block', width: '100%', height: '200px'}} />
             </div>
-        </div>);
+        </div>
+    );
 };
 
 export default CoefficientChart;

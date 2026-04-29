@@ -42,17 +42,17 @@ const PartitionDetailPanel = ({
     })();
 
     return (
-        <div className="partition-diagram__panel">
-            <div className="partition-diagram__panel-header">
-                <span className="partition-diagram__panel-title">
+        <div className="partition-diagram-panel">
+            <div className="partition-diagram-panel-header">
+                <span className="partition-diagram-panel-title">
                     Partition {selectedPartition}
                     {partInfo ? ` - ${partInfo.row_count.toLocaleString()} rows` : ''}
                     {partRows.length > 0 ? ` - ${partRows.length} samples` : ''}
                 </span>
-                <span className="partition-diagram__panel-subtitle">{stepLabel}</span>
+                <span className="partition-diagram-panel-subtitle">{stepLabel}</span>
                 <button
                     onClick={onClose}
-                    className="partition-diagram__panel-close"
+                    className="partition-diagram-panel-close"
                     aria-label="Close partition detail"
                 >
                     X
@@ -60,8 +60,8 @@ const PartitionDetailPanel = ({
             </div>
 
             {partRows.length > 0 ? (
-                <div className="partition-diagram__panel-body">
-                    <div className="partition-diagram__panel-section-title">
+                <div className="partition-diagram-panel-body">
+                    <div className="partition-diagram-panel-section-title">
                         {currentStep === 3
                             ? 'Rows in this partition (filter NOT yet executed - Step 4 will trigger it):'
                             : currentStep === 4
@@ -72,11 +72,11 @@ const PartitionDetailPanel = ({
                                         ? `Sample rows - all share the same ${data?.spark_config?.groupby_key ?? 'key'} value:`
                                         : 'Raw log entries in this partition:'}
                     </div>
-                    <div className="partition-diagram__panel-console">
+                    <div className="partition-diagram-panel-console">
                         {partRows.map((row, i) => (
                             <div
                                 key={i}
-                                className="partition-diagram__panel-console-line"
+                                className="partition-diagram-panel-console-line"
                             >
                                 {currentStep === 6
                                     ? `${row.host}  |  status: ${row.status}  |  day: ${row.day}`
@@ -86,11 +86,11 @@ const PartitionDetailPanel = ({
                     </div>
 
                     {currentStep === 6 ? (
-                        <div className="partition-diagram__panel-copy">
-                            <div className="partition-diagram__panel-section-title">Aggregated result for this
+                        <div className="partition-diagram-panel-copy">
+                            <div className="partition-diagram-panel-section-title">Aggregated result for this
                                 partition:
                             </div>
-                            <div className="partition-diagram__panel-agg-box">
+                            <div className="partition-diagram-panel-agg-box">
                                 {partRows[0] && (
                                     <span>
                                         <strong>{data?.spark_config?.groupby_key ?? 'key'}:</strong> {partRows[0][data?.spark_config?.groupby_key ?? 'status']} &nbsp;|&nbsp;
@@ -98,7 +98,7 @@ const PartitionDetailPanel = ({
                                     </span>
                                 )}
                             </div>
-                            <div className="partition-diagram__panel-note">
+                            <div className="partition-diagram-panel-note">
                                 Showing {partRows.length} sample rows from this partition. All rows in this partition
                                 share the same <code>{data?.spark_config?.groupby_key ?? 'key'}</code> value -
                                 repartitionByRange guaranteed this before groupBy ran.
@@ -106,29 +106,29 @@ const PartitionDetailPanel = ({
                         </div>
                     ) : (
                         <>
-                            <div className="partition-diagram__panel-section-title">
+                            <div className="partition-diagram-panel-section-title">
                                 {currentStep === 3
                                     ? 'Predicted filter outcome (DAG recorded, not yet executed):'
                                     : currentStep === 4
                                         ? 'Filter result - which rows survived:'
                                         : 'Filter result (from Step 3/4) - same rows, now also have parsed columns in DataTable ->:'}
                             </div>
-                            <div className="partition-diagram__table-wrap">
-                                <table className="partition-diagram__table">
+                            <div className="partition-diagram-table-wrap">
+                                <table className="partition-diagram-table">
                                     <thead>
-                                    <tr className="partition-diagram__table-head-row">
+                                    <tr className="partition-diagram-table-head-row">
                                         {['host', currentStep === 3 ? 'would pass filter?' : 'passes filter'].map(f => (
-                                            <th key={f} className="partition-diagram__table-head-cell">{f}</th>
+                                            <th key={f} className="partition-diagram-table-head-cell">{f}</th>
                                         ))}
                                     </tr>
                                     </thead>
                                     <tbody>
                                     {partRows.map((row, i) => (
-                                        <tr key={i} className="partition-diagram__table-row">
-                                            <td className="partition-diagram__table-host">{row.host ?? '-'} </td>
-                                            <td className="partition-diagram__table-cell">
+                                        <tr key={i} className="partition-diagram-table-row">
+                                            <td className="partition-diagram-table-host">{row.host ?? '-'} </td>
+                                            <td className="partition-diagram-table-cell">
                                                 <span
-                                                    className={row.passes_japan_filter ? 'partition-diagram__status partition-diagram__status--pass' : 'partition-diagram__status partition-diagram__status--fail'}
+                                                    className={row.passes_japan_filter ? 'partition-diagram-status partition-diagram-status--pass' : 'partition-diagram-status partition-diagram-status--fail'}
                                                 >
                                                     {currentStep === 3
                                                         ? (row.passes_japan_filter ? 'yes, would pass (DAG only)' : 'no, would be dropped (DAG only)')
@@ -140,11 +140,11 @@ const PartitionDetailPanel = ({
                                     </tbody>
                                 </table>
                             </div>
-                            <div className="partition-diagram__panel-note">
+                            <div className="partition-diagram-panel-note">
                                 Showing {partRows.length} of {partInfo?.row_count?.toLocaleString() ?? '?'} rows in this
                                 partition.
                                 {data?.spark_config?.filter_predicate === '.jp' && (
-                                    <span className="partition-diagram__predicate-note">
+                                    <span className="partition-diagram-predicate-note">
                                         <strong>Why does .contains("{data?.spark_config?.filter_predicate ?? '.jp'}") match some unexpected rows?</strong>{' '}
                                         Spark&apos;s <code>.contains()</code> searches the <em>entire raw log line</em> as a flat string, not just the host field. This means a request for a <code>.jpeg</code> image (for example <code>livevideo.jpeg</code>) also matches <code>.jp</code> because "jpeg" contains "jp" as a substring. This is the same behavior as the Lab 1 code - <code>logFile.filter(logFile.value.contains(".jp"))</code> - and is why Step 5&apos;s <code>regexp_extract</code> is needed to isolate just the host field for more precise filtering.
                                     </span>
@@ -154,7 +154,7 @@ const PartitionDetailPanel = ({
                     )}
                 </div>
             ) : (
-                <div className="partition-diagram__panel-empty">No sample data available for this partition. Run the
+                <div className="partition-diagram-panel-empty">No sample data available for this partition. Run the
                     notebook first.</div>
             )}
         </div>

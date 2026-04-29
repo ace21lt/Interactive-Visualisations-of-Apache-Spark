@@ -11,8 +11,6 @@ class LabVisualisationErrorBoundary extends React.Component {
     }
 
     componentDidCatch(error, info) {
-        // Keep details for debugging while preserving UI continuity.
-        // eslint-disable-next-line no-console
         console.error('Lab visualisation render error:', error, info);
     }
 

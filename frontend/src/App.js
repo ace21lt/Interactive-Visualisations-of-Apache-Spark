@@ -3,6 +3,7 @@ import './App.css';
 import Login from './components/Login';
 import Lab1Layout from "./components/visualisations/Lab1Layout";
 import Lab2Layout from "./components/visualisations/Lab2Layout";
+import TourButton from "./components/TourButton";
 
 const LABS = [
     {id: 'lab1', label: 'Lab 1 — Intro to Spark'},
@@ -19,6 +20,9 @@ function App() {
     const [sessionError, setSessionError] = useState(null);
     const [lastExecutedStep, setLastExecutedStep] = useState(null);
     const [runHistory, setRunHistory] = useState([]);
+    const [piHistory, setPiHistory] = useState([]);
+    const [regHistory, setRegHistory] = useState([]);
+    const [splitHistory, setSplitHistory] = useState([]);
     const loadInputRef = useRef(null);
 
     const apiUrl = import.meta.env.VITE_API_URL || '';
@@ -27,6 +31,16 @@ function App() {
     const data = labData[currentLab] || null;
     const setData = (newData) => {
         setLabData(prev => ({...prev, [currentLab]: newData}));
+    };
+
+    const toFiniteNumber = (value) => {
+        const n = typeof value === 'number' ? value : Number(value);
+        return Number.isFinite(n) ? n : null;
+    };
+
+    const upsertCappedHistory = (prev, entry, keyFn) => {
+        const filtered = prev.filter(item => keyFn(item) !== keyFn(entry));
+        return [...filtered, entry].slice(-5);
     };
 
     useEffect(() => {
@@ -67,6 +81,10 @@ function App() {
             setIsAuthenticated(false);
             setWorkspaceUrl(null);
             setLabData({});
+            setRunHistory([]);
+            setPiHistory([]);
+            setRegHistory([]);
+            setSplitHistory([]);
             setError(null);
         }
     };
@@ -103,7 +121,8 @@ function App() {
         setLoading(true);
         setError(null);
 
-        const _runStart = Date.now();
+        const runLab = currentLab;
+        const runStart = Date.now();
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5 * 60 * 1000); // 5 min
 
@@ -111,7 +130,7 @@ function App() {
             if (step != null) setLastExecutedStep(step);
             const hasEdit = step != null && editedCode && editedCode.trim().length > 0;
             const body = JSON.stringify({
-                lab: currentLab,
+                lab: runLab,
                 ...(hasEdit ? {step, editedCode} : {})
             });
 
@@ -129,13 +148,20 @@ function App() {
                     setIsAuthenticated(false);
                     setWorkspaceUrl(null);
                     setLabData({});
+                    setRunHistory([]);
+                    setPiHistory([]);
+                    setRegHistory([]);
+                    setSplitHistory([]);
                     return;
-                }
-                else if (response.status === 403) {
+                } else if (response.status === 403) {
                     setSessionError('Your token is valid but lacks required Databricks permissions (Unity Catalog/workspace/jobs/clusters).');
                     setIsAuthenticated(false);
                     setWorkspaceUrl(null);
                     setLabData({});
+                    setRunHistory([]);
+                    setPiHistory([]);
+                    setRegHistory([]);
+                    setSplitHistory([]);
                     return;
                 }
                 const errBody = await response.json().catch(() => null);
@@ -143,46 +169,81 @@ function App() {
             }
 
             const result = await response.json();
-            console.log('Raw response:', result);
 
             if (result.output && result.output.result) {
                 const sparkData = JSON.parse(result.output.result);
-                console.log('Parsed Spark data:', sparkData);
                 setData(sparkData);
 
-                // Run history tracking
-                if (currentLab === 'lab1') {
+                if (runLab === 'lab1') {
                     const cfg = sparkData?.spark_config ?? {};
                     if (cfg.num_partitions != null) {
                         const entry = {
                             partitions: cfg.num_partitions,
                             skipped: cfg.skip_repartition ?? false,
                             executionSecs: result.executionSeconds ?? null,
-                            roundTripSecs: Math.round((Date.now() - _runStart) / 1000),
+                            roundTripSecs: Math.round((Date.now() - runStart) / 1000),
                             timestamp: new Date().toLocaleTimeString(),
                         };
-                        setRunHistory(prev => {
-                            const filtered = prev.filter(r => r.partitions !== entry.partitions);
-                            return [...filtered, entry].slice(-8);
-                        });
+                        setRunHistory(prev => upsertCappedHistory(prev, entry, r => `${r.partitions}`));
+                    }
+                }
+
+                if (runLab === 'lab2') {
+                    const pi = sparkData?.pi_estimation;
+                    if (pi && pi.elapsed_ms != null && pi.num_partitions != null && pi.num_samples != null) {
+                        const piEntry = {
+                            partitions: pi.num_partitions,
+                            samples: pi.num_samples,
+                            estimate: pi.estimate,
+                            error: pi.error ?? Math.abs((pi.estimate ?? 0) - Math.PI),
+                            elapsedMs: pi.elapsed_ms,
+                            timestamp: new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}),
+                        };
+                        setPiHistory(prev => upsertCappedHistory(prev, piEntry, r => `${r.partitions}-${r.samples}`));
+                    }
+
+                    const lr = sparkData?.linear_regression;
+                    const regParam = toFiniteNumber(lr?.reg_param);
+                    if (Array.isArray(lr?.coefficients) && Array.isArray(lr?.feature_cols) && regParam != null) {
+                        const regEntry = {
+                            regParam,
+                            coefficients: lr.coefficients,
+                            featureCols: lr.feature_cols,
+                            testRmse: toFiniteNumber(lr?.test_rmse),
+                            timestamp: new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}),
+                        };
+                        setRegHistory(prev => upsertCappedHistory(prev, regEntry, r => `${r.regParam}`));
+                    }
+
+                    const split = sparkData?.train_test_split;
+                    if (split && split.seed != null && Array.isArray(split.split_ratio)) {
+                        const splitEntry = {
+                            seed: split.seed,
+                            splitRatio: split.split_ratio,
+                            trainCount: split.train_count ?? null,
+                            testCount: split.test_count ?? null,
+                            actualTrainPct: split.actual_train_pct ?? null,
+                            actualTestPct: split.actual_test_pct ?? null,
+                            trainSample: split.train_sample ?? [],
+                            testSample: split.test_sample ?? [],
+                            splitRows: split.split_rows ?? [],
+                            timestamp: new Date().toLocaleTimeString('en-GB', {hour: '2-digit', minute: '2-digit'}),
+                        };
+                        setSplitHistory(prev => upsertCappedHistory(
+                            prev,
+                            splitEntry,
+                            r => `${r.seed}-${JSON.stringify(r.splitRatio)}`
+                        ));
                     }
                 }
             } else {
-                const errorDetails = {
-                    hasOutput: !!result.output,
-                    hasResult: !!(result.output && result.output.result),
-                    hasError: !!(result.output && result.output.error),
-                    outputStructure: result.output ? Object.keys(result.output) : 'N/A'
-                };
-                console.error('Response structure:', errorDetails);
-                console.error('Full response:', result);
                 if (result.output && result.output.error) {
                     throw new Error(`Notebook execution error: ${result.output.error}`);
                 } else {
                     throw new Error(
                         `Unexpected response format. Output field is ${
                             result.output ? 'present but result is missing' : 'missing'
-                        }. Check console for details.`
+                        }.`
                     );
                 }
             }
@@ -212,37 +273,22 @@ function App() {
             <div className="app-header">
                 <h1>Interactive Spark Visualisations</h1>
                 <div className="header-right">
+                    {data && <TourButton currentLab={currentLab} />}
                     <span className="workspace-indicator">{workspaceLabel}</span>
                     <button onClick={handleLogout} className="logout-btn">Logout</button>
                 </div>
             </div>
 
-            {/* Lab selector tabs */}
-            <div style={{
-                maxWidth: '1280px', margin: '0 auto', padding: '16px 32px 0',
-                display: 'flex', gap: '0', borderBottom: '2px solid #e0e0e0'
-            }}>
+            <div className="lab-tabs">
                 {LABS.map(lab => (
                     <button
                         key={lab.id}
                         onClick={() => handleLabSwitch(lab.id)}
                         disabled={loading}
-                        style={{
-                            padding: '10px 24px',
-                            background: currentLab === lab.id ? 'var(--uos-purple, #440099)' : 'transparent',
-                            color: currentLab === lab.id ? '#fff' : '#555',
-                            border: 'none',
-                            borderBottom: currentLab === lab.id ? '3px solid var(--uos-purple, #440099)' : '3px solid transparent',
-                            cursor: loading ? 'wait' : 'pointer',
-                            fontWeight: currentLab === lab.id ? 'bold' : 'normal',
-                            fontSize: '14px',
-                            marginBottom: '-2px',
-                            borderRadius: '6px 6px 0 0',
-                            transition: 'all 0.15s ease'
-                        }}
+                        className={`lab-tab ${currentLab === lab.id ? 'lab-tab--active' : ''}`}
                     >
                         {lab.label}
-                        {labData[lab.id] && <span style={{marginLeft: '6px', opacity: 0.6}}>●</span>}
+                        {labData[lab.id] && <span className="lab-tab__indicator">●</span>}
                     </button>
                 ))}
             </div>
@@ -291,21 +337,23 @@ function App() {
                     </div>
                 )}
 
-                {/* Lab 1 */}
                 {currentLab === 'lab1' && data && data.spark_internals && (
                     <div className="results">
                         <Lab1Layout data={data} onExecuteStep={triggerAnalysis} onLoadTrace={handleLoadTrace}
                                     loading={loading}
-                                    lastExecutedStep={lastExecutedStep} runHistory={runHistory}/>
+                                    lastExecutedStep={lastExecutedStep}
+                                    runHistory={runHistory}/>
                     </div>
                 )}
 
-                {/* Lab 2 */}
                 {currentLab === 'lab2' && data && (data.dataframe || data.ml_pipeline) && (
                     <div className="results">
                         <Lab2Layout data={data} onExecuteStep={triggerAnalysis} onLoadTrace={handleLoadTrace}
                                     loading={loading}
-                                    lastExecutedStep={lastExecutedStep}/>
+                                    lastExecutedStep={lastExecutedStep}
+                                    piHistory={piHistory}
+                                    regHistory={regHistory}
+                                    splitHistory={splitHistory}/>
                     </div>
                 )}
             </div>
@@ -314,3 +362,4 @@ function App() {
 }
 
 export default App;
+

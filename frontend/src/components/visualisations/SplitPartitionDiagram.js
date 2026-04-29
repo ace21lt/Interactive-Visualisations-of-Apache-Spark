@@ -1,6 +1,7 @@
 import React, {useRef, useEffect, useState} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
+import './Lab2Layout.css';
 
 const SplitPartitionDiagram = ({splitRows, trainCount, testCount, seed, featureCols}) => {
     const wrapRef = useRef();
@@ -159,43 +160,20 @@ const SplitPartitionDiagram = ({splitRows, trainCount, testCount, seed, featureC
     const displayFeatureCols = featureCols;
 
     return (
-        <div style={{border: '1px solid var(--grey-300)', borderRadius: '6px', background: '#fff'}}>
-            <div style={{
-                padding: '10px 16px', background: 'var(--grey-50)',
-                borderBottom: '2px solid var(--uos-purple)',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-            }}>
-                <span style={{
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    color: 'var(--grey-900)',
-                    fontFamily: 'var(--font-mono)'
-                }}>
-                    Partition-Level Split
-                </span>
-                <span style={{
-                    fontSize: '10px', fontWeight: 'bold',
-                    padding: '2px 6px', borderRadius: '4px',
-                    background: '#fff3e0', color: '#e65100', border: '1px solid #ffe0b2'
-                }}>NARROW TRANSFORMATION</span>
+        <div className="viz-card">
+            <div className="viz-card-header">
+                <span className="viz-card-title">Partition-Level Split</span>
+                <span className="badge badge--blocked">NARROW TRANSFORMATION</span>
             </div>
             <div ref={wrapRef} style={{padding: '10px 0'}}>
                 <svg ref={svgRef} style={{display: 'block', width: '100%', height: '300px'}}/>
             </div>
 
-            {/* Hover detail */}
             {hovered ? (
-                <div style={{
-                    padding: '6px 16px 10px', fontSize: '12px',
-                    fontFamily: 'var(--font-mono)', color: 'var(--grey-700)',
-                    borderTop: '1px solid var(--grey-200)',
-                    display: 'flex', gap: '12px', alignItems: 'center'
-                }}>
-                    <span style={{
-                        padding: '2px 8px', borderRadius: '4px', fontSize: '11px', fontWeight: 'bold',
-                        background: hovered._split === 'train' ? '#e6f1fb' : '#fee2e2',
-                        color: hovered._split === 'train' ? '#0072B2' : '#D55E00'
-                    }}>{hovered._split.toUpperCase()}</span>
+                <div className="hover-detail" style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+                    <span className={`split-badge split-badge--${hovered._split}`}>
+                        {hovered._split.toUpperCase()}
+                    </span>
                     {displayFeatureCols.map(c => (
                         hovered[c] != null && (
                             <span key={c}>
@@ -207,31 +185,16 @@ const SplitPartitionDiagram = ({splitRows, trainCount, testCount, seed, featureC
                     {hovered.label != null && <span><strong>sales:</strong> {hovered.label.toFixed(1)}</span>}
                 </div>
             ) : (
-                <div style={{
-                    padding: '6px 16px', display: 'flex', gap: '14px',
-                    fontSize: '11px', color: '#666', borderTop: '1px solid var(--grey-200)'
-                }}>
-                    <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
-                        <span style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            background: '#0072B2',
-                            display: 'inline-block'
-                        }}/>
+                <div className="legend-row" style={{padding: '6px 16px', borderTop: '1px solid var(--grey-200)'}}>
+                    <span className="legend-item">
+                        <span className="legend-item-dot" style={{background: '#0072B2'}}/>
                         Train ({trainCount ?? '?'})
                     </span>
-                    <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
-                        <span style={{
-                            width: 8,
-                            height: 8,
-                            borderRadius: '50%',
-                            background: '#D55E00',
-                            display: 'inline-block'
-                        }}/>
+                    <span className="legend-item">
+                        <span className="legend-item-dot" style={{background: '#D55E00'}}/>
                         Test ({testCount ?? '?'})
                     </span>
-                    <span style={{color: 'var(--grey-400)'}}>
+                    <span style={{color: 'var(--grey-400)', fontSize: '11px'}}>
                         Hover any dot to see its values. Each row is independently hash-assigned.
                     </span>
                 </div>

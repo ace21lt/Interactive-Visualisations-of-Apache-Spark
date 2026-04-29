@@ -4,7 +4,7 @@
     background: #fff;
 }
 
-.partition-diagram__header {
+.partition-diagram-header {
     padding: 10px 16px;
     display: flex;
     justify-content: space-between;
@@ -13,14 +13,14 @@
     border-bottom: 2px solid var(--uos-purple);
 }
 
-.partition-diagram__title {
+.partition-diagram-title {
     font-size: 13px;
     font-weight: bold;
     color: var(--grey-900);
     font-family: var(--font-mono);
 }
 
-.partition-diagram__legend {
+.partition-diagram-legend {
     padding: 6px 16px;
     display: flex;
     gap: 14px;
@@ -31,25 +31,25 @@
     color: #666;
 }
 
-.partition-diagram__legend-item {
+.partition-diagram-legend-item {
     display: flex;
     align-items: center;
     gap: 5px;
 }
 
-.partition-diagram__svg-wrap {
+.partition-diagram-svg-wrap {
     width: 100%;
     padding: 10px 0;
 }
 
-.partition-diagram__svg {
+.partition-diagram-svg {
     display: block;
     overflow: visible;
     width: 100%;
     height: 390px;
 }
 
-.partition-diagram__panel {
+.partition-diagram-panel {
     margin: 0 16px 16px;
     border: 1px solid var(--uos-purple);
     border-radius: 6px;
@@ -57,7 +57,7 @@
     font-size: 12px;
 }
 
-.partition-diagram__panel-header {
+.partition-diagram-panel-header {
     background: var(--uos-purple);
     color: #fff;
     padding: 8px 14px;
@@ -67,18 +67,18 @@
     gap: 8px;
 }
 
-.partition-diagram__panel-title {
+.partition-diagram-panel-title {
     font-weight: bold;
     font-family: var(--font-mono);
 }
 
-.partition-diagram__panel-subtitle {
+.partition-diagram-panel-subtitle {
     font-size: 11px;
     opacity: 0.85;
     flex: 1;
 }
 
-.partition-diagram__panel-close {
+.partition-diagram-panel-close {
     background: none;
     border: none;
     color: #fff;
@@ -87,19 +87,19 @@
     padding: 0 4px;
 }
 
-.partition-diagram__panel-body {
+.partition-diagram-panel-body {
     padding: 12px 14px;
     background: #fafafa;
 }
 
-.partition-diagram__panel-section-title {
+.partition-diagram-panel-section-title {
     font-weight: bold;
     color: var(--grey-700);
     margin-bottom: 8px;
     font-size: 12px;
 }
 
-.partition-diagram__panel-console {
+.partition-diagram-panel-console {
     font-family: var(--font-mono);
     font-size: 11px;
     background: #1e1e1e;
@@ -109,23 +109,23 @@
     margin-bottom: 14px;
 }
 
-.partition-diagram__panel-console-line {
+.partition-diagram-panel-console-line {
     padding: 5px 10px;
     overflow-x: auto;
     white-space: nowrap;
 }
 
-.partition-diagram__panel-console-line:not(:last-child) {
+.partition-diagram-panel-console-line:not(:last-child) {
     border-bottom: 1px solid #333;
 }
 
-.partition-diagram__panel-copy {
+.partition-diagram-panel-copy {
     font-size: 12px;
     color: var(--grey-600);
     line-height: 1.6;
 }
 
-.partition-diagram__panel-agg-box {
+.partition-diagram-panel-agg-box {
     font-family: var(--font-mono);
     background: #f5f3ff;
     border: 1px solid #ddd6fe;
@@ -134,28 +134,27 @@
     margin-bottom: 10px;
 }
 
-.partition-diagram__panel-note {
+.partition-diagram-panel-note {
     font-size: 11px;
     color: var(--grey-500);
     line-height: 1.5;
 }
 
-.partition-diagram__table-wrap {
+.partition-diagram-table-wrap {
     overflow-x: auto;
     margin-bottom: 12px;
 }
 
-.partition-diagram__table {
+.partition-diagram-table {
     width: 100%;
-    border-collapse: collapse;
     font-size: 11px;
 }
 
-.partition-diagram__table-head-row {
+.partition-diagram-table-head-row {
     background: #e8e0f0;
 }
 
-.partition-diagram__table-head-cell {
+.partition-diagram-table-head-cell {
     padding: 6px 10px;
     text-align: left;
     border-bottom: 2px solid var(--uos-purple);
@@ -165,7 +164,7 @@
     white-space: nowrap;
 }
 
-.partition-diagram__table-host {
+.partition-diagram-table-host {
     padding: 5px 10px;
     font-family: var(--font-mono);
     border-bottom: 1px solid var(--grey-200);
@@ -175,20 +174,20 @@
     white-space: nowrap;
 }
 
-.partition-diagram__table-cell {
+.partition-diagram-table-cell {
     padding: 5px 10px;
     border-bottom: 1px solid var(--grey-200);
 }
 
-.partition-diagram__table-row {
+.partition-diagram-table-row {
     background: #fff;
 }
 
-.partition-diagram__table-row:nth-child(even) {
+.partition-diagram-table-row:nth-child(even) {
     background: #f9f7fc;
 }
 
-.partition-diagram__status {
+.partition-diagram-status {
     display: inline-block;
     padding: 2px 8px;
     border-radius: 4px;
@@ -196,17 +195,17 @@
     font-weight: bold;
 }
 
-.partition-diagram__status--pass {
+.partition-diagram-status--pass {
     background: #dcfce7;
     color: #15803d;
 }
 
-.partition-diagram__status--fail {
+.partition-diagram-status--fail {
     background: #fee2e2;
     color: #b91c1c;
 }
 
-.partition-diagram__predicate-note {
+.partition-diagram-predicate-note {
     display: block;
     margin-top: 6px;
     color: #78350f;
@@ -216,7 +215,7 @@
     border-left: 3px solid #e69f00;
 }
 
-.partition-diagram__panel-empty {
+.partition-diagram-panel-empty {
     padding: 12px 14px;
     color: var(--grey-500);
     font-style: italic;

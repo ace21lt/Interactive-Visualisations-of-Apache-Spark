@@ -5,7 +5,6 @@ import PartitionDetailPanel from './PartitionDetailPanel';
 import './Partitiondiagram.css';
 
 // Step routing
-// Uses step index and JSON step flags only
 function getPartitionsForStep(stepIndex, pipeline, internals) {
     if (!internals || !pipeline) return [];
     const step = pipeline[stepIndex - 1];
@@ -28,22 +27,16 @@ function getPartitionsForStep(stepIndex, pipeline, internals) {
         return internals.partition_distribution ?? [];
     }
 
-    // Action step (count()), not a shuffle — filter has fired across partitions
+    // Action step (count()), not a shuffle
     if (step.type === 'action' && !step.shuffle)
         return internals.filter_partition_distribution?.length
             ? internals.filter_partition_distribution
             : internals.partition_distribution ?? [];
 
-    // All lazy transformations (filter, withColumn, repartition):
-    // partition state is the balanced post-repartition distribution
     return internals.partition_distribution ?? [];
 }
 
-// Colour logic
-// Reads from JSON step flags only. Uses partitions_after to detect repartition
-// (which the JSON marks as lazy:true but visually belongs to the purple/wide category).
 // Okabe-Ito colour-blind-safe palette
-// Avoids red/green pairing — safe for deuteranopia and protanopia
 function resolveStepColor(step, stepIndex) {
     if (stepIndex === 1) return '#D55E00'; // vermillion  — gzip bottleneck
     if (step.shuffle) return '#E69F00';    // orange      — shuffle / wide
@@ -116,7 +109,6 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             .attr('fill', driverActive ? '#fff' : 'var(--grey-500)')
             .text('DRIVER NODE');
 
-        // "result collected here" label — only when action fired
         if (driverActive) {
             g.append('text')
                 .attr('x', dX + dW / 2).attr('y', -6)
@@ -344,9 +336,9 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
     return (
         <div className="partition-diagram">
 
-            {/* ── Header ── */}
-            <div className="partition-diagram__header">
-                <span className="partition-diagram__title">
+            {/*Header*/}
+            <div className="partition-diagram-header">
+                <span className="partition-diagram-title">
                     Cluster Execution
                 </span>
                 <span style={{
@@ -357,7 +349,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                 </span>
             </div>
 
-            <div className="partition-diagram__legend">
+            <div className="partition-diagram-legend">
                 {[
                     {s: {width: 12, height: 12, background: '#D55E00', borderRadius: 2}, label: 'Bottleneck'},
                     {s: {width: 12, height: 12, background: '#CC79A7', borderRadius: 2}, label: 'Repartition'},
@@ -379,15 +371,15 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                         label: 'Filtered out'
                     },
                 ].map(({s, label}) => (
-                    <span key={label} className="partition-diagram__legend-item">
+                    <span key={label} className="partition-diagram-legend-item">
                         <span style={s}/>{label}
                     </span>
                 ))}
             </div>
 
-            {/* ── SVG ── */}
-            <div ref={wrapRef} className="partition-diagram__svg-wrap">
-                <svg ref={svgRef} className="partition-diagram__svg"/>
+            {/*SVG*/}
+            <div ref={wrapRef} className="partition-diagram-svg-wrap">
+                <svg ref={svgRef} className="partition-diagram-svg"/>
             </div>
 
 

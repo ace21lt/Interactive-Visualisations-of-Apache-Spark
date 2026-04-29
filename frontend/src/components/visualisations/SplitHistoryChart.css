@@ -1,0 +1,237 @@
+.split-history {
+    border: 1px solid var(--grey-300);
+    border-radius: 6px;
+    background: #fff;
+    margin-top: 12px;
+}
+
+.split-history-header {
+    padding: 10px 16px;
+    background: var(--grey-50);
+    border-bottom: 2px solid var(--uos-purple);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.split-history-title {
+    font-size: 13px;
+    font-weight: bold;
+    color: var(--grey-900);
+    font-family: var(--font-mono), monospace;
+}
+
+.split-history-subtitle {
+    font-size: 11px;
+    color: var(--grey-500);
+    margin-left: 10px;
+}
+
+.split-history-count {
+    font-size: 11px;
+    color: var(--grey-400);
+}
+
+.split-history-body {
+    padding: 10px 12px;
+}
+
+.split-history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.split-history-run {
+    width: 100%;
+    text-align: left;
+    border: 1px solid var(--grey-100);
+    background: #fff;
+    border-radius: 6px;
+    padding: 6px 8px;
+    cursor: pointer;
+}
+
+.split-history-run-selected {
+    border: 1.5px solid var(--uos-purple);
+    background: #faf5ff;
+}
+
+.split-history-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.split-history-seed {
+    width: 72px;
+    flex-shrink: 0;
+    font-family: var(--font-mono), monospace;
+    font-size: 11px;
+    font-weight: bold;
+    color: var(--uos-purple);
+    text-align: right;
+}
+
+.split-history-bar {
+    flex: 1;
+    background: var(--grey-100);
+    border-radius: 4px;
+    height: 20px;
+    overflow: hidden;
+    display: flex;
+}
+
+.split-history-train,
+.split-history-test {
+    color: #fff;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    font-size: 10px;
+    font-weight: bold;
+    min-width: 30px;
+}
+
+.split-history-train {
+    background: #0072B2;
+    padding-left: 6px;
+}
+
+.split-history-test {
+    background: #D55E00;
+    justify-content: flex-end;
+    padding-right: 6px;
+}
+
+.split-history-ratio {
+    width: 80px;
+    flex-shrink: 0;
+    font-size: 10px;
+    font-family: var(--font-mono), monospace;
+    color: var(--grey-600);
+    text-align: right;
+}
+
+.split-history-counts {
+    width: 96px;
+    flex-shrink: 0;
+    font-size: 10px;
+    font-family: var(--font-mono), monospace;
+    color: var(--grey-500);
+    text-align: right;
+}
+
+.split-history-current {
+    font-size: 9px;
+    font-weight: bold;
+    color: #15803d;
+    background: #dcfce7;
+    padding: 1px 5px;
+    border-radius: 3px;
+}
+
+.split-history-timestamp {
+    margin-top: 2px;
+    font-size: 9px;
+    color: var(--grey-400);
+    text-align: right;
+    font-family: var(--font-mono), monospace;
+}
+
+.split-history-detail {
+    margin-top: 10px;
+    padding: 10px;
+    background: #f8faff;
+    border: 1px solid #dbeafe;
+    border-radius: 6px;
+}
+
+.split-history-detail-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.split-history-detail-title {
+    font-size: 11px;
+    font-weight: bold;
+    font-family: var(--font-mono), monospace;
+    color: var(--grey-900);
+}
+
+.split-history-detail-time {
+    font-size: 9px;
+    color: var(--grey-500);
+    font-family: var(--font-mono), monospace;
+}
+
+.split-history-detail-note {
+    margin: 6px 0 10px;
+    font-size: 10px;
+    color: #0369a1;
+    line-height: 1.5;
+}
+
+.split-history-note {
+    margin-top: 10px;
+    padding: 8px 10px;
+    background: #fff7ed;
+    border-left: 3px solid #f97316;
+    border-radius: 4px;
+    font-size: 11px;
+    color: #7c2d12;
+    line-height: 1.5;
+}
+
+.split-history-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+.split-history-grid-title {
+    font-size: 10px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.split-history-grid-title-train {
+    color: #0072B2;
+}
+
+.split-history-grid-title-test {
+    color: #D55E00;
+}
+
+.split-history-rows-empty {
+    background: #1f2937;
+    border-radius: 6px;
+    padding: 8px;
+    font-size: 10px;
+    color: #9ca3af;
+    font-family: var(--font-mono), monospace;
+}
+
+.split-history-rows {
+    background: #1f2937;
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #111827;
+}
+
+.split-history-row-line {
+    padding: 5px 8px;
+    font-family: var(--font-mono), monospace;
+    font-size: 10px;
+    color: #f3f4f6;
+    white-space: nowrap;
+    overflow-x: auto;
+}
+
+.split-history-row-line + .split-history-row-line {
+    border-top: 1px solid #374151;
+}

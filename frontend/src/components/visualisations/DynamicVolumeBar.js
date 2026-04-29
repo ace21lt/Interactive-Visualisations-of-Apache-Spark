@@ -3,7 +3,7 @@ import * as d3 from 'd3';
 
 const DynamicVolumeBar = ({pipelineData, currentStep}) => {
     const svgRef = useRef();
-    const prevRowsRef = useRef(); // Tracks the previous value for the odometer effect
+    const prevRowsRef = useRef(); // Tracks the previous value
 
     useEffect(() => {
         if (!pipelineData || !pipelineData.length) return;
@@ -24,7 +24,7 @@ const DynamicVolumeBar = ({pipelineData, currentStep}) => {
 
         const svg = d3.select(svgRef.current);
 
-        // 1. Initialize SVG Layers (Runs only on first mount)
+        // 1. Initialize SVG Layers
         if (svg.selectAll("g").empty()) {
             const g = svg.append("g");
 

@@ -3,7 +3,7 @@ import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './Lab2ClusterView.css';
 
-// Okabe-Ito colour palette (colour-blind safe) 
+// Okabe-Ito colour palette
 const C_TRAIN = '#0072B2';   // blue       — train rows
 const C_TEST = '#D55E00';   // vermillion — test rows
 const C_LAZY = '#56B4E9';   // sky blue   — lazy Spark step
@@ -162,7 +162,7 @@ function draw(svgEl, {
     const groupW = slotsN * boxW + gap * (slotsN - 1);
     const startX = (IW - groupW) / 2;
 
-    // Global max for bar scale — always 200 rows for Advertising
+    // Global max for bar scale
     const GLOBAL_MAX = Math.max(
         ...(partitionDist ?? []).map(p => p.row_count),
         (trainCount ?? 0) + (testCount ?? 0),
@@ -244,7 +244,6 @@ function draw(svgEl, {
                 .text(`P${i}`);
         }
 
-        // Mini legend inside P0 header
         const p0X = startX;
         g.append('text')
             .attr('x', p0X + boxW / 2).attr('y', pY - 5)
@@ -273,7 +272,7 @@ function draw(svgEl, {
             .attr('fill', 'var(--grey-300)').attr('font-family', 'var(--font-mono)')
             .text(`${idleCount} idle`);
 
-        return; // split mode done
+        return;
     }
 
     // All other modes: draw N partition slots 
@@ -510,8 +509,8 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
         <div className="lab2-cluster-view">
 
             {/*Card header*/}
-            <div className="lab2-cluster-view__header">
-                <span className="lab2-cluster-view__title">
+            <div className="lab2-cluster-view-header">
+                <span className="lab2-cluster-view-title">
                     Cluster Execution
                 </span>
                 <span style={{
@@ -524,8 +523,7 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
                 </span>
             </div>
 
-            {/*Legend — filtered by mode to respect Mayer coherence*/}
-            <div className="lab2-cluster-view__legend">
+            <div className="lab2-cluster-view-legend">
                 {(() => {
                     // Build the legend items pool, then filter by mode
                     const all = {
@@ -571,7 +569,7 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
                     const keys = keysByMode[mode] ?? ['sparkActive'];
                     return keys.map(k => all[k]);
                 })().map(({s, label}) => (
-                    <span key={label} className="lab2-cluster-view__legend-item">
+                    <span key={label} className="lab2-cluster-view-legend-item">
                         <span style={s}/>
                         {label}
                     </span>
@@ -579,24 +577,23 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
             </div>
 
             {/*SVG*/}
-            <div ref={wrapRef} className="lab2-cluster-view__svg-wrap">
+            <div ref={wrapRef} className="lab2-cluster-view-svg-wrap">
                 <svg
                     ref={svgRef}
-                    className="lab2-cluster-view__svg"
+                    className="lab2-cluster-view-svg"
                     style={{height: `${H}px`}}
                 />
             </div>
 
             {/*Step annotation*/}
             {annotation && (
-                <div className="lab2-cluster-view__annotation">
+                <div className="lab2-cluster-view-annotation">
                     {annotation}
                 </div>
             )}
 
-            {/*Partition data panel (Lab-1-style) — appears on partition click*/}
+            {/*Partition data panel */}
             {selectedPartition !== null && (() => {
-                // Resolve which rows to show + the panel header label
                 const isStep2 = (stepObj?.step === 2) && selectedPartition === 0;
                 const isTrain = selectedPartition === 'train';
                 const isTest = selectedPartition === 'test';
@@ -626,26 +623,25 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
                 partRows = partRows.slice(0, 5);
 
                 return (
-                    <div className="lab2-cluster-view__panel">
-                        {/* Panel header — purple bar, white text, ✕ close */}
-                        <div className="lab2-cluster-view__panel-header">
-                            <span className="lab2-cluster-view__panel-title">
+                    <div className="lab2-cluster-view-panel">
+                        <div className="lab2-cluster-view-panel-header">
+                            <span className="lab2-cluster-view-panel-title">
                                 {partLabel}
                             </span>
-                            <span className="lab2-cluster-view__panel-subtitle">
+                            <span className="lab2-cluster-view-panel-subtitle">
                                 {stepLabel}
                             </span>
                             <button
                                 onClick={() => setSelectedPartition(null)}
-                                className="lab2-cluster-view__panel-close"
+                                className="lab2-cluster-view-panel-close"
                                 aria-label="Close partition detail"
                             >✕
                             </button>
                         </div>
 
                         {partRows.length > 0 && (
-                            <div className="lab2-cluster-view__panel-body">
-                                <div className="lab2-cluster-view__panel-copy-title">
+                            <div className="lab2-cluster-view-panel-body">
+                                <div className="lab2-cluster-view-panel-copy-title">
                                     {isStep2
                                         ? 'First 5 rows loaded into this partition:'
                                         : isTrain
@@ -653,10 +649,9 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
                                             : 'First 5 TEST rows from this partition:'}
                                 </div>
 
-                                {/* Terminal-style row rendering (matches Lab 1) */}
-                                <div className="lab2-cluster-view__terminal">
+                                <div className="lab2-cluster-view-terminal">
                                     {partRows.map((row, i) => {
-                                        // Render each row as a pipe-separated line, Lab-1 style
+                                        // Render each row as a pipe-separated line
                                         const line = columns.map(k => {
                                             const v = row[k];
                                             if (v == null) return `${k}=—`;
@@ -665,7 +660,7 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
                                             return `${k}=${v}`;
                                         }).join('  |  ');
                                         return (
-                                            <div key={i} className="lab2-cluster-view__terminal-line" style={{borderBottom: i < partRows.length - 1 ? '1px solid #333' : 'none'}}>
+                                            <div key={i} className="lab2-cluster-view-terminal-line" style={{borderBottom: i < partRows.length - 1 ? '1px solid #333' : 'none'}}>
                                                 {line}
                                             </div>
                                         );

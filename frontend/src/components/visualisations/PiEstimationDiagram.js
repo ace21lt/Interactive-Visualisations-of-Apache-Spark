@@ -36,7 +36,7 @@ const PiEstimationDiagram = ({piData, partitionCount}) => {
 
     const containerWidth = useContainerWidth(wrapRef, 520);
     const [dots, setDots] = useState([]);   // [{x, y, p, inside}]
-    const [phase, setPhase] = useState('idle'); // idle | running | done
+    const [phase, setPhase] = useState('idle'); 
 
     const nPartitions = useMemo(() => {
         if (!piData) return null;
@@ -276,10 +276,10 @@ const PiEstimationDiagram = ({piData, partitionCount}) => {
                                 {pDots.map((dot, i) => (
                                     <circle
                                         key={i}
-                                        cx={dot.x * SQ}
+                                        cx={(1 - dot.x) * SQ}
                                         cy={(1 - dot.y) * SQ}
                                         r={2.2}
-                                        fill={dot.inside ? C_IN : C_OUT}
+                                        fill={dot.inside ? C_OUT : C_IN}
                                         opacity={0.75}
                                     />
                                 ))}
@@ -388,7 +388,7 @@ const PiEstimationDiagram = ({piData, partitionCount}) => {
                 )}
             </div>
 
-            {/*Spark result comparison (shown after animation completes)*/}
+            {/*Spark result comparison */}
             {phase === 'done' && (
                 <div style={{
                     margin: '0 16px 12px',

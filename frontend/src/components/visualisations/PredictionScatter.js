@@ -1,6 +1,7 @@
 import React, {useRef, useEffect, useState} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
+import './Lab2Layout.css';
 
 const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) => {
     const svgRef = useRef();
@@ -29,7 +30,6 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
         const x = d3.scaleLinear().domain([lo, hi]).range([0, IW]);
         const y = d3.scaleLinear().domain([lo, hi]).range([IH, 0]);
 
-        // Grid lines
         g.append('g')
             .call(d3.axisBottom(x).ticks(6).tickSize(-IH).tickFormat(''))
             .attr('transform', `translate(0,${IH})`)
@@ -38,10 +38,8 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
             .call(d3.axisLeft(y).ticks(6).tickSize(-IW).tickFormat(''))
             .selectAll('line').attr('stroke', '#eee');
 
-        // Remove domain lines from grids
         g.selectAll('.domain').remove();
 
-        // Perfect prediction diagonal
         g.append('line')
             .attr('x1', x(lo)).attr('y1', y(lo))
             .attr('x2', x(hi)).attr('y2', y(hi))
@@ -55,7 +53,6 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
             .attr('fill', '#16a34a').attr('font-style', 'italic')
             .text('perfect prediction');
 
-        // Scatter points
         g.selectAll('.dot')
             .data(predictions)
             .enter().append('circle')
@@ -78,7 +75,6 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
             .transition().duration(600).delay((_, i) => i * 20)
             .attr('r', 5);
 
-        // Residual lines (distance from diagonal)
         g.selectAll('.residual-line')
             .data(predictions)
             .enter().append('line')
@@ -89,7 +85,6 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
             .transition().duration(400).delay(800)
             .attr('opacity', 0.3);
 
-        // X axis
         g.append('g')
             .attr('transform', `translate(0,${IH})`)
             .call(d3.axisBottom(x).ticks(6))
@@ -101,7 +96,6 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
             .attr('fill', 'var(--grey-600)')
             .text('Actual sales');
 
-        // Y axis
         g.append('g')
             .call(d3.axisLeft(y).ticks(6))
             .selectAll('text').attr('font-size', 11).attr('font-family', 'var(--font-mono)');
@@ -122,20 +116,9 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
     if (!predictions || predictions.length === 0) return null;
 
     return (
-        <div style={{border: '1px solid var(--grey-300)', borderRadius: '6px', background: '#fff'}}>
-            <div style={{
-                padding: '10px 16px', background: 'var(--grey-50)',
-                borderBottom: '2px solid var(--uos-purple)',
-                display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-            }}>
-                <span style={{
-                    fontSize: '13px',
-                    fontWeight: 'bold',
-                    color: 'var(--grey-900)',
-                    fontFamily: 'var(--font-mono)'
-                }}>
-                    Predicted vs Actual
-                </span>
+        <div className="viz-card">
+            <div className="viz-card-header">
+                <span className="viz-card-title">Predicted vs Actual</span>
                 <div style={{display: 'flex', gap: '12px', fontSize: '11px', fontFamily: 'var(--font-mono)'}}>
                     <span style={{color: '#0072B2'}}>RMSE: {testRmse?.toFixed(4) ?? '—'}</span>
                     <span style={{color: '#0072B2'}}>R²: {testR2?.toFixed(4) ?? '—'}</span>
@@ -143,15 +126,11 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
             </div>
 
             <div ref={wrapRef} style={{padding: '10px 0'}}>
-                <svg ref={svgRef} style={{display: 'block', width: '100%', height: '320px'}}/>
+                <svg ref={svgRef} style={{display: 'block', width: '100%', height: '320px'}} />
             </div>
 
             {hovered && (
-                <div style={{
-                    padding: '6px 16px 10px', fontSize: '12px',
-                    fontFamily: 'var(--font-mono)', color: 'var(--grey-700)',
-                    borderTop: '1px solid var(--grey-200)'
-                }}>
+                <div className="hover-detail">
                     Actual: {hovered.label.toFixed(2)} | Predicted: {hovered.prediction.toFixed(2)} |
                     Residual: <span style={{color: '#D55E00', fontWeight: 'bold'}}>{hovered.residual.toFixed(2)}</span>
                     {hovered.features && featureCols.length > 0 && (
@@ -169,32 +148,17 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
                 </div>
             )}
 
-            <div style={{
-                padding: '6px 16px', display: 'flex', gap: '14px',
-                fontSize: '11px', color: '#666', borderTop: '1px solid var(--grey-200)'
-            }}>
-                <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
-                    <span style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        background: '#0072B2',
-                        display: 'inline-block'
-                    }}/>
+            <div className="legend-row" style={{padding: '6px 16px', borderTop: '1px solid var(--grey-200)'}}>
+                <span className="legend-item">
+                    <span className="legend-item-dot" style={{background: '#0072B2'}} />
                     Data point
                 </span>
-                <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
-                    <span style={{width: 16, height: 0, borderTop: '2px dashed #16a34a', display: 'inline-block'}}/>
+                <span className="legend-item">
+                    <span style={{width: 16, height: 0, borderTop: '2px dashed #16a34a', display: 'inline-block'}} />
                     Perfect prediction
                 </span>
-                <span style={{display: 'flex', alignItems: 'center', gap: 4}}>
-                    <span style={{
-                        width: 16,
-                        height: 0,
-                        borderTop: '1px solid #D55E00',
-                        display: 'inline-block',
-                        opacity: 0.5
-                    }}/>
+                <span className="legend-item">
+                    <span style={{width: 16, height: 0, borderTop: '1px solid #D55E00', display: 'inline-block', opacity: 0.5}} />
                     Residual
                 </span>
             </div>
