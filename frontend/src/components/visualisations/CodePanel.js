@@ -6,14 +6,8 @@ import {oneDark} from '@codemirror/theme-one-dark';
 import './Lab1Layout.css';
 
 
-// Step 1 — spark.read.text()         READ ONLY  (gzip non-splittability demo)
-// Step 2 — NUM_PARTITIONS + delta    EDITABLE   (repartition config)
-// Step 3 — hosts_japan = filter(.jp) EDITABLE   (lazy transformation)
-// Step 4 — hosts_japan.count()       READ ONLY   (action that fires DAG)
-// Step 5 — df = withColumn × 3       READ ONLY  (parsing — complex, don't break)
-// Step 6 — repartitionByRange + groupBy(groupby_col)  EDITABLE
 
-const codeTemplates = {
+const lab1CodeTemplates = {
     1: {
         title: "Load NASA Log File",
         defaultCode:
@@ -28,7 +22,7 @@ logs_raw = spark.read.text(big_path)`,
         title: "Repartition & Delta Save",
         defaultCode:
             `# Step 2 — Repartition to enable parallel processing
-# optimised_path is pre-defined — only change NUM_PARTITIONS
+# only change NUM_PARTITIONS
 NUM_PARTITIONS = 8
 
 (logs_raw.repartition(NUM_PARTITIONS)
@@ -45,7 +39,6 @@ logs = spark.read.format("delta").load(optimised_path).repartition(NUM_PARTITION
         title: "Filter by Domain (Lazy)",
         defaultCode:
             `# Step 3 — Narrow Transformation: add a filter predicate to the DAG
-# Nothing executes yet — Spark records the intention only.
 hosts_japan = logs.filter(logs.value.contains(".jp"))`,
         readOnly: false,
         desc: "Change the filter string only — try '.uk', '.gov', or '.dk'. Keep the variable name 'hosts_japan' unchanged. Notice this step produces no output — the filter is lazy until an action is called in Step 4."
@@ -86,9 +79,119 @@ status_counts = df_grouped.groupBy(groupby_col).agg(count("*").alias("num")).ord
     }
 };
 
-const CodePanel = ({currentStep, onExecuteStep, data}) => {
-    const activeTemplate = codeTemplates[currentStep];
+const lab2CodeTemplates = {
+    1: {
+        title: "Pi Estimation — vary partitions & samples",
+        defaultCode:
+            `# Lab Section 5 (optional): vary the two values below to study
+# time cost and precision. Each run is recorded in the history panel.
+NUM_SAMPLES = 10000000
+NUM_PARTITIONS = 8
 
+_pi_start = _time.time()
+_pi_range = spark.range(NUM_SAMPLES, numPartitions=NUM_PARTITIONS)
+pi_partition_count = _pi_range.select(spark_partition_id()).distinct().count()
+
+pi_count = (
+    _pi_range
+    .selectExpr("rand() as x", "rand() as y")
+    .filter("x*x + y*y < 1")
+    .count()
+)
+pi_estimate = 4.0 * pi_count / NUM_SAMPLES
+pi_elapsed_ms = int((_time.time() - _pi_start) * 1000)
+pi_error = abs(pi_estimate - _math.pi)`,
+        readOnly: false,
+        desc: "Lab Section 5 (optional). Try NUM_PARTITIONS = 2, 4, 8, 16. Try NUM_SAMPLES = 100_000 up to 10_000_000. The history panel records every combination."
+    },
+    2: {
+        title: "Load Advertising CSV",
+        defaultCode:
+            `# Step 2 — Load CSV with schema inference
+df_raw = spark.read.load(csv_path, format="csv", inferSchema="true", header="true")
+df = df_raw.drop("_c0")  # Remove the unnamed index column`,
+        readOnly: true,
+        desc: "Spark infers the schema from the CSV header and data types. The unnamed first column (_c0) is the original row index so we drop it. Notice the column types: all features are DoubleType."
+    },
+    3: {
+        title: "Feature Column Selection (VectorAssembler)",
+        defaultCode:
+            `# Step 3 — Select feature columns used for the regression model
+feature_cols = ["TV", "radio", "newspaper"]
+label_col = "sales"
+df_selected = df.select(*feature_cols, col(label_col).alias("label"))`,
+        readOnly: false,
+        desc: "VectorAssembler packs feature columns into a single dense vector for spark.ml. On HPC this produces a features column of type Vector. On Serverless via Jobs API, spark.ml constructors are blocked so we select columns and convert to pandas. Try removing 'newspaper' from feature_cols to see its effect on predictions."
+    },
+    4: {
+        title: "Train/Test Split",
+        defaultCode:
+            `# Step 4 — Split data for training and evaluation
+split_ratio = [0.6, 0.4]
+split_seed = 6012
+(trainingData, testData) = df_selected.randomSplit(split_ratio, split_seed)`,
+        readOnly: false,
+        desc: "randomSplit is a narrow transformation meaning there is no shuffle. Each partition independently hashes rows into buckets. Try [0.8, 0.2] or change the seed."
+    },
+    5: {
+        title: "Linear Regression — Fit",
+        defaultCode:
+            `# Change reg_param to study regularisation (Exercise 4)
+# 0.0 = no regularisation | 0.1 = light L2 (Ridge) | 1.0 = strong L2 (Ridge)
+# Equivalent to spark.ml LinearRegression(regParam=reg_param, elasticNetParam=0.0)
+# Note: sklearn Ridge uses alpha = regParam * n_train (spark.ml normalises by 1/n)
+reg_param = 0.0
+
+if reg_param == 0.0:
+    lr = LinearRegression()
+else:
+    lr = Ridge(alpha=reg_param * len(X_train_scaled))
+lr.fit(X_train_scaled, y_train)`,
+        readOnly: false,
+        desc: "Change reg_param (try 0.1, 1.0) and click Run. Watch the coefficient chart update, TV and radio shrink under Ridge regularisation. Newspaper may grow as it shares variance with radio and absorbs what radio releases. Equivalent to spark.ml LinearRegression(regParam=reg_param, elasticNetParam=0.0)"
+    },
+    6: {
+        title: "Prediction & Evaluation",
+        defaultCode:
+            `# Step 6 — Evaluate on test data
+test_rmse = float(np.sqrt(mean_squared_error(y_test, y_test_pred)))`,
+        readOnly: true,
+        desc: "RMSE measures average prediction error. Points close to the diagonal line are well-predicted. Vertical distance from the line is the residual."
+    },
+    7: {
+        title: "ML Pipeline — Exercise 5",
+        defaultCode:
+            `# Exercise 5 — construct a new test dataset with three samples
+# On HPC: spark.createDataFrame([(8,"pyspark hadoop"),(9,"spark a b c"),(10,"mapreduce spark")], ["id","text"])
+# Here we use the dict format; the scikit-learn pipeline runs on the driver.
+# 'spark' is a positive signal; 'hadoop' and 'mapreduce' are negative.
+# 'pyspark' is unknown — not in the training vocabulary.
+pipeline_test_data = [
+    {"id": 8, "text": "pyspark hadoop"},
+    {"id": 9, "text": "spark a b c"},
+    {"id": 10, "text": "mapreduce spark"}
+]`,
+        readOnly: false,
+        desc: "Exercise 5: run this and report the prediction probabilities and predicted labels for all three documents. Before clicking Run, check the training data on tab 7a and predict each label yourself (1 = Spark-related, 0 = not). Then click Run and compare."
+    }
+};
+
+const templatesByLab = {
+    lab1: lab1CodeTemplates,
+    lab2: lab2CodeTemplates,
+};
+
+function detectLab(data, currentStep) {
+    if (data?._lab && templatesByLab[data._lab]) return data._lab;
+    if (data?.ml_pipeline || data?.linear_regression || data?.feature_engineering || data?.rdd_concepts) {
+        return 'lab2';
+    }
+    return currentStep > Object.keys(lab1CodeTemplates).length ? 'lab2' : 'lab1';
+}
+
+const CodePanel = ({currentStep, onExecuteStep, data}) => {
+    const templates = templatesByLab[detectLab(data, currentStep)] ?? lab1CodeTemplates;
+    const activeTemplate = templates[currentStep];
     const [editorCode, setEditorCode] = useState("");
     const [isExecuting, setIsExecuting] = useState(false);
     const [runError, setRunError] = useState(null);
@@ -104,14 +207,14 @@ const CodePanel = ({currentStep, onExecuteStep, data}) => {
     };
     const activeTheme = themes[editorTheme] ?? themes.dark;
 
-    // Restore saved edit for this step, or fall back to defaultCode
+    // Restore saved edit for this step, otherwise use the hardcoded step template
     useEffect(() => {
         if (activeTemplate) {
             const saved = editsPerStep.current[currentStep];
-            setEditorCode(saved !== undefined ? saved : activeTemplate.defaultCode);
+            setEditorCode(saved !== undefined ? saved : (activeTemplate.defaultCode ?? ""));
             setRunError(null);
         }
-    }, [currentStep]);
+    }, [currentStep, activeTemplate]);
 
     const handleRun = async () => {
         if (!onExecuteStep) return;

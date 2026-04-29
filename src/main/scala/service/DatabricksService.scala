@@ -16,6 +16,7 @@ trait DatabricksService:
   def runLab(
       workspaceUrl: String,
       token: String,
+      lab: String = "lab1",
       step: Option[Int] = None,
       editedCode: Option[String] = None
   ): IO[DatabricksError, RunOutput]
@@ -24,10 +25,11 @@ object DatabricksService:
   def runLab(
       workspaceUrl: String,
       token: String,
+      lab: String = "lab1",
       step: Option[Int] = None,
       editedCode: Option[String] = None
   ): ZIO[DatabricksService, DatabricksError, RunOutput] =
-    ZIO.serviceWithZIO[DatabricksService](_.runLab(workspaceUrl, token, step, editedCode))
+    ZIO.serviceWithZIO[DatabricksService](_.runLab(workspaceUrl, token, lab, step, editedCode))
 
 // On every call:
 //   1. Auto-discover the student's Unity Catalog catalog name
@@ -48,6 +50,7 @@ case class DatabricksServiceLive(
   override def runLab(
       workspaceUrl: String,
       token: String,
+      lab: String,
       step: Option[Int],
       editedCode: Option[String]
   ): IO[DatabricksError, RunOutput] =
@@ -59,24 +62,27 @@ case class DatabricksServiceLive(
       _         <- ZIO.logInfo(s"Using volume path: $volumePath")
 
       // Step 2 — build notebook source with the resolved volume path injected.
-      // skipRepartition is only safe when the Delta table already exists —
-      // on a brand-new account deltaTableExists=false, so we force the write.
+      // skipRepartition is only relevant for lab1; for other labs it defaults false.
       notebookSource <- (step, editedCode) match
                           case (Some(s), Some(code)) if code.trim.nonEmpty =>
-                            ZIO.logInfo(s"Building notebook with edited step $s") *>
-                              NotebookTemplate.buildNotebook(s, code, datasetVolumePath = volumePath)
+                            ZIO.logInfo(s"Building notebook [$lab] with edited step $s") *>
+                              NotebookTemplate.buildNotebook(s, code, lab = lab, datasetVolumePath = volumePath)
                           case _                                           =>
-                            val skip = provision.deltaTableExists
+                            val skip = lab == "lab1" && provision.deltaTableExists
                             ZIO.logInfo(
-                              s"Building notebook from template " +
+                              s"Building notebook [$lab] from template " +
                                 s"(skipRepartition=$skip, deltaTableExists=${provision.deltaTableExists})"
                             ) *>
-                              NotebookTemplate.loadDefault(datasetVolumePath = volumePath, skipRepartition = skip)
+                              NotebookTemplate.loadDefault(
+                                lab = lab,
+                                datasetVolumePath = volumePath,
+                                skipRepartition = skip
+                              )
 
       // Step 3 — import notebook to a fresh path in the student's workspace
       importDir      <- config.notebookImportDir
       destPath        = WorkspaceImporter.destinationPath(importDir)
-      _              <- ZIO.logInfo(s"Importing notebook to $workspaceUrl at $destPath")
+      _              <- ZIO.logInfo(s"Importing notebook [$lab] to $workspaceUrl at $destPath")
       _              <- workspaceImporter.importNotebook(workspaceUrl, token, destPath, notebookSource)
 
       // Step 4 — run it

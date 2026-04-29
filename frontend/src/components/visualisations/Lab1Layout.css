@@ -1,9 +1,8 @@
-/* Lab1Layout.css */
 
 .layout-container {
     display: grid;
-    grid-template-rows: 60px 1fr 100px; /* Top Stepper, Main Content, Bottom Concept */
-    grid-template-columns: 320px 1fr; /* Left Code Panel, Right Data Panel */
+    grid-template-rows: 60px minmax(0, 1fr) clamp(120px, 18vh, 190px);
+    grid-template-columns: 320px 1fr;
     grid-template-areas:
         "header header"
         "code   data"
@@ -18,7 +17,6 @@
     font-family: var(--font-mono);
 }
 
-/* --- Top Stepper (Header) --- */
 .header {
     grid-area: header;
     display: flex;
@@ -53,7 +51,6 @@
     border-bottom: 4px solid var(--uos-purple);
 }
 
-/* --- Left Code Panel --- */
 .code-panel {
     grid-area: code;
     border-right: 2px solid var(--grey-700);
@@ -72,7 +69,6 @@
     letter-spacing: 1px;
 }
 
-/* --- Right Data Panel --- */
 .data-panel {
     grid-area: data;
     padding: 20px;
@@ -97,29 +93,34 @@
     border-radius: 3px;
 }
 
-/* --- Bottom Concept Panel --- */
 
 .bottom-panel {
     grid-area: footer;
     border-top: 2px solid var(--grey-700);
+    box-sizing: border-box;
     background-color: var(--grey-50);
     display: flex;
     align-items: center;
     justify-content: center;
-    padding: 10px 20px;
+    padding: 14px 20px;
     text-align: center;
 }
 
 .concept-text {
-    font-size: 12px;
+    font-size: clamp(11px, 0.7vw + 8px, 15px);
     line-height: 1.5;
     color: var(--grey-900);
+    width: 100%;
+    max-width: 98%;
+    overflow-wrap: anywhere;
+    word-break: normal;
 }
 
 .concept-label {
     font-weight: bold;
     color: var(--uos-purple);
     margin-right: 10px;
+    font-size: clamp(11px, 0.7vw + 8px, 14px);
 }
 
 .trace-btn {
