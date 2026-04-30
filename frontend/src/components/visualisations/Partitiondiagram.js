@@ -3,6 +3,7 @@ import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import PartitionDetailPanel from './PartitionDetailPanel';
 import './Partitiondiagram.css';
+import { alpha, chartBlue, chartGreen, chartOrange, chartPurple, neutralMuted, neutralSurface, neutralWhite } from '../../theme/palette';
 
 // Step routing
 function getPartitionsForStep(stepIndex, pipeline, internals) {
@@ -38,11 +39,11 @@ function getPartitionsForStep(stepIndex, pipeline, internals) {
 
 // Okabe-Ito colour-blind-safe palette
 function resolveStepColor(step, stepIndex) {
-    if (stepIndex === 1) return '#D55E00'; // vermillion  — gzip bottleneck
-    if (step.shuffle) return '#E69F00';    // orange      — shuffle / wide
-    if (step.type === 'action') return '#0072B2'; // blue — action (count)
-    if (step.partitions_after != null) return '#CC79A7'; // reddish purple — repartition
-    return '#56B4E9';                       // sky blue   — lazy transformation
+    if (stepIndex === 1) return chartOrange; // vermillion  — gzip bottleneck
+    if (step.shuffle) return chartOrange;    // orange      — shuffle / wide
+    if (step.type === 'action') return chartBlue; // blue — action (count)
+    if (step.partitions_after != null) return chartPurple; // reddish purple — repartition
+    return alpha(chartBlue, 0.18);             // sky blue   — lazy transformation
 }
 
 // Component
@@ -82,6 +83,11 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
 
         const svg = d3.select(svgRef.current).attr('width', W).attr('height', H);
         svg.selectAll('*').remove();
+        const focusStroke = chartOrange;
+        const activatePartition = (pid) => {
+            onPartitionClick?.(pid);
+            setSelectedPartition(prev => prev === pid ? null : pid);
+        };
 
         // Arrow marker
         const defs = svg.append('defs');
@@ -90,7 +96,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             .attr('refX', 4).attr('refY', 4)
             .attr('markerWidth', 5).attr('markerHeight', 5)
             .attr('orient', 'auto')
-            .append('path').attr('d', 'M0,0 L0,8 L8,4 z').attr('fill', '#E69F00');
+            .append('path').attr('d', 'M0,0 L0,8 L8,4 z').attr('fill', chartOrange);
 
         const g = svg.append('g').attr('transform', `translate(${ml},${mt})`);
 
@@ -106,14 +112,14 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             .attr('x', dX + dW / 2).attr('y', 28)
             .attr('text-anchor', 'middle').attr('font-family', 'var(--font-mono)')
             .attr('font-size', 13).attr('font-weight', 'bold')
-            .attr('fill', driverActive ? '#fff' : 'var(--grey-500)')
+            .attr('fill', driverActive ? neutralWhite : 'var(--grey-500)')
             .text('DRIVER NODE');
 
         if (driverActive) {
             g.append('text')
                 .attr('x', dX + dW / 2).attr('y', -6)
                 .attr('text-anchor', 'middle').attr('font-size', 9)
-                .attr('fill', color).attr('font-family', 'var(--font-mono)')
+                    .attr('fill', color).attr('font-family', 'var(--font-mono)')
                 .text('◄ result collected here');
         }
 
@@ -121,12 +127,12 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
         const netY = dH + 30;
         g.append('line')
             .attr('x1', 0).attr('y1', netY).attr('x2', IW).attr('y2', netY)
-            .attr('stroke', 'var(--uos-yellow)').attr('stroke-width', 2)
+            .attr('stroke', chartOrange).attr('stroke-width', 2)
             .attr('stroke-dasharray', '6,4');
         g.append('text')
             .attr('x', IW / 2).attr('y', netY - 6)
             .attr('text-anchor', 'middle').attr('font-size', 9)
-            .attr('font-family', 'var(--font-mono)').attr('fill', '#E69F00')
+            .attr('font-family', 'var(--font-mono)').attr('fill', chartOrange)
             .text('NETWORK SHUFFLE BOUNDARY');
 
         // Executors label
@@ -168,7 +174,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             g.append('rect')
                 .attr('x', 0).attr('y', bannerY - 12)
                 .attr('width', IW).attr('height', 16)
-                .attr('fill', '#fff7ed').attr('rx', 2);
+                .attr('fill', alpha(chartOrange, 0.16)).attr('rx', 2);
             g.append('text')
                 .attr('x', IW / 2).attr('y', bannerY)
                 .attr('text-anchor', 'middle').attr('font-size', 9)
@@ -192,7 +198,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                 const srcX = ghostX + i * (ghostBoxW + ghostGap) + ghostBoxW / 2;
                 g.append('path')
                     .attr('d', `M${srcX},${pY + 10} Q${(srcX + destX) / 2},${pY - 20} ${destX},${destY}`)
-                    .attr('fill', 'none').attr('stroke', '#E69F00')
+                    .attr('fill', 'none').attr('stroke', chartOrange)
                     .attr('stroke-width', 1.5).attr('stroke-dasharray', '4,3')
                     .attr('marker-end', 'url(#sh-arrow)').attr('opacity', 0)
                     .transition().duration(500).delay(i * 55).attr('opacity', 0.6);
@@ -214,24 +220,38 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             g.append('rect')
                 .attr('x', x).attr('y', pY)
                 .attr('width', boxW).attr('height', maxBarH)
-                .attr('fill', isHl ? '#fffbeb' : '#fafafa')
-                .attr('stroke', isHl ? '#E69F00' : (isLazy ? 'var(--grey-300)' : color))
+                .attr('fill', isHl ? alpha(chartOrange, 0.18) : neutralSurface)
+                .attr('stroke', isHl ? chartOrange : (isLazy ? 'var(--grey-300)' : color))
                 .attr('stroke-width', isHl ? 2.5 : 1.5)
                 .attr('stroke-dasharray', isLazy ? '4,4' : 'none')
                 .attr('rx', 3)
+                    .attr('tabindex', (onPartitionClick && (pData.row_count ?? 0) > 0) ? 0 : -1)
+                    .attr('role', (onPartitionClick && (pData.row_count ?? 0) > 0) ? 'button' : null)
+                    .attr('aria-label', (onPartitionClick && (pData.row_count ?? 0) > 0) ? `Partition ${pData.partition_id ?? i}, ${rows.toLocaleString()} rows. Press Enter or Space to inspect rows.` : null)
+                    .attr('aria-pressed', isHl ? 'true' : 'false')
                 .style('cursor', onPartitionClick ? 'pointer' : 'default')
+                    .on('focus', function () {
+                        if (!onPartitionClick || (pData.row_count ?? 0) === 0) return;
+                        d3.select(this).attr('stroke', focusStroke).attr('stroke-width', 3);
+                    })
+                    .on('blur', function () {
+                        d3.select(this).attr('stroke', isHl ? chartOrange : (isLazy ? 'var(--grey-300)' : color)).attr('stroke-width', isHl ? 2.5 : 1.5);
+                    })
+                    .on('keydown', function (event) {
+                        if (!onPartitionClick || (pData.row_count ?? 0) === 0 || (event.key !== 'Enter' && event.key !== ' ')) return;
+                        event.preventDefault();
+                        activatePartition(pData.partition_id ?? i);
+                    })
                 .on('click', () => {
                     // Only open panel if this partition actually has data
                     if ((pData.row_count ?? 0) === 0) return;
-                    const pid = pData.partition_id ?? i;
-                    onPartitionClick?.(pid);
-                    setSelectedPartition(prev => prev === pid ? null : pid);
+                        activatePartition(pData.partition_id ?? i);
                 });
 
             // Animated fill bar (grows upward from bottom of box)
             if (barH > 0) {
-                const barFill = isHl ? 'var(--uos-yellow)'
-                    : (isBottleneck && i === 0 ? '#D55E00' : color);
+                const barFill = isHl ? alpha(chartOrange, 0.18)
+                    : (isBottleneck && i === 0 ? chartOrange : color);
                 g.append('rect')
                     .attr('x', x).attr('y', pY + maxBarH)
                     .attr('width', boxW).attr('height', 0)
@@ -239,9 +259,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                     .style('cursor', onPartitionClick ? 'pointer' : 'default')
                     .on('click', () => {
                         if ((pData.row_count ?? 0) === 0) return;
-                        const pid = pData.partition_id ?? i;
-                        onPartitionClick?.(pid);
-                        setSelectedPartition(prev => prev === pid ? null : pid);
+                        activatePartition(pData.partition_id ?? i);
                     })
                     .transition().duration(750).ease(d3.easeCubicOut)
                     .attr('y', barY).attr('height', barH);
@@ -257,7 +275,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                     .attr('text-anchor', 'middle')
                     .attr('font-family', 'var(--font-mono)')
                     .attr('font-size', n === 1 ? 13 : 10).attr('font-weight', 'bold')
-                    .attr('fill', isHl ? '#E69F00' : color)
+                    .attr('fill', isHl ? chartOrange : color)
                     .attr('opacity', 0)
                     .transition().duration(650).delay(300).attr('opacity', 1)
                     .text(lbl);
@@ -281,15 +299,15 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                 const cy = pY + maxBarH - 10;
                 const evaluated = currentStep >= 4;
                 const passes = row.passes_japan_filter;
-                const dotFill = !evaluated ? '#888'
-                    : passes ? '#16a34a'
-                        : '#D55E00';
+                const dotFill = !evaluated ? neutralMuted
+                    : passes ? chartGreen
+                        : chartOrange;
                 const dotOp = evaluated && !passes ? 0.18 : 1;
 
                 g.append('circle')
                     .attr('cx', cx).attr('cy', cy).attr('r', 4.5)
                     .attr('fill', dotFill)
-                    .attr('stroke', '#fff').attr('stroke-width', 1)
+                    .attr('stroke', neutralWhite).attr('stroke-width', 1)
                     .attr('opacity', 0)
                     .style('cursor', onPartitionClick ? 'pointer' : 'default')
                     .on('click', () => {
@@ -306,7 +324,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
         // Caption
         g.append('text')
             .attr('x', IW / 2).attr('y', H - mt - 2)
-            .attr('text-anchor', 'middle').attr('font-size', 11).attr('fill', '#666')
+            .attr('text-anchor', 'middle').attr('font-size', 11).attr('fill', neutralMuted)
             .text(activeStep.description ?? '');
 
     }, [currentStep, data, highlightedPartition, width, onPartitionClick]);
@@ -343,7 +361,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                 </span>
                 <span style={{
                     fontSize: '11px', fontWeight: 'bold', padding: '3px 8px', borderRadius: '4px',
-                    background: `${color}22`, color, border: `1px solid ${color}`
+                    background: alpha(color, 0.14), color, border: `1px solid ${color}`
                 }}>
                     {badge}
                 </span>
@@ -351,23 +369,23 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
 
             <div className="partition-diagram-legend">
                 {[
-                    {s: {width: 12, height: 12, background: '#D55E00', borderRadius: 2}, label: 'Bottleneck'},
-                    {s: {width: 12, height: 12, background: '#CC79A7', borderRadius: 2}, label: 'Repartition'},
+                    {s: {width: 12, height: 12, background: chartOrange, borderRadius: 2}, label: 'Bottleneck'},
+                    {s: {width: 12, height: 12, background: chartPurple, borderRadius: 2}, label: 'Repartition'},
                     {
                         s: {
                             width: 12,
                             height: 12,
-                            background: '#56B4E9',
+                            background: alpha(chartBlue, 0.18),
                             borderRadius: 2,
-                            border: '1px dashed #92400e'
+                            border: `1px dashed ${chartBlue}`
                         },
                         label: 'Lazy'
                     },
-                    {s: {width: 12, height: 12, background: '#0072B2', borderRadius: 2}, label: 'Action'},
-                    {s: {width: 12, height: 12, background: '#E69F00', borderRadius: 2}, label: 'Shuffle'},
-                    {s: {width: 8, height: 8, background: '#16a34a', borderRadius: '50%'}, label: 'Passes filter'},
+                    {s: {width: 12, height: 12, background: chartBlue, borderRadius: 2}, label: 'Action'},
+                    {s: {width: 12, height: 12, background: chartOrange, borderRadius: 2}, label: 'Shuffle'},
+                    {s: {width: 8, height: 8, background: chartGreen, borderRadius: '50%'}, label: 'Passes filter'},
                     {
-                        s: {width: 8, height: 8, background: '#D55E00', borderRadius: '50%', opacity: 0.3},
+                        s: {width: 8, height: 8, background: chartOrange, borderRadius: '50%', opacity: 0.3},
                         label: 'Filtered out'
                     },
                 ].map(({s, label}) => (

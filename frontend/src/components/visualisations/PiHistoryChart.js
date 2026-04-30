@@ -28,7 +28,7 @@ const PiHistoryChart = ({piHistory}) => {
         <div className="viz-card">
             <div className="viz-card-header">
                 <div>
-                    <span className="viz-card-title">π Estimation — Time & Error History</span>
+                    <span className="viz-card-title">π Estimation: Time & Error History</span>
                     <span style={{fontSize: '11px', color: 'var(--grey-500)', marginLeft: '10px'}}>
                         vary NUM_PARTITIONS and NUM_SAMPLES in the editor
                     </span>

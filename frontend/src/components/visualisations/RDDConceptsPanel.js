@@ -1,6 +1,6 @@
 import './Lab2Layout.css';
 
-// RDD concepts panel — Step 1
+// RDD concepts panel: Step 1
 // Shows the live pi estimation result alongside the three RDD concepts
 function RDDConceptsPanel({concepts, piEstimation}) {
     if (!concepts) return null;
@@ -17,7 +17,7 @@ function RDDConceptsPanel({concepts, piEstimation}) {
                 <div className="viz-card">
                     <div className="viz-card-header">
                         <span className="viz-card-title">Pi Estimation (Monte Carlo)</span>
-                        <span className="badge badge--live">LIVE — SPARK EXECUTED</span>
+                        <span className="badge badge--live">LIVE: SPARK EXECUTED</span>
                     </div>
 
                     <div className="stat-group">
@@ -44,7 +44,7 @@ function RDDConceptsPanel({concepts, piEstimation}) {
                             <div className="stat-value stat-value--lg" style={{color: '#009E73'}}>
                                 {piEstimation.estimate != null
                                     ? Math.abs(piEstimation.estimate - Math.PI).toFixed(6)
-                                    : '—'}
+                                    : '-'}
                             </div>
                         </div>
                     </div>
@@ -62,7 +62,7 @@ function RDDConceptsPanel({concepts, piEstimation}) {
                 <div className="viz-card-body">
                     <p className="rdd-intro">
                         These require SparkContext (RDD API), which Serverless does not expose.
-                        The lab teaches these on HPC — shown here for reference with DataFrame equivalents.
+                        The lab teaches these on HPC, shown here for reference with DataFrame equivalents.
                     </p>
                     {items.map(({key, label}) => {
                         const c = concepts[key];

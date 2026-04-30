@@ -2,11 +2,12 @@ import React, {useRef, useEffect, useState} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './PipelineFlowDiagram.css';
+import { alpha, chartBlue, chartGreen, chartOrange, brandPurpleTint, neutralWhite } from '../../theme/palette';
 
 
-const TF = '#0072B2';   // Okabe-Ito blue   — Transformer
-const EST = '#D55E00';   // Okabe-Ito vermillion — Estimator
-const MODEL = '#009E73';   // Okabe-Ito green  — Model (was Estimator)
+const TF = chartBlue;   // Okabe-Ito blue, Transformer
+const EST = chartOrange;   // Okabe-Ito vermillion, Estimator
+const MODEL = chartGreen;   // Okabe-Ito green, Model (was Estimator)
 
 //Type diagram (SVG) 
 
@@ -91,7 +92,7 @@ function TypeDiagram({width, stages}) {
                 .attr('x', x + boxW / 2).attr('y', y + 22)
                 .attr('text-anchor', 'middle')
                 .attr('font-size', boxW < 110 ? 9 : 10)
-                .attr('font-weight', 'bold').attr('fill', '#fff')
+                .attr('font-weight', 'bold').attr('fill', neutralWhite)
                 .attr('font-family', 'var(--font-mono)')
                 .text(label);
 
@@ -99,7 +100,7 @@ function TypeDiagram({width, stages}) {
                 .attr('x', x + boxW / 2).attr('y', y + 38)
                 .attr('text-anchor', 'middle')
                 .attr('font-size', 9)
-                .attr('fill', 'rgba(255,255,255,0.75)')
+                .attr('fill', alpha(neutralWhite, 0.75))
                 .text(sublabel);
 
             if (animated) {
@@ -133,7 +134,7 @@ function TypeDiagram({width, stages}) {
                 .attr('orient', 'auto')
                 .append('path')
                 .attr('d', 'M0,0 L6,3 L0,6 Z')
-                .attr('fill', colour === 'var(--grey-300)' ? '#ccc' : colour);
+                .attr('fill', colour === 'var(--grey-300)' ? 'var(--grey-300)' : colour);
         });
 
         //ROW 1: Before fit() 
@@ -167,7 +168,7 @@ function TypeDiagram({width, stages}) {
             .attr('font-family', 'var(--font-mono)')
             .attr('opacity', 0)
             .transition().delay(600).duration(300).attr('opacity', 1)
-            .text('After   .fit()  —  PipelineModel:');
+            .text('After .fit(): PipelineModel');
 
         afterStages.forEach((s, i) => {
             drawBox(rowX + i * (boxW + gap), row2Y, s.label, s.sub, s.fill, true, s.delay);
@@ -181,7 +182,7 @@ function TypeDiagram({width, stages}) {
             g.append('line')
                 .attr('x1', x1).attr('y1', mid)
                 .attr('x2', x2).attr('y2', mid)
-                .attr('stroke', '#ccc').attr('stroke-width', 1.5)
+                .attr('stroke', 'var(--grey-300)').attr('stroke-width', 1.5)
                 .attr('opacity', 0)
                 .transition().delay(1050 + i * 200).duration(300).attr('opacity', 1);
         });
@@ -273,7 +274,7 @@ function DocumentTrace({pred, trace}) {
     return (
         <div className="pipeline-flow-trace-wrap">
             <div className="pipeline-flow-trace-title">
-                model.transform — tracing document ID {pred.id} through the pipeline
+                model.transform: tracing document ID {pred.id} through the pipeline
             </div>
             <div className="pipeline-flow-trace-row">
                 {steps.map((s, i) => (
@@ -321,7 +322,7 @@ const PipelineFlowDiagram = ({stages, traces, predictions, view = 'full'}) => {
             {/*Card header*/}
             <div className="pipeline-flow-header">
                 <span className="pipeline-flow-title">
-                    ML Pipeline — Estimator {'->'} Model
+                    ML Pipeline: Estimator {'->'} Model
                 </span>
 
                 {/* Document selector */}
@@ -337,7 +338,7 @@ const PipelineFlowDiagram = ({stages, traces, predictions, view = 'full'}) => {
                                 className="pipeline-flow-doc-btn"
                                 style={{
                                     border: selectedDoc === i ? '2px solid var(--uos-purple)' : '1px solid var(--grey-300)',
-                                    background: selectedDoc === i ? '#f0e6ff' : '#fff',
+                                    background: selectedDoc === i ? brandPurpleTint : neutralWhite,
                                     fontWeight: selectedDoc === i ? 'bold' : 'normal',
                                     color: selectedDoc === i ? 'var(--uos-purple)' : 'var(--grey-600)'
                                 }}
@@ -367,7 +368,7 @@ const PipelineFlowDiagram = ({stages, traces, predictions, view = 'full'}) => {
                     which is a Model and hence a{' '}
                     <strong style={{fontStyle: 'normal', color: TF}}>Transformer</strong>."
                     <div className="pipeline-flow-quote-source">
-                        — Apache Spark ML Pipeline documentation / COM6012 Lab 2
+                        - Apache Spark ML Pipeline documentation / COM6012 Lab 2
                     </div>
                 </div>
             )}

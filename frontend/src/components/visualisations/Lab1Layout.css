@@ -17,6 +17,87 @@
     font-family: var(--font-mono);
 }
 
+@media (max-width: 1024px) {
+    .layout-container {
+        grid-template-rows: 60px minmax(380px, auto) minmax(420px, 1fr) auto;
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "header"
+            "code"
+            "data"
+            "footer";
+        height: auto;
+        min-height: 0;
+    }
+
+    .code-panel {
+        border-right: none;
+        border-bottom: 2px solid var(--grey-700);
+    }
+
+    .data-panel {
+        min-height: 420px;
+    }
+}
+
+@media (max-width: 768px) {
+    .layout-container {
+        border-width: 1px;
+    }
+
+    .header {
+        flex-wrap: wrap;
+    }
+
+    .step-btn {
+        font-size: 13px;
+        padding: 10px 8px;
+    }
+
+    .code-panel,
+    .data-panel,
+    .bottom-panel {
+        padding: 14px;
+    }
+
+    .panel-title {
+        margin-bottom: 14px;
+    }
+}
+
+@media (max-width: 480px) {
+    .layout-container {
+        grid-template-rows: auto minmax(300px, auto) minmax(360px, auto) auto;
+    }
+
+    .header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .step-btn {
+        border-right: none;
+        border-bottom: 1px solid var(--grey-300);
+        text-align: left;
+        padding: 10px 12px;
+    }
+
+    .step-btn:last-child {
+        border-bottom: none;
+    }
+
+    .code-panel,
+    .data-panel,
+    .bottom-panel {
+        padding: 12px;
+    }
+
+    .panel-title {
+        font-size: 14px;
+        margin-bottom: 12px;
+    }
+}
+
 .header {
     grid-area: header;
     display: flex;
@@ -34,7 +115,7 @@
     font-weight: bold;
     color: var(--grey-500);
     cursor: pointer;
-    transition: all 0.2s;
+    transition: background-color 0.2s ease-out, color 0.2s ease-out, border-color 0.2s ease-out;
 }
 
 .step-btn:last-child {
@@ -98,7 +179,7 @@
     grid-area: footer;
     border-top: 2px solid var(--grey-700);
     box-sizing: border-box;
-    background-color: var(--grey-50);
+    background-color: var(--uos-purple-tint);
     display: flex;
     align-items: center;
     justify-content: center;

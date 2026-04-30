@@ -26,7 +26,7 @@ const CrossFilterBanner = ({partitionId}) => (
         fontSize: '12px', color: '#b45309', border: '1px solid #fcd34d',
         fontWeight: 'bold', marginBottom: '4px'
     }}>
-        Showing Partition {partitionId} only — click the same partition again to reset
+        Showing Partition {partitionId} only, click the same partition again to reset
     </div>
 );
 
@@ -96,7 +96,7 @@ const GlassBoxTable = ({title, badge, explanation, columns, rows, highlightCol =
                                     background: highlightCol === idx ? '#f9f5ff' : 'transparent',
                                     fontWeight: highlightCol === idx ? 'bold' : 'normal'
                                 }}>
-                                    {String(row[col] ?? '—')}
+                                    {String(row[col] ?? '-')}
                                 </td>
                             ))}
                         </tr>
@@ -140,17 +140,17 @@ const Step1Table = ({data, highlightedPartition}) => {
                 <CrossFilterBanner partitionId={highlightedPartition}/>
             )}
             <GlassBoxTable
-                title="df.show(5) — Raw Ingestion"
+                title="df.show(5): Raw Ingestion"
                 badge="lazy"
                 explanation={
                     isFiltered && highlightedPartition !== 0
-                        ? `Partition ${highlightedPartition} is empty — gzip is non-splittable so every row loads into Partition 0 only.`
+                        ? `Partition ${highlightedPartition} is empty, gzip is non-splittable so every row loads into Partition 0 only.`
                         : `Because gzip is non-splittable, every single row loads into Partition 0. ${idleSlots != null ? `The other ${idleSlots} worker slots are idle.` : 'Worker slot count is shown once notebook partition metadata is available.'}`
                 }
                 columns={['partition', 'value']}
                 rows={rows}
                 highlightCol={0}
-                emptyMessage={`This partition is empty — gzip is non-splittable. All ${(data?.filter_results?.total ?? 0).toLocaleString()} rows are on Partition 0.`}
+                emptyMessage={`This partition is empty, gzip is non-splittable. All ${(data?.filter_results?.total ?? 0).toLocaleString()} rows are on Partition 0.`}
             />
         </>
     );
@@ -174,17 +174,17 @@ const Step2Table = ({data, highlightedPartition}) => {
         <>
             {isFiltered && <CrossFilterBanner partitionId={highlightedPartition}/>}
             <GlassBoxTable
-                title="Partition Distribution — after repartition()"
+                title="Partition Distribution: after repartition()"
                 badge="shuffle"
                 explanation={
                     isFiltered
-                        ? `Partition ${highlightedPartition} received ${rows[0]?.row_count ?? 0} rows. Round-robin distribution means each partition gets an equal share — no skew.`
-                        : `Spark shuffled the data across ${allDist.length} partitions. Each partition now holds ~${allDist[0] ? Math.round(allDist[0].row_count / 1000) + 'k' : '?'} rows. Note: normally you would use .cache() here, but Databricks Serverless does not support cache() — the Delta write-and-reload achieves the same effect (breaking the DAG lineage) in a Serverless-compatible way.`
+                        ? `Partition ${highlightedPartition} received ${rows[0]?.row_count ?? 0} rows. Round-robin distribution means each partition gets an equal share, so there is no skew.`
+                        : `Spark shuffled the data across ${allDist.length} partitions. Each partition now holds ~${allDist[0] ? Math.round(allDist[0].row_count / 1000) + 'k' : '?'} rows. Note: normally you would use .cache() here, but Databricks Serverless does not support cache(). The Delta write-and-reload achieves the same effect by breaking the DAG lineage in a Serverless-compatible way.`
                 }
                 columns={['partition_id', 'row_count']}
                 rows={rows}
                 highlightCol={1}
-                emptyMessage="No data — partition index out of range."
+                emptyMessage="No data, partition index out of range."
             />
         </>
     );
@@ -208,12 +208,12 @@ const Step3Table = ({data, highlightedPartition}) => {
         <>
             {isFiltered && <CrossFilterBanner partitionId={highlightedPartition}/>}
             <GlassBoxTable
-                title="filter() — Predicate Added to DAG (Nothing Executed Yet)"
+                title="filter(): Predicate Added to DAG (Nothing Executed Yet)"
                 badge="lazy"
                 explanation={
                     isFiltered
-                        ? `Partition ${highlightedPartition} holds these rows. The filter predicate exists in the DAG but has NOT fired — these rows have not been scanned. Step 4's count() will trigger execution.`
-                        : "Spark has recorded the filter predicate but has not scanned a single row. The data below shows what each partition HOLDS — the ✓/✗ column shows what WOULD happen when count() fires in Step 4."
+                        ? `Partition ${highlightedPartition} holds these rows. The filter predicate exists in the DAG but has not fired, so these rows have not been scanned. Step 4's count() will trigger execution.`
+                        : "Spark has recorded the filter predicate but has not scanned a single row. The data below shows what each partition holds, and the ✓/✗ column shows what would happen when count() fires in Step 4."
                 }
                 columns={['partition_id', 'host', 'would_pass']}
                 rows={rows.map(r => ({
@@ -244,7 +244,7 @@ const Step4Table = ({data, highlightedPartition}) => {
 
     // Detect action type from the pipeline operation string
     const step4Op = data?.spark_internals?.transformation_pipeline?.[3]?.operation ?? 'hosts_japan.count()';
-    const actionTitle = `filter().${step4Op.replace('hosts_japan.', '')} — Execution Result`;
+    const actionTitle = `filter().${step4Op.replace('hosts_japan.', '')}: Execution Result`;
 
     // Derive method and returned count from what was normalised into hosts_japan
     const returnedCount = data?.filter_results?.hosts_japan ?? 0;
@@ -271,30 +271,30 @@ const Step4Table = ({data, highlightedPartition}) => {
             {metric: `Rows matching "${pred}" on this partition`, count: partMatch.toLocaleString()},
             {metric: 'Rows dropped by filter', count: (partTotal - partMatch).toLocaleString()},
         ];
-        explanation = `Partition ${highlightedPartition} processed its share in parallel. No data crossed the network — each partition evaluated the predicate locally.`;
+        explanation = `Partition ${highlightedPartition} processed its share in parallel. No data crossed the network, each partition evaluated the predicate locally.`;
     } else if (isCount) {
         rows = [
             {metric: 'Total rows scanned', count: total.toLocaleString()},
             {metric: `Rows matching "${pred}"`, count: realMatchCount.toLocaleString()},
             {metric: 'Rows dropped by filter', count: (total - realMatchCount).toLocaleString()},
         ];
-        explanation = `count() is an aggregate action — Spark must scan every row${partCount != null ? ` on all ${partCount} partitions` : ''}, compute a local count on each, then sum the results on the Driver. All partitions execute fully.`;
+        explanation = `count() is an aggregate action. Spark must scan every row${partCount != null ? ` on all ${partCount} partitions` : ''}, compute a local count on each, then sum the results on the driver. All partitions execute fully.`;
     } else if (isFirst) {
         rows = [
             {metric: 'Rows returned to driver', count: '1'},
             {metric: `Total rows matching "${pred}" (actual)`, count: realMatchCount.toLocaleString()},
             {metric: 'Total rows scanned', count: total.toLocaleString()},
         ];
-        explanation = `first() is a retrieval action — Spark executes partitions and short-circuits the moment it finds the first matching row. ${partCount != null ? `It may never scan partitions 1-${Math.max(partCount - 1, 0)} at all.` : 'It may never scan all partitions.'} Only 1 Row object travels to the Driver, not a count.`;
-        shortCircuitBanner = `first() found a match early and stopped — ${realMatchCount.toLocaleString()} rows actually match "${pred}" across all partitions, but Spark did not need to count them all.`;
+        explanation = `first() is a retrieval action. Spark executes partitions and short-circuits the moment it finds the first matching row. ${partCount != null ? `It may never scan partitions 1-${Math.max(partCount - 1, 0)} at all.` : 'It may never scan all partitions.'} Only one Row object travels to the driver, not a count.`;
+        shortCircuitBanner = `first() found a match early and stopped. ${realMatchCount.toLocaleString()} rows actually match "${pred}" across all partitions, but Spark did not need to count them all.`;
     } else if (isTake) {
         rows = [
             {metric: 'Rows returned to driver', count: returnedCount.toLocaleString()},
             {metric: `Total rows matching "${pred}" (actual)`, count: realMatchCount.toLocaleString()},
             {metric: 'Total rows scanned', count: total.toLocaleString()},
         ];
-        explanation = `take(${returnedCount}) is a retrieval action — like first(), Spark short-circuits once it has collected enough rows. It scans partitions in order and stops early, so ${partCount != null ? `not all ${partCount} partitions may execute` : 'not all partitions may execute'}.`;
-        shortCircuitBanner = `take(${returnedCount}) collected ${returnedCount} row(s) and stopped — ${realMatchCount.toLocaleString()} rows actually match "${pred}" but Spark did not need to count them all.`;
+        explanation = `take(${returnedCount}) is a retrieval action. Like first(), Spark short-circuits once it has collected enough rows. It scans partitions in order and stops early, so ${partCount != null ? `not all ${partCount} partitions may execute` : 'not all partitions may execute'}.`;
+        shortCircuitBanner = `take(${returnedCount}) collected ${returnedCount} row(s) and stopped. ${realMatchCount.toLocaleString()} rows actually match "${pred}", but Spark did not need to count them all.`;
     } else {
         // safe fallback
         rows = [
@@ -344,23 +344,23 @@ const Step5Table = ({data, highlightedPartition}) => {
         const trackedEntry = (data?.tracked_rows ?? []).find(t => t.partition_id === highlightedPartition);
         const trackedRows = trackedEntry?.rows ?? [];
         rows = trackedRows.map(r => ({
-            host: r.host, status: r.status || '—', day: r.day ? `${r.day} Aug` : '—'
+            host: r.host, status: r.status || '-', day: r.day ? `${r.day} Aug` : '-'
         }));
-        explanation = `Partition ${highlightedPartition} applied regexp_extract locally — ${rows.length > 0 ? `${rows.length} tracked row(s) found here` : 'no tracked rows on this partition (they landed elsewhere after repartition)'}. No data moved across the network.`;
+        explanation = `Partition ${highlightedPartition} applied regexp_extract locally. ${rows.length > 0 ? `${rows.length} tracked row(s) found here` : 'No tracked rows on this partition (they landed elsewhere after repartition).'}`;
     } else {
         // Default: show before -> after parsing for sample rows
         rows = parsed.map((p, i) => ({
-            raw_value: raw[i] ? `${raw[i].substring(0, 28)}…` : '—',
+            raw_value: raw[i] ? `${raw[i].substring(0, 28)}...` : '-',
             host: p.host, status: p.status, day: p.day
         }));
-        explanation = 'Narrow transformation: each partition applies regexp_extract locally. No shuffle — data never crosses the network boundary.';
+        explanation = 'Narrow transformation: each partition applies regexp_extract locally. No shuffle, data never crosses the network boundary.';
     }
 
     return (
         <>
             {isFiltered && <CrossFilterBanner partitionId={highlightedPartition}/>}
             <GlassBoxTable
-                title="withColumn() — Projection & Parsing"
+                title="withColumn(): Projection & Parsing"
                 badge="lazy"
                 explanation={explanation}
                 columns={isFiltered ? ['host', 'status', 'day'] : ['raw_value', 'host', 'status', 'day']}
@@ -381,7 +381,7 @@ const Step6Table = ({data, highlightedPartition}) => {
 
     // status_distribution holds whatever the student grouped by
     const groupRows = (data?.status_distribution ?? []).map(r => ({
-        [groupbyKey]: r.key ?? '—',
+        [groupbyKey]: r.key ?? '-',
         total_requests: r.count.toLocaleString()
     }));
 
@@ -400,7 +400,7 @@ const Step6Table = ({data, highlightedPartition}) => {
                     fontSize: '12px', color: '#0369a1', border: '1px solid #bae6fd', marginBottom: '4px'
                 }}>
                     repartitionByRange() placed each distinct <code>{groupbyKey}</code> value on its own partition
-                    before groupBy — each partition owns exactly one key.
+                    before groupBy, each partition owns exactly one key.
                 </div>
             )}
             {isCapped && (
@@ -410,18 +410,18 @@ const Step6Table = ({data, highlightedPartition}) => {
                 }}>
                     Showing top {displayCount.toLocaleString()} of {partLabel} distinct <code>{groupbyKey}</code> values
                     by request count.
-                    High cardinality key — use <code>groupby_col = "status"</code> or <code>"day"</code> for a compact
+                    High cardinality key, use <code>groupby_col = "status"</code> or <code>"day"</code> for a compact
                     view.
                 </div>
             )}
             <GlassBoxTable
-                title={`groupBy('${groupbyKey}').count() — Aggregation Result`}
+                title={`groupBy('${groupbyKey}').count(): Aggregation Result`}
                 badge="shuffle"
-                explanation={`repartitionByRange() routed all rows with the same '${groupbyKey}' value to the same partition before groupBy — ${partLabel} distinct keys -> ${partLabel} partitions${isCapped ? ` (table capped at top ${displayCount})` : ''}. The groupBy then runs locally with no cross-partition data movement needed. Try changing groupby_col to 'day' or 'host' to see how key cardinality changes the partition layout.`}
+                explanation={`repartitionByRange() routed all rows with the same '${groupbyKey}' value to the same partition before groupBy, so ${partLabel} distinct keys map to ${partLabel} partitions${isCapped ? ` (table capped at top ${displayCount})` : ''}. The groupBy then runs locally with no cross-partition data movement. Try changing groupby_col to 'day' or 'host' to see how key cardinality changes the partition layout.`}
                 columns={[groupbyKey, 'total_requests']}
                 rows={groupRows}
                 highlightCol={1}
-                emptyMessage="No aggregation results — run the notebook first."
+                emptyMessage="No aggregation results, run the notebook first."
             />
         </>
     );
