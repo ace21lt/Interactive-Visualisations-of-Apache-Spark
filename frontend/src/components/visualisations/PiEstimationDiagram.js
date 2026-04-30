@@ -1,5 +1,6 @@
 import React, {useState, useEffect, useRef, useMemo} from 'react';
 import useContainerWidth from '../../hooks/useContainerWidth';
+import { chartBlue, chartBlueTint, chartOrange, chartGreen, chartPurple, successBg, successFg, neutralWhite, neutralSurface, alpha } from '../../theme/palette';
 
 //Configuration
 const DOTS_PER_PART = 100;     // dots per partition
@@ -7,10 +8,10 @@ const TICK_MS = 28;      // ms per animation frame
 const DOTS_PER_TICK = 1;       // dots added per partition per tick
 
 // Okabe-Ito colours
-const C_IN = '#0072B2';    // inside arc  — blue (train colour)
-const C_OUT = '#D55E00';    // outside arc — vermillion
-const C_DONE = '#009E73';    // driver active — green (scikit-learn colour)
-const C_PART = ['#0072B2', '#E69F00', '#009E73', '#CC79A7']; // per-partition
+const C_IN = chartBlue;    // inside arc  — blue (train colour)
+const C_OUT = chartOrange;    // outside arc — vermillion
+const C_DONE = chartGreen;    // driver active — green (scikit-learn colour)
+const C_PART = [chartBlue, chartOrange, chartGreen, chartPurple]; // per-partition
 
 //LCG PRNG — reproducible dot placement with seed
 function makeLCG(seed) {
@@ -179,7 +180,7 @@ const PiEstimationDiagram = ({piData, partitionCount}) => {
         : '—';
 
     return (
-        <div style={{border: '1px solid var(--grey-300)', borderRadius: '6px', background: '#fff'}}>
+        <div style={{border: '1px solid var(--grey-300)', borderRadius: '6px', background: neutralWhite}}>
 
             {/*Header*/}
             <div style={{
@@ -196,7 +197,7 @@ const PiEstimationDiagram = ({piData, partitionCount}) => {
                     </span>
                     <span style={{
                         fontSize: '10px', fontWeight: 'bold', padding: '2px 6px',
-                        borderRadius: '4px', background: '#e8f5e9', color: '#1b5e20'
+                        borderRadius: '4px', background: successBg, color: successFg
                     }}>
                         SPARK EXECUTED — {sparkSamples} samples
                     </span>
@@ -222,7 +223,7 @@ const PiEstimationDiagram = ({piData, partitionCount}) => {
                     {s: {width: 8, height: 8, borderRadius: '50%', background: C_IN}, label: 'Inside arc (hit)'},
                     {s: {width: 8, height: 8, borderRadius: '50%', background: C_OUT}, label: 'Outside arc (miss)'},
                     {
-                        s: {width: 10, height: 10, borderRadius: 2, background: '#e6f1fb', border: '1px solid #0072B2'},
+                        s: {width: 10, height: 10, borderRadius: 2, background: chartBlueTint, border: `1px solid ${chartBlue}`},
                         label: 'Quarter circle (x²+y²≤1)'
                     },
                 ].map(({s, label}) => (
@@ -262,13 +263,13 @@ const PiEstimationDiagram = ({piData, partitionCount}) => {
                                 {/* Square background */}
                                 <rect
                                     width={SQ} height={SQ} rx={3}
-                                    fill="#fafafa" stroke="var(--grey-200)" strokeWidth={1}
+                                    fill={neutralSurface} stroke="var(--grey-200)" strokeWidth={1}
                                 />
 
                                 {/* Quarter-circle arc (the region x²+y²≤1) */}
                                 <path
                                     d={arcPath(SQ)}
-                                    fill="#e6f1fb" fillOpacity={0.5}
+                                    fill={chartBlueTint} fillOpacity={0.5}
                                     stroke={C_IN} strokeWidth={1.5} strokeOpacity={0.6}
                                 />
 
@@ -338,7 +339,7 @@ const PiEstimationDiagram = ({piData, partitionCount}) => {
                         x={driverX + dW / 2} y={driverY + 16}
                         textAnchor="middle" fontSize={11} fontWeight="bold"
                         fontFamily="var(--font-mono)"
-                        fill={phase === 'done' ? '#fff' : 'var(--grey-300)'}
+                                        fill={phase === 'done' ? neutralWhite : 'var(--grey-300)'}
                     >
                         DRIVER — aggregate
                     </text>
@@ -348,7 +349,7 @@ const PiEstimationDiagram = ({piData, partitionCount}) => {
                         fontSize={phase === 'done' ? 13 : 10}
                         fontWeight="bold"
                         fontFamily="var(--font-mono)"
-                        fill={phase === 'done' ? '#fff' : 'var(--grey-300)'}
+                        fill={phase === 'done' ? neutralWhite : 'var(--grey-300)'}
                         style={{transition: 'font-size 0.3s'}}
                     >
                         {phase === 'done' && animEst != null

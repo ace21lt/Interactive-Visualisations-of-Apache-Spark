@@ -1,6 +1,7 @@
 import './Lab2Layout.css';
+import { chartBlue, chartOrange, chartPurple } from '../../theme/palette';
 
-const FEAT_COLOURS = ['#0072B2', '#E69F00', '#CC79A7'];
+const FEAT_COLOURS = [chartBlue, chartOrange, chartPurple];
 
 function RegularisationHistory({regHistory, currentRegParam}) {
     if (!Array.isArray(regHistory) || regHistory.length === 0) return null;
@@ -111,7 +112,7 @@ function RegularisationHistory({regHistory, currentRegParam}) {
 
                 <div className="callout callout--info" style={{marginTop: '12px'}}>
                     <strong>What to observe:</strong>{' '}TV and radio shrink under Ridge regularisation.
-                    Newspaper grows — it shares variance with radio (r=0.35) and absorbs what radio releases.
+                    Newspaper grows because it shares variance with radio (r=0.35) and absorbs what radio releases.
                     RMSE rises monotonically: this 200-row dataset has no overfitting to fight.
                     On a large, high-dimensional dataset you would see RMSE dip before rising.
                 </div>

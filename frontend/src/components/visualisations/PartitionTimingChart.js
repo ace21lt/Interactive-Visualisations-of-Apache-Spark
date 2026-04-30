@@ -11,17 +11,17 @@ const PartitionTimingChart = ({runHistory}) => {
 
     // Colour scale: fewer partitions = warmer
     const barColour = (partitions) => {
-        if (partitions <= 2) return '#ef4444'; // red — very few, likely bottleneck
+        if (partitions <= 2) return '#ef4444'; // red, very few, likely bottleneck
         if (partitions <= 6) return '#f97316'; // orange
-        if (partitions <= 12) return '#10b981'; // green — sensible range
-        return '#6366f1';                        // indigo — many partitions
+        if (partitions <= 12) return '#10b981'; // green, sensible range
+        return '#6366f1';                        // indigo, many partitions
     };
 
     return (
         <div style={{
             border: '1px solid var(--grey-200)',
             borderRadius: '6px',
-            background: '#fff',
+            background: 'var(--white)',
             overflow: 'hidden',
             marginTop: '8px',
         }}>
@@ -91,7 +91,7 @@ const PartitionTimingChart = ({runHistory}) => {
                                         minWidth: '40px',
                                     }}>
                                         <span style={{
-                                            color: '#fff',
+                                                color: 'var(--white)',
                                             fontSize: '11px',
                                             fontWeight: 'bold',
                                             whiteSpace: 'nowrap'
@@ -142,7 +142,7 @@ const PartitionTimingChart = ({runHistory}) => {
                     overhead.
                     More partitions means more parallel workers but higher coordination cost.
                     Use the chart to find the sweet spot for your own run configuration.
-                    Runs marked <em>(cached)</em> reused the existing Delta table — the write time was skipped.
+                    Runs marked <em>(cached)</em> reused the existing Delta table, so the write time was skipped.
                 </div>
             </div>
         </div>

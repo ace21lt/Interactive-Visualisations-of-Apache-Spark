@@ -1,13 +1,14 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useState, useEffect, useRef, useCallback, lazy, Suspense} from 'react';
 import './App.css';
 import Login from './components/Login';
-import Lab1Layout from "./components/visualisations/Lab1Layout";
-import Lab2Layout from "./components/visualisations/Lab2Layout";
 import TourButton from "./components/TourButton";
 
+const Lab1Layout = lazy(() => import('./components/visualisations/Lab1Layout'));
+const Lab2Layout = lazy(() => import('./components/visualisations/Lab2Layout'));
+
 const LABS = [
-    {id: 'lab1', label: 'Lab 1 — Intro to Spark'},
-    {id: 'lab2', label: 'Lab 2 — DataFrame & ML Pipeline'},
+    {id: 'lab1', label: 'Lab 1: Intro to Spark'},
+    {id: 'lab2', label: 'Lab 2: DataFrame & ML Pipeline'},
 ];
 
 function App() {
@@ -43,30 +44,37 @@ function App() {
         return [...filtered, entry].slice(-5);
     };
 
-    useEffect(() => {
-        const checkSession = async () => {
-            try {
-                const res = await fetch(`${apiUrl}/api/me`, {
-                    method: 'GET',
-                    credentials: 'include',
-                    headers: {'Accept': 'application/json'}
-                });
-                if (!res.ok) {
-                    setIsAuthenticated(false);
-                    setWorkspaceUrl(null);
-                    return;
-                }
-                const me = await res.json();
-                setIsAuthenticated(true);
-                setWorkspaceUrl(me.workspaceUrl || null);
-                setSessionError(null);
-            } catch (e) {
+    const refreshSession = useCallback(async () => {
+        try {
+            const res = await fetch(`${apiUrl}/api/me`, {
+                method: 'GET',
+                credentials: 'include',
+                headers: {'Accept': 'application/json'}
+            });
+            if (!res.ok) {
                 setIsAuthenticated(false);
                 setWorkspaceUrl(null);
+                return false;
             }
-        };
-        checkSession();
+            const me = await res.json();
+            setIsAuthenticated(true);
+            setWorkspaceUrl(me.workspaceUrl || null);
+            setSessionError(null);
+            return true;
+        } catch (e) {
+            setIsAuthenticated(false);
+            setWorkspaceUrl(null);
+            return false;
+        }
     }, [apiUrl]);
+
+    useEffect(() => {
+        refreshSession();
+    }, [refreshSession]);
+
+    const handleLoginSuccess = useCallback(async () => {
+        await refreshSession();
+    }, [refreshSession]);
 
     const handleLogout = async () => {
         try {
@@ -93,12 +101,12 @@ function App() {
         setCurrentLab(labId);
         setLastExecutedStep(null);
         setError(null);
-        // Data is preserved in labData — switching back shows cached results
+        // Data is preserved in labData, switching back shows cached results
     };
 
 
     // Receives a parsed trace object from a layout's Load button.
-    // Sets data directly — no Spark run needed.
+    // Sets data directly, no Spark run needed.
     const handleLoadTrace = (parsed) => {
         let detectedLab = null;
 
@@ -107,7 +115,7 @@ function App() {
             detectedLab = parsed._lab;
         }
         if (!detectedLab) {
-            setError('Unrecognised trace file — make sure this JSON was saved from the Lab 1 or Lab 2 "Save Trace" button.');
+            setError('Unrecognised trace file: make sure this JSON was saved from the Lab 1 or Lab 2 "Save Trace" button.');
             return;
         }
 
@@ -165,7 +173,8 @@ function App() {
                     return;
                 }
                 const errBody = await response.json().catch(() => null);
-                throw new Error(errBody?.error || `HTTP error! status: ${response.status}`);
+                setError(errBody?.error || `HTTP error! status: ${response.status}`);
+                return;
             }
 
             const result = await response.json();
@@ -238,9 +247,9 @@ function App() {
                 }
             } else {
                 if (result.output && result.output.error) {
-                    throw new Error(`Notebook execution error: ${result.output.error}`);
+                    setError(`Notebook execution error: ${result.output.error}`);
                 } else {
-                    throw new Error(
+                    setError(
                         `Unexpected response format. Output field is ${
                             result.output ? 'present but result is missing' : 'missing'
                         }.`
@@ -249,7 +258,7 @@ function App() {
             }
         } catch (err) {
             if (err.name === 'AbortError') {
-                setError('Request timed out after 5 minutes. The Databricks run may still be executing — check your workspace.');
+                setError('Request timed out after 5 minutes. The Databricks run may still be executing, check your workspace.');
             } else {
                 setError(err.message);
             }
@@ -261,7 +270,7 @@ function App() {
     };
 
     if (!isAuthenticated) {
-        return <Login sessionError={sessionError}/>;
+        return <Login sessionError={sessionError} onLoginSuccess={handleLoginSuccess}/>;
     }
 
     const workspaceLabel = workspaceUrl
@@ -271,7 +280,7 @@ function App() {
     return (
         <div className="App">
             <div className="app-header">
-                <h1>Interactive Spark Visualisations</h1>
+                <h1>Spark Lab Console</h1>
                 <div className="header-right">
                     {data && <TourButton currentLab={currentLab} />}
                     <span className="workspace-indicator">{workspaceLabel}</span>
@@ -293,7 +302,7 @@ function App() {
                 ))}
             </div>
 
-            <div className="results-container" style={{maxWidth: "1280px", margin: "0 auto", padding: "0 32px"}}>
+            <div className="results-container">
                 <div className="controls">
                     <button
                         onClick={() => triggerAnalysis()}
@@ -303,7 +312,7 @@ function App() {
                         {loading ? 'Running Spark Analysis...' : `Run ${LABS.find(l => l.id === currentLab)?.label ?? 'Spark Analysis'}`}
                     </button>
                     <label
-                        title="Load a trace you saved from a previous run — opens the full visualisation without running Spark."
+                        title="Load a trace you saved from a previous run, opens the full visualisation without running Spark."
                         className="load-trace-btn"
                     >
                         Load Trace
@@ -321,7 +330,7 @@ function App() {
                                         const parsed = JSON.parse(evt.target.result);
                                         handleLoadTrace(parsed);
                                     } catch {
-                                        setError('Could not read trace file — make sure it is a JSON file saved from this tool.');
+                                        setError('Could not read trace file: make sure it is a JSON file saved from this tool.');
                                     }
                                     if (loadInputRef.current) loadInputRef.current.value = '';
                                 };
@@ -332,29 +341,33 @@ function App() {
                 </div>
 
                 {error && (
-                    <div className="error-box">
+                    <div className="error-box" role="alert" aria-live="assertive" aria-atomic="true">
                         <strong>Error:</strong> {error}
                     </div>
                 )}
 
                 {currentLab === 'lab1' && data && data.spark_internals && (
-                    <div className="results">
-                        <Lab1Layout data={data} onExecuteStep={triggerAnalysis} onLoadTrace={handleLoadTrace}
-                                    loading={loading}
-                                    lastExecutedStep={lastExecutedStep}
-                                    runHistory={runHistory}/>
-                    </div>
+                    <Suspense fallback={<div className="results"><div className="section">Loading Lab 1 visualisations…</div></div>}>
+                        <div className="results">
+                            <Lab1Layout data={data} onExecuteStep={triggerAnalysis} onLoadTrace={handleLoadTrace}
+                                        loading={loading}
+                                        lastExecutedStep={lastExecutedStep}
+                                        runHistory={runHistory}/>
+                        </div>
+                    </Suspense>
                 )}
 
                 {currentLab === 'lab2' && data && (data.dataframe || data.ml_pipeline) && (
-                    <div className="results">
-                        <Lab2Layout data={data} onExecuteStep={triggerAnalysis} onLoadTrace={handleLoadTrace}
-                                    loading={loading}
-                                    lastExecutedStep={lastExecutedStep}
-                                    piHistory={piHistory}
-                                    regHistory={regHistory}
-                                    splitHistory={splitHistory}/>
-                    </div>
+                    <Suspense fallback={<div className="results"><div className="section">Loading Lab 2 visualisations…</div></div>}>
+                        <div className="results">
+                            <Lab2Layout data={data} onExecuteStep={triggerAnalysis} onLoadTrace={handleLoadTrace}
+                                        loading={loading}
+                                        lastExecutedStep={lastExecutedStep}
+                                        piHistory={piHistory}
+                                        regHistory={regHistory}
+                                        splitHistory={splitHistory}/>
+                        </div>
+                    </Suspense>
                 )}
             </div>
         </div>

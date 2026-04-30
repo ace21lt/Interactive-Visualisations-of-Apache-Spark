@@ -2,6 +2,7 @@ import React, {useRef, useEffect} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './Lab2Layout.css';
+import { chartBlue, chartOrange, chartPurple, chartSky } from '../../theme/palette';
 
 const CoefficientChart = ({coefficients, featureCols, intercept}) => {
     const svgRef = useRef();
@@ -35,7 +36,7 @@ const CoefficientChart = ({coefficients, featureCols, intercept}) => {
             .attr('stroke', 'var(--grey-300)').attr('stroke-width', 1)
             .attr('stroke-dasharray', '4,3');
 
-        const barColours = ['#0072B2', '#E69F00', '#CC79A7', '#56B4E9'];
+        const barColours = [chartBlue, chartOrange, chartPurple, chartSky];
         g.selectAll('.coeff-bar')
             .data(values)
             .enter().append('rect')
@@ -86,7 +87,7 @@ const CoefficientChart = ({coefficients, featureCols, intercept}) => {
                     <span className="viz-card-title">Model Coefficients</span>
                     <span className="badge badge--live" style={{marginLeft: '8px'}}>CURRENT RUN</span>
                     <span style={{fontSize: '10px', marginLeft: '8px', color: 'var(--grey-400)', fontStyle: 'italic'}}>
-                        standardised — larger bar = stronger predictor
+                        standardised, larger bar means stronger predictor
                     </span>
                 </div>
             </div>

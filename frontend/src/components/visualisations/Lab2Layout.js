@@ -11,44 +11,25 @@ import { lab2Steps, joyrideConfig } from '../../config/tourSteps';
 function deriveKeyConcept(stepIndex, data) {
     switch (stepIndex) {
         case 1:
-            return `RDD (Resilient Distributed Dataset) is Spark's original parallel data abstraction — ` +
-                `a collection of elements partitioned across cluster nodes, operated on in parallel. ` +
-                `Broadcast variables cache read-only data on every worker to avoid per-task copies. ` +
-                `Accumulators are write-only shared counters — only the driver can read the final value. ` +
-                `On Databricks Serverless the SparkContext RDD API is blocked; DataFrames are the equivalent.`;
+            return `RDDs are Spark's original distributed data abstraction. Broadcast variables copy read-only data to every worker, and accumulators let only the driver read the final count. On Databricks Serverless, the DataFrame path is the supported route.`;
         case 2:
-            return `DataFrame from CSV — Spark infers the schema automatically (${data?.dataframe?.schema?.length ?? '?'} columns, ${data?.dataframe?.total_rows ?? '?'} rows). ` +
-                `The CSV lands in ${data?.dataframe?.csv_partitions ?? '?'} partition(s) — small files don't benefit from splitting.`;
+            return `Spark inferred ${data?.dataframe?.schema?.length ?? '?'} columns and ${data?.dataframe?.total_rows ?? '?'} rows from the CSV. The file landed in ${data?.dataframe?.csv_partitions ?? '?'} partition(s), which is why small files rarely split well.`;
         case 3:
-            return `VectorAssembler packs feature columns into a single dense Vector column for spark.ml. ` +
-                `On HPC: VectorAssembler(inputCols=["TV","radio","newspaper"], outputCol="features"). ` +
-                `On Serverless, spark.ml constructors are blocked by the Py4J whitelist, so we select columns ` +
-                `with the DataFrame API and hand off to scikit-learn via .toPandas(). The concept is identical — ` +
-                `features are packed together; the transport layer differs.`;
+            return `VectorAssembler packs the feature columns into one dense vector for spark.ml. On Serverless, the same idea is handled with the DataFrame API and then handed to scikit-learn through .toPandas().`;
         case 4: {
             const s = data?.train_test_split;
-            return `randomSplit([${s?.split_ratio?.join(', ') ?? '0.6, 0.4'}], seed=${s?.seed ?? '6012'}) is a NARROW transformation — no shuffle. ` +
-                `Each partition independently assigns rows using a deterministic hash. ` +
-                `Result: ${s?.train_count ?? '?'} train (${s?.actual_train_pct ?? '?'}%), ${s?.test_count ?? '?'} test (${s?.actual_test_pct ?? '?'}%).`;
+            return `randomSplit([${s?.split_ratio?.join(', ') ?? '0.6, 0.4'}], seed=${s?.seed ?? '6012'}) is a narrow transformation with no shuffle. Each partition splits rows deterministically, giving ${s?.train_count ?? '?'} train and ${s?.test_count ?? '?'} test rows.`;
         }
         case 5: {
             const lr = data?.linear_regression;
-            return `fit() trains the model. The coefficients show each feature's impact on sales: ` +
-                `TV (${lr?.coefficient_names?.TV?.toFixed(3) ?? '?'}) dominates, radio (${lr?.coefficient_names?.radio?.toFixed(3) ?? '?'}) contributes, ` +
-                `newspaper (${lr?.coefficient_names?.newspaper?.toFixed(3) ?? '?'}) is near zero. ` +
-                `Edit reg_param in the code panel (try 0.1, 1.0) and click Run — TV and radio shrink, newspaper may grow as it absorbs variance released by radio.`;
+            return `fit() trains the model. TV (${lr?.coefficient_names?.TV?.toFixed(3) ?? '?'}) still dominates, radio (${lr?.coefficient_names?.radio?.toFixed(3) ?? '?'}) contributes, and newspaper (${lr?.coefficient_names?.newspaper?.toFixed(3) ?? '?'}) stays near zero. Try a different reg_param to see the coefficients rebalance.`;
         }
         case 6: {
             const lr = data?.linear_regression;
-            return `Each dot is a test row. Dots on the diagonal are perfectly predicted. ` +
-                `The orange vertical lines are residuals — the prediction error per row. ` +
-                `Test RMSE = ${lr?.test_rmse?.toFixed(4) ?? '?'}, R² = ${lr?.test_r2?.toFixed(4) ?? '?'}.`;
+            return `Each dot is a test row. Dots on the diagonal are perfect predictions, and the orange lines show residual error. Test RMSE is ${lr?.test_rmse?.toFixed(4) ?? '?'}, with R² at ${lr?.test_r2?.toFixed(4) ?? '?'}.`;
         }
         case 7:
-            return `A Pipeline chains Transformers and Estimators. The key insight: pipeline.fit(training) calls fit() on each Estimator stage, ` +
-                `producing a Model, which IS a Transformer. So LogisticRegression (Estimator) becomes LogisticRegressionModel (Transformer). ` +
-                `After fit(), the PipelineModel contains ONLY Transformers. model.transform(test) then flows data through each stage ` +
-                `text -> tokens -> feature vector -> prediction. Click different Ids to trace their journey through the pipeline.`;
+            return `Pipelines chain Transformers and Estimators. pipeline.fit(training) turns each Estimator into a Model, then model.transform(test) pushes data through every stage from text to prediction.`;
         default:
             return '';
     }
@@ -56,9 +37,9 @@ function deriveKeyConcept(stepIndex, data) {
 
 // Step 1 = RDD concepts (reference only), 2–4 = Spark distributed, 5–7 = driver/scikit-learn
 function stepBadge(currentStep) {
-    if (currentStep === 1) return {label: 'RDD CONCEPTS — SERVERLESS SAFE', cls: 'badge--rdd'};
-    if (currentStep <= 4) return {label: 'SPARK DISTRIBUTED', cls: 'badge--spark'};
-    return {label: 'DRIVER — SCIKIT-LEARN', cls: 'badge--driver'};
+    if (currentStep === 1) return {label: 'RDD concepts', cls: 'badge--rdd'};
+    if (currentStep <= 4) return {label: 'Spark distributed', cls: 'badge--spark'};
+    return {label: 'Driver, scikit-learn', cls: 'badge--driver'};
 }
 
 const Lab2Layout = ({data, onExecuteStep, loading: _loading, lastExecutedStep, piHistory = [], regHistory = [], splitHistory = []}) => {
@@ -173,7 +154,7 @@ const Lab2Layout = ({data, onExecuteStep, loading: _loading, lastExecutedStep, p
 
             <div className="data-panel">
                 <div className="data-panel-header">
-                    <div className="panel-title" style={{margin: 0}}>Data Panel</div>
+                            <div className="panel-title" style={{margin: 0}}>Run results</div>
                     <button onClick={handleSaveTrace} className="trace-btn">Save Trace</button>
                 </div>
 
@@ -193,7 +174,7 @@ const Lab2Layout = ({data, onExecuteStep, loading: _loading, lastExecutedStep, p
 
             <div className="bottom-panel">
                 <div className="concept-text">
-                    <span className="concept-label">KEY CONCEPT —</span>
+                    <span className="concept-label">Key Concept:</span>
                     {keyConcept}
                 </div>
             </div>

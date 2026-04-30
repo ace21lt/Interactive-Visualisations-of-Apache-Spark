@@ -1,7 +1,7 @@
 .partition-diagram {
     border: 1px solid var(--grey-300);
     border-radius: 6px;
-    background: #fff;
+    background: var(--white);
 }
 
 .partition-diagram-header {
@@ -28,7 +28,7 @@
     align-items: center;
     border-bottom: 1px solid var(--grey-200);
     font-size: 11px;
-    color: #666;
+    color: var(--grey-600);
 }
 
 .partition-diagram-legend-item {
@@ -59,7 +59,7 @@
 
 .partition-diagram-panel-header {
     background: var(--uos-purple);
-    color: #fff;
+    color: var(--white);
     padding: 8px 14px;
     display: flex;
     justify-content: space-between;
@@ -81,7 +81,7 @@
 .partition-diagram-panel-close {
     background: none;
     border: none;
-    color: #fff;
+    color: var(--white);
     cursor: pointer;
     font-size: 14px;
     padding: 0 4px;
@@ -89,7 +89,7 @@
 
 .partition-diagram-panel-body {
     padding: 12px 14px;
-    background: #fafafa;
+    background: var(--grey-50);
 }
 
 .partition-diagram-panel-section-title {
@@ -102,8 +102,8 @@
 .partition-diagram-panel-console {
     font-family: var(--font-mono);
     font-size: 11px;
-    background: #1e1e1e;
-    color: #d4d4d4;
+    background: var(--grey-900);
+    color: var(--grey-300);
     border-radius: 4px;
     overflow: hidden;
     margin-bottom: 14px;
@@ -116,7 +116,7 @@
 }
 
 .partition-diagram-panel-console-line:not(:last-child) {
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--grey-800);
 }
 
 .partition-diagram-panel-copy {
@@ -127,8 +127,8 @@
 
 .partition-diagram-panel-agg-box {
     font-family: var(--font-mono);
-    background: #f5f3ff;
-    border: 1px solid #ddd6fe;
+    background: var(--uos-purple-tint);
+    border: 1px solid var(--chart-purple-tint);
     border-radius: 4px;
     padding: 8px 12px;
     margin-bottom: 10px;
@@ -151,7 +151,7 @@
 }
 
 .partition-diagram-table-head-row {
-    background: #e8e0f0;
+    background: var(--uos-purple-tint);
 }
 
 .partition-diagram-table-head-cell {
@@ -180,11 +180,11 @@
 }
 
 .partition-diagram-table-row {
-    background: #fff;
+    background: var(--white);
 }
 
 .partition-diagram-table-row:nth-child(even) {
-    background: #f9f7fc;
+    background: var(--grey-50);
 }
 
 .partition-diagram-status {
@@ -196,23 +196,23 @@
 }
 
 .partition-diagram-status--pass {
-    background: #dcfce7;
-    color: #15803d;
+    background: var(--success-bg);
+    color: var(--success-fg);
 }
 
 .partition-diagram-status--fail {
-    background: #fee2e2;
-    color: #b91c1c;
+    background: var(--error-bg);
+    color: var(--error-fg);
 }
 
 .partition-diagram-predicate-note {
     display: block;
     margin-top: 6px;
-    color: #78350f;
-    background: #fff8e1;
+    color: var(--warning-fg);
+    background: var(--warning-bg);
     padding: 6px 8px;
     border-radius: 4px;
-    border-left: 3px solid #e69f00;
+    border: 1px solid var(--chart-orange);
 }
 
 .partition-diagram-panel-empty {
