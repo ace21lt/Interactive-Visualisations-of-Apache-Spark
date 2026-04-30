@@ -280,7 +280,7 @@ function App() {
     return (
         <div className="App">
             <div className="app-header">
-                <h1>Spark Lab Console</h1>
+                <h1>Interactive Spark Visualisations</h1>
                 <div className="header-right">
                     {data && <TourButton currentLab={currentLab} />}
                     <span className="workspace-indicator">{workspaceLabel}</span>
