@@ -85,7 +85,7 @@ const Login = ({sessionError = null, onLoginSuccess}) => {
                                     onChange={(e) => setWorkspaceUrl(e.target.value)}
                                     placeholder="https://your-workspace.cloud.databricks.com"
                                     autoFocus
-                                    autoComplete="url"
+                                    autoComplete="off"
                                     disabled={isLoading}
                                 />
                                 <p className="input-hint">
@@ -104,7 +104,7 @@ const Login = ({sessionError = null, onLoginSuccess}) => {
                                     value={token}
                                     onChange={(e) => setToken(e.target.value)}
                                     placeholder="dapi..."
-                                    autoComplete="off"
+                                    autoComplete="one-time-code"
                                     disabled={isLoading}
                                 />
                                 <p className="input-hint">
