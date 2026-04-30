@@ -2,12 +2,19 @@ import React, {useRef, useEffect, useState} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './Lab2Layout.css';
+import { chartBlue, chartOrange, chartPurple } from '../../theme/palette';
 
 const FeatureScatter = ({allRows, featureCols, coefficients, coefficientsOriginalScale}) => {
     const wrapRef = useRef();
     const svgRef = useRef();
     const width = useContainerWidth(wrapRef);
-    const [hovered, setHovered] = useState(null);
+    const [activePoint, setActivePoint] = useState(null);
+
+    const formatValue = (value, digits = 1) => {
+        const numeric = Number(value);
+        if (!Number.isFinite(numeric)) return '-';
+        return Number.isInteger(numeric) ? String(numeric) : numeric.toFixed(digits);
+    };
 
     useEffect(() => {
         if (!allRows || allRows.length === 0 || !featureCols) return;
@@ -24,8 +31,26 @@ const FeatureScatter = ({allRows, featureCols, coefficients, coefficientsOrigina
         const svg = d3.select(svgRef.current).attr('width', W).attr('height', H);
         svg.selectAll('*').remove();
 
-        const dotColours = ['#0072B2', '#E69F00', '#CC79A7'];
+        const dotColours = [chartBlue, chartOrange, chartPurple];
         const allDots = [];
+
+        const setHighlightedRow = (idx, point) => {
+            allDots.forEach(dotSet => {
+                dotSet.attr('opacity', (_, i) => i === idx ? 1 : 0.15)
+                    .attr('r', (_, i) => i === idx ? 6 : 2.5);
+            });
+            setActivePoint(point);
+        };
+
+        const clearHighlightedRow = (idx, pointKey) => {
+            setActivePoint(prev => {
+                if (prev?.key !== pointKey) return prev;
+                allDots.forEach(dotSet => {
+                    dotSet.attr('opacity', 0.55).attr('r', 3);
+                });
+                return null;
+            });
+        };
 
         cols.forEach((col, ci) => {
             const gx = 10 + ci * (plotW + 8);
@@ -40,10 +65,10 @@ const FeatureScatter = ({allRows, featureCols, coefficients, coefficientsOrigina
             g.append('g')
                 .call(d3.axisBottom(x).ticks(4).tickSize(-ih).tickFormat(''))
                 .attr('transform', `translate(0,${ih})`)
-                .selectAll('line').attr('stroke', '#f0f0f0');
+                .selectAll('line').attr('stroke', 'var(--grey-100)');
             g.append('g')
                 .call(d3.axisLeft(y).ticks(4).tickSize(-iw).tickFormat(''))
-                .selectAll('line').attr('stroke', '#f0f0f0');
+                .selectAll('line').attr('stroke', 'var(--grey-100)');
             g.selectAll('.domain').remove();
 
             const dots = g.selectAll('.dot')
@@ -56,19 +81,26 @@ const FeatureScatter = ({allRows, featureCols, coefficients, coefficientsOrigina
                 .attr('opacity', 0.55)
                 .attr('data-idx', (_, i) => i)
                 .style('cursor', 'pointer')
-                .on('mouseenter', function (event, d) {
-                    const idx = +d3.select(this).attr('data-idx');
-                    allDots.forEach(dotSet => {
-                        dotSet.attr('opacity', (_, i) => i === idx ? 1 : 0.15)
-                            .attr('r', (_, i) => i === idx ? 6 : 2.5);
-                    });
-                    setHovered({...d, _idx: idx});
+                .attr('tabindex', 0)
+                .attr('role', 'button')
+                .attr('aria-label', (d, i) => {
+                    const featureValue = formatValue(d[col]);
+                    const labelValue = formatValue(d.label);
+                    return `${col} value ${featureValue}, sales ${labelValue}, point ${i + 1}. Press Enter or Space to keep the details visible.`;
                 })
-                .on('mouseleave', function () {
-                    allDots.forEach(dotSet => {
-                        dotSet.attr('opacity', 0.55).attr('r', 3);
-                    });
-                    setHovered(null);
+                .on('mouseenter focus', function (event, d) {
+                    const idx = +d3.select(this).attr('data-idx');
+                    setHighlightedRow(idx, {...d, _idx: idx, column: col, key: `${col}-${idx}`});
+                })
+                .on('mouseleave blur', function () {
+                    const idx = +d3.select(this).attr('data-idx');
+                    clearHighlightedRow(idx, `${col}-${idx}`);
+                })
+                .on('keydown', function (event, d) {
+                    if (event.key !== 'Enter' && event.key !== ' ') return;
+                    event.preventDefault();
+                    const idx = +d3.select(this).attr('data-idx');
+                    setHighlightedRow(idx, {...d, _idx: idx, column: col, key: `${col}-${idx}`});
                 });
 
             dots.attr('r', 0)
@@ -133,7 +165,7 @@ const FeatureScatter = ({allRows, featureCols, coefficients, coefficientsOrigina
     }, [allRows, featureCols, coefficients, coefficientsOriginalScale, width]);
 
     useEffect(() => {
-        setHovered(null);
+            setActivePoint(null);
     }, [allRows, featureCols]);
 
     if (!allRows || allRows.length === 0 || !featureCols) return null;
@@ -154,22 +186,29 @@ const FeatureScatter = ({allRows, featureCols, coefficients, coefficientsOrigina
                 <svg ref={svgRef} style={{display: 'block', width: '100%', height: '180px'}} />
             </div>
 
-            {hovered ? (
-                <div className="hover-detail">
-                    {featureCols.filter(c => hovered[c] != null).map(c => (
+            <div className="hover-detail" role="status" aria-live="polite" aria-atomic="true">
+                {activePoint ? (
+                    <>
+                    {featureCols.filter(c => activePoint[c] != null).map(c => (
                         <span key={c} style={{marginRight: '12px'}}>
-                            <strong>{c}:</strong> {hovered[c]?.toFixed(1)}
+                            <strong>{c}:</strong> {formatValue(activePoint[c])}
                         </span>
                     ))}
-                    <span><strong>sales:</strong> {hovered.label?.toFixed(1)}</span>
-                </div>
-            ) : (
-                <div className="viz-card-footer">
-                    {hasCoefficients
-                        ? 'Hover any dot to see its values across all three plots. Strong linear pattern = large coefficient.'
-                        : 'Hover any dot to see its values across all three plots. Which features have a strong linear relationship with sales?'}
-                </div>
-            )}
+                    <span><strong>sales:</strong> {formatValue(activePoint.label)}</span>
+                    </>
+                ) : (
+                    <span>
+                        Keyboard tip: tab to any dot, then press Enter or Space to keep the point details visible.
+                        Hover still works for mouse users.
+                    </span>
+                )}
+            </div>
+
+            <div className="viz-card-footer">
+                {hasCoefficients
+                    ? 'Hover or focus a dot to compare feature values with the fitted coefficients. Strong linear pattern = large coefficient.'
+                    : 'Hover or focus a dot to inspect the raw values across the plots. Which features have a strong linear relationship with sales?'}
+            </div>
         </div>
     );
 };

@@ -3,6 +3,7 @@
     --uos-purple-dark: #190041;
     --uos-purple-tint: #f0e6ff;
     --uos-yellow: #FFCF00;
+    --focus-ring: rgba(68, 0, 153, 0.18);
 
     --white: #ffffff;
     --grey-50: #fafafa;
@@ -22,6 +23,17 @@
     --warning-fg: #7c3a00;
     --error-bg: #ffebee;
     --error-fg: #b71c1c;
+    --chart-blue: #0072B2;
+    --chart-orange: #E69F00;
+    --chart-green: #009E73;
+    --chart-purple: #CC79A7;
+    --chart-red: #D55E00;
+    --chart-sky: #56B4E9;
+    --chart-blue-tint: #e6f1fb;
+    --chart-orange-tint: #fff3e0;
+    --chart-green-tint: #f0fdf4;
+    --chart-purple-tint: #fce4ec;
+    --chart-red-tint: #fff0f0;
 
     --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
     --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
@@ -37,12 +49,38 @@
 
 body {
     margin: 0;
-    font-family: var(--font);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 16px;
     line-height: 1.55;
     color: var(--grey-900);
     background: var(--grey-100);
     -webkit-font-smoothing: antialiased;
+}
+
+button,
+summary,
+input,
+textarea,
+select {
+    font: inherit;
+}
+
+button:focus-visible,
+summary:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+.logout-btn:focus-visible,
+.tour-btn:focus-visible,
+.trigger-btn:focus-visible,
+.load-trace-btn:focus-visible,
+.lab-tab:focus-visible,
+.step-btn:focus-visible,
+.trace-btn:focus-visible,
+.btn:focus-visible {
+    outline: 2px solid var(--uos-purple-dark);
+    outline-offset: 2px;
+    box-shadow: 0 0 0 4px var(--focus-ring);
 }
 
 .App {
@@ -99,7 +137,7 @@ body {
     content: '';
     width: 7px;
     height: 7px;
-    background: green;
+    background: var(--chart-green);
     border-radius: 50%;
     flex-shrink: 0;
 }
@@ -110,7 +148,7 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.45);
     color: var(--white);
     border-radius: var(--radius);
-    font-family: var(--font);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -129,7 +167,7 @@ body {
     border: 1px solid var(--uos-yellow);
     color: var(--grey-900);
     border-radius: var(--radius);
-    font-family: var(--font);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 13px;
     font-weight: 600;
     cursor: pointer;
@@ -153,7 +191,7 @@ body {
 
 .trigger-btn {
     padding: 11px 28px;
-    font-family: var(--font);
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
     font-size: 15px;
     font-weight: 700;
     letter-spacing: 0.3px;
@@ -186,7 +224,7 @@ body {
     color: var(--grey-700);
     cursor: pointer;
     font-size: 14px;
-    font-family: var(--font-mono);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     white-space: nowrap;
     transition: background 0.2s;
 }
@@ -201,7 +239,7 @@ body {
     padding: 16px 32px 0;
     display: flex;
     gap: 0;
-    border-bottom: 2px solid #e0e0e0;
+    border-bottom: 2px solid var(--grey-300);
 }
 
 .lab-tab {
@@ -215,7 +253,7 @@ body {
     font-weight: normal;
     margin-bottom: -2px;
     border-radius: 6px 6px 0 0;
-    transition: all 0.15s ease;
+    transition: background 0.15s ease-out, color 0.15s ease-out, border-color 0.15s ease-out;
 }
 
 .lab-tab:disabled {
@@ -224,7 +262,7 @@ body {
 
 .lab-tab--active {
     background: var(--uos-purple);
-    color: #fff;
+    color: var(--white);
     border-bottom: 3px solid var(--uos-purple);
     font-weight: bold;
 }
@@ -244,7 +282,7 @@ body {
 .error-box {
     padding: 14px 16px;
     background: var(--error-bg);
-    border-left: 4px solid var(--error-fg);
+    border: 1px solid var(--error-fg);
     color: var(--error-fg);
     border-radius: var(--radius);
     font-size: 14px;
@@ -268,6 +306,12 @@ body {
     max-width: var(--max-w);
     margin: 0 auto;
     padding: 24px 32px 64px;
+}
+
+.results-container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 32px;
 }
 
 .results h2,
@@ -340,7 +384,7 @@ body {
 
 .explanation {
     background: var(--warning-bg);
-    border-left: 3px solid #f59e0b;
+    border: 1px solid var(--chart-orange);
     padding: 10px 14px;
     margin-top: 12px;
     border-radius: var(--radius);
@@ -398,7 +442,7 @@ body {
     font-size: 13px;
     font-weight: 700;
     color: var(--grey-900);
-    font-family: var(--font-mono);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     margin-bottom: 3px;
 }
 
@@ -444,7 +488,7 @@ body {
     background: var(--warning-bg);
     padding: 12px 14px;
     margin: 8px 0;
-    border-left: 4px solid #f59e0b;
+    border: 1px solid var(--chart-orange);
     border-radius: var(--radius);
 }
 
@@ -452,7 +496,7 @@ body {
     margin: 0 0 5px;
     font-size: 13px;
     font-weight: 700;
-    font-family: var(--font-mono);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     color: var(--grey-900);
 }
 
@@ -509,7 +553,7 @@ body {
     margin: 3px 0 0;
     font-size: 12px;
     color: var(--grey-500);
-    font-family: var(--font-mono);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
 }
 
 
@@ -526,7 +570,7 @@ body {
 }
 
 .status-code {
-    font-family: var(--font-mono);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     font-size: 13px;
     font-weight: 700;
     width: 48px;
@@ -535,7 +579,7 @@ body {
 }
 
 .status-count {
-    font-family: var(--font-mono);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     font-size: 12px;
     width: 88px;
     text-align: right;
@@ -556,7 +600,7 @@ pre {
     background: var(--grey-100);
     padding: 12px 14px;
     overflow-x: auto;
-    font-family: var(--font-mono);
+    font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     font-size: 12px;
     line-height: 1.6;
     border: var(--border);
@@ -579,6 +623,21 @@ pre {
         padding-right: 16px;
     }
 
+    .results-container {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .lab-tabs {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
+    .error-box {
+        padding-left: 16px;
+        padding-right: 16px;
+    }
+
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -592,5 +651,20 @@ pre {
     .controls {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    .results-container {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .lab-tabs {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .error-box {
+        padding-left: 12px;
+        padding-right: 12px;
     }
 }

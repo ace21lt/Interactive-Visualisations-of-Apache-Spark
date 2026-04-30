@@ -1,7 +1,7 @@
 import React, {useState} from 'react';
 import './Login.css';
 
-const Login = ({sessionError = null}) => {
+const Login = ({sessionError = null, onLoginSuccess}) => {
     const [workspaceUrl, setWorkspaceUrl] = useState('');
     const [token, setToken] = useState('');
     const [isLoading, setIsLoading] = useState(false);
@@ -22,6 +22,7 @@ const Login = ({sessionError = null}) => {
     };
 
     const apiBase = import.meta.env.VITE_API_URL || '';
+    const errorId = 'login-error-message';
 
     const handleConnect = async () => {
         const cleanUrl = workspaceUrl.trim().replace(/\/+$/, '');
@@ -45,10 +46,11 @@ const Login = ({sessionError = null}) => {
 
             if (!res.ok) {
                 const text = await res.text().catch(() => '');
-                throw new Error(text || `Login failed (HTTP ${res.status})`);
+                setError(text || `Login failed (HTTP ${res.status})`);
+                return;
             }
 
-            window.location.reload();
+            await onLoginSuccess?.();
         } catch (e) {
             setError(e.message || 'Login failed');
         } finally {
@@ -106,7 +108,7 @@ const Login = ({sessionError = null}) => {
                                     disabled={isLoading}
                                 />
                                 <p className="input-hint">
-                                    This is stored only in server memory for your session and never saved to a database.
+                                    Stored only in server memory for your session, never written to a database.
                                 </p>
                             </div>
 
@@ -115,6 +117,7 @@ const Login = ({sessionError = null}) => {
                                 className="btn btn-primary"
                                 onClick={handleConnect}
                                 disabled={isLoading}
+                                aria-describedby={error ? errorId : undefined}
                             >
                                 {isLoading ? (
                                     <>
@@ -130,7 +133,7 @@ const Login = ({sessionError = null}) => {
                             </button>
 
                             {error && (
-                                <div className="error-message">
+                                <div className="error-message" id={errorId} role="alert" aria-live="assertive" aria-atomic="true">
                                     <span className="error-icon"></span>
                                     {error}
                                 </div>
@@ -158,11 +161,11 @@ const Login = ({sessionError = null}) => {
                             <summary>Where do I create a PAT?</summary>
                             <ol>
                                 <li>In Databricks: click your profile icon</li>
-                                <li>Go to <strong>Settings</strong> ' <strong>Developer</strong></li>
+                                <li>Go to <strong>Settings</strong> &gt; <strong>Developer</strong></li>
                                 <li>Click <strong>Manage</strong> next to <strong>Access tokens</strong></li>
                                 <li>Name the token and set an expiration (e.g. <strong>90 days</strong>)</li>
                                 <li>Set API scope(s) to <strong>jobs, workspace, files, unity-catalog and clusters</strong></li>
-                                <li>Generate a token and <strong>make a note of it</strong> (As you cannot view a previously created PAT)</li>
+                                <li>Generate a token and <strong>make a note of it</strong> because you will not be able to view it again.</li>
                                 <li>Paste it here</li>
                             </ol>
                         </details>
