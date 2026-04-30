@@ -122,7 +122,7 @@ export function Step4Panel({data, splitHistory = []}) {
         <div className="split-bar">
             <div className="viz-card-header">
                 <span className="viz-card-title">Data Split</span>
-                <span className="badge badge--blocked">NARROW — NO SHUFFLE</span>
+                        <span className="badge badge--blocked">NARROW, NO SHUFFLE</span>
             </div>
             <div style={{padding: '16px'}}>
                 <div className="split-bar-track">
@@ -184,7 +184,7 @@ export function Step4Panel({data, splitHistory = []}) {
                     <strong>Try it:</strong> change <code>split_seed = {s.seed}</code> to{' '}
                     <code>42</code> or <code>2024</code> in the code panel, click Run, then click
                     the train and test bars above to see that the first-five rows have changed.
-                    Any fixed integer works — 6012 is just the course code. Rerun the same seed
+                    Any fixed integer works. 6012 is just the course code. Rerun the same seed
                     and the same rows come back.
                 </p>
             </div>
@@ -303,15 +303,15 @@ export function Step7Panel({data}) {
     if (!pl) return <p className="empty-state">Run the notebook to see results.</p>;
 
     const tabs = [
-        {id: '7a', label: '7a — Training data'},
-        {id: '7b', label: '7b — .fit() type transform'},
-        {id: '7c', label: '7c — Exercise 5 predictions'},
+        {id: '7a', label: '7a: Training data'},
+        {id: '7b', label: '7b: .fit() type transform'},
+        {id: '7c', label: '7c: Exercise 5 predictions'},
     ];
 
     return (<>
         <div className="pipeline-banner">
             <div className="pipeline-banner-title">
-                ML Pipeline exercise — separate from steps 3–6 (Advertising). Follow 7a → 7b → 7c.
+                ML Pipeline exercise, separate from steps 3-6 (Advertising). Follow 7a, 7b, then 7c.
             </div>
             <div className="step-tabs">
                 {tabs.map(t => (
@@ -348,7 +348,7 @@ export function Step7Panel({data}) {
             {pl.stages && pl.stages.length > 0 && (
                 <div className="pipeline-stages">
                     <div className="pipeline-stages-title">
-                        Pipeline stages — spark.ml equivalent on HPC
+                        Pipeline stages: spark.ml equivalent on HPC
                     </div>
                     <div className="pipeline-stages-list">
                         {pl.stages.map((stg, i) => (
@@ -412,7 +412,7 @@ export function Step7Panel({data}) {
                 <strong className="callout--green-title">Reading the table:</strong>{' '}
                 <code>prob_0</code> is the model's confidence the document is <em>not</em> Spark-related,{' '}
                 <code>prob_1</code> is its confidence the document <em>is</em> Spark-related. They always sum to 1.
-                The <code>prediction</code> column is whichever is higher — so{' '}
+                The <code>prediction</code> column is whichever is higher, so{' '}
                 <code>prob_1 &gt; 0.5 → label 1</code>, otherwise label 0. Confidence is measured by distance
                 from 0.5: a prob of 0.99 is near-certain, 0.55 is basically a coin flip.
             </div>

@@ -2,6 +2,7 @@ import React, {useRef, useEffect} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './Lab2Layout.css';
+import { alpha, chartBlue, chartBlueTint, chartOrange, neutralWhite } from '../../theme/palette';
 
 const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
     const wrapRef = useRef();
@@ -9,10 +10,11 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
     const width = useContainerWidth(wrapRef);
     const hasPartitionArray = Array.isArray(partitionDist);
 
+    const partitionCount = hasPartitionArray ? partitionDist.length : 0;
     const partitionDataError = partitionDist != null && !Array.isArray(partitionDist)
         ? 'ToPandasDiagram: "partitionDist" must be an array when provided.'
         : hasPartitionArray
-            ? partitionDist.length === 0
+            ? partitionCount === 0
                 ? 'ToPandasDiagram: "partitionDist" must be a non-empty array when provided.'
                 : (() => {
                     const badIndex = partitionDist.findIndex(part => part?.row_count == null && part?.count == null);
@@ -39,7 +41,7 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
             .attr('refX', 4).attr('refY', 4)
             .attr('markerWidth', 5).attr('markerHeight', 5)
             .attr('orient', 'auto')
-            .append('path').attr('d', 'M0,0 L8,4 L0,8 z').attr('fill', '#0072B2');
+            .append('path').attr('d', 'M0,0 L8,4 L0,8 z').attr('fill', chartBlue);
 
         const g = svg.append('g').attr('transform', `translate(${ml},${mt})`);
 
@@ -60,15 +62,15 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
             g.append('rect')
                 .attr('x', px).attr('y', partY)
                 .attr('width', partW).attr('height', partH).attr('rx', 4)
-                .attr('fill', '#f0f8ff')
-                .attr('stroke', '#0072B2')
+                .attr('fill', chartBlueTint)
+                .attr('stroke', chartBlue)
                 .attr('stroke-width', 1.5);
 
             g.append('text')
                 .attr('x', px + partW / 2).attr('y', partY + 18)
                 .attr('text-anchor', 'middle').attr('font-size', 10)
                 .attr('font-weight', 'bold')
-                .attr('fill', '#0072B2')
+                .attr('fill', chartBlue)
                 .attr('font-family', 'var(--font-mono)')
                 .text(`P${i}`);
 
@@ -94,19 +96,19 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
         g.append('rect')
             .attr('x', driverX).attr('y', driverY)
             .attr('width', driverW).attr('height', driverH).attr('rx', 6)
-            .attr('fill', '#D55E00').attr('stroke', 'none');
+            .attr('fill', chartOrange).attr('stroke', 'none');
 
         g.append('text')
             .attr('x', driverX + driverW / 2).attr('y', driverY + 16)
             .attr('text-anchor', 'middle').attr('font-size', 12)
-            .attr('font-weight', 'bold').attr('fill', '#fff')
+            .attr('font-weight', 'bold').attr('fill', neutralWhite)
             .attr('font-family', 'var(--font-mono)')
             .text('DRIVER NODE');
 
         g.append('text')
             .attr('x', driverX + driverW / 2).attr('y', driverY + 32)
             .attr('text-anchor', 'middle').attr('font-size', 10)
-            .attr('fill', '#ffffffcc').attr('font-family', 'var(--font-mono)')
+            .attr('fill', alpha(neutralWhite, 0.8)).attr('font-family', 'var(--font-mono)')
             .text(`pandas DataFrame · ${(trainCount ?? 0) + (testCount ?? 0)} rows`);
 
         const arrowTargetY = driverY + driverH + 4;
@@ -118,7 +120,7 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
 
             g.append('path')
                 .attr('d', `M${srcX},${arrowSourceY} Q${(srcX + destX) / 2},${(arrowSourceY + arrowTargetY) / 2 - 20} ${destX},${arrowTargetY}`)
-                .attr('fill', 'none').attr('stroke', '#0072B2')
+                .attr('fill', 'none').attr('stroke', chartBlue)
                 .attr('stroke-width', 2).attr('stroke-dasharray', '5,3')
                 .attr('marker-end', 'url(#topd-arrow)')
                 .attr('opacity', 0)
@@ -130,18 +132,18 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
         g.append('line')
             .attr('x1', 0).attr('y1', midY)
             .attr('x2', IW).attr('y2', midY)
-            .attr('stroke', '#E69F00').attr('stroke-width', 2)
+            .attr('stroke', chartOrange).attr('stroke-width', 2)
             .attr('stroke-dasharray', '6,4');
 
         g.append('rect')
             .attr('x', IW / 2 - 52).attr('y', midY - 10)
             .attr('width', 104).attr('height', 20).attr('rx', 4)
-            .attr('fill', '#fff').attr('stroke', '#E69F00').attr('stroke-width', 1);
+            .attr('fill', neutralWhite).attr('stroke', chartOrange).attr('stroke-width', 1);
 
         g.append('text')
             .attr('x', IW / 2).attr('y', midY + 4)
             .attr('text-anchor', 'middle').attr('font-size', 11)
-            .attr('font-weight', 'bold').attr('fill', '#E69F00')
+            .attr('font-weight', 'bold').attr('fill', chartOrange)
             .attr('font-family', 'var(--font-mono)')
             .text('.toPandas()');
 
@@ -165,8 +167,8 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
                 <svg ref={svgRef} style={{display: 'block', width: '100%', height: '220px'}} />
             </div>
             <div className="viz-card-footer">
-                All partition data converges to the driver node via .toPandas(). With 200 rows this is trivial — for
-                large datasets this would cause an OutOfMemoryError. scikit-learn then runs ML on this single machine.
+                All partition data converges to the driver node via .toPandas(). With 200 rows this is trivial, and
+                for large datasets this would cause an OutOfMemoryError. scikit-learn then runs ML on this single machine.
             </div>
         </div>
     );

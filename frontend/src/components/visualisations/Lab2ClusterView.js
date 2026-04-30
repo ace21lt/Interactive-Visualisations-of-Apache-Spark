@@ -1,16 +1,30 @@
-import React, {useRef, useEffect, useState} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './Lab2ClusterView.css';
+import {
+    alpha,
+    brandPurpleDark,
+    chartBlue,
+    chartBlueTint,
+    chartGreen,
+    chartOrange,
+    chartPurple,
+    chartPurpleTint,
+    chartRed,
+    chartSky,
+    neutralSurface,
+    neutralWhite,
+} from '../../theme/palette';
 
 // Okabe-Ito colour palette
-const C_TRAIN = '#0072B2';   // blue       — train rows
-const C_TEST = '#D55E00';   // vermillion — test rows
-const C_LAZY = '#56B4E9';   // sky blue   — lazy Spark step
-const C_SPARK = '#0072B2';   // blue       — executed Spark step
-const C_COLLECT = '#D55E00';   // vermillion — .toPandas() driver
-const C_SKLEARN = '#009E73';   // green      — scikit-learn driver
-const C_INACTIVE = '#d1d5db';   // grey       — idle/greyed slots
+const C_TRAIN = chartBlue;   // blue, train rows
+const C_TEST = chartRed;   // vermillion, test rows
+const C_LAZY = chartSky;   // sky blue, lazy Spark step
+const C_SPARK = chartBlue;   // blue, executed Spark step
+const C_COLLECT = chartRed;   // vermillion, .toPandas() driver
+const C_SKLEARN = chartGreen;   // green, scikit-learn driver
+const C_INACTIVE = 'var(--grey-300)';   // grey, idle slots
 
 
 function resolveMode(stepObj) {
@@ -22,16 +36,16 @@ function resolveMode(stepObj) {
     return 'driver';
 }
 
-// Card header badge per mode 
+// Card header badge per mode
 function modeBadge(mode, isLazy) {
-    if (mode === 'rdd') return {label: 'RDD — HPC ONLY', bg: '#fff3e0', col: '#e65100'};
-    if (mode === 'split') return {label: 'NARROW — NO SHUFFLE', bg: '#e6f1fb', col: '#0072B2'};
-    if (mode === 'topandas') return {label: 'PARALLELISM ENDS HERE', bg: '#fce4ec', col: '#880e4f'};
-    if (mode === 'driver') return {label: 'DRIVER — SCIKIT-LEARN', bg: '#fce4ec', col: '#880e4f'};
+    if (mode === 'rdd') return {label: 'RDD: HPC only', bg: alpha(chartOrange, 0.14), col: chartOrange};
+    if (mode === 'split') return {label: 'Narrow: no shuffle', bg: chartBlueTint, col: chartBlue};
+    if (mode === 'topandas') return {label: 'Parallelism ends here', bg: chartPurpleTint, col: chartPurple};
+    if (mode === 'driver') return {label: 'Driver: scikit-learn', bg: chartPurpleTint, col: chartPurple};
     // spark
     return isLazy
-        ? {label: 'SPARK DISTRIBUTED — LAZY', bg: '#e6f1fb', col: '#0072B2'}
-        : {label: 'SPARK DISTRIBUTED', bg: '#e6f1fb', col: '#0072B2'};
+        ? {label: 'Spark distributed: lazy', bg: chartBlueTint, col: chartBlue}
+        : {label: 'Spark distributed', bg: chartBlueTint, col: chartBlue};
 }
 
 // Layout constants shared across all modes 
@@ -49,9 +63,6 @@ const MIN_SLOTS = 4;
 function draw(svgEl, {
     width, mode, isLazy,
     partitionDist,         
-    trainDist,              
-    testDist,              
-    splitRows,             
     trainCount, testCount,
     stepIndex,
     selectedPartition,    
@@ -65,6 +76,11 @@ function draw(svgEl, {
 
     const svg = d3.select(svgEl).attr('width', W).attr('height', H);
     svg.selectAll('*').remove();
+    const focusStroke = brandPurpleDark;
+    const activateSelection = (pid) => onPartitionClick?.(pid);
+    const lazyFill = alpha(chartBlue, 0.22);
+    const selectedFill = alpha(chartOrange, 0.26);
+    const selectedStroke = brandPurpleDark;
 
     // Arrow marker (upward, for .toPandas convergence)
     const defs = svg.append('defs');
@@ -96,21 +112,21 @@ function draw(svgEl, {
         .attr('x', dX + DW / 2).attr('y', 17)
         .attr('text-anchor', 'middle').attr('font-family', 'var(--font-mono)')
         .attr('font-size', 11).attr('font-weight', 'bold')
-        .attr('fill', driverActive ? '#fff' : 'var(--grey-400)')
+        .attr('fill', driverActive ? neutralWhite : 'var(--grey-400)')
         .text('DRIVER NODE');
 
     // Driver sublabel
     const driverSub = mode === 'topandas'
         ? `pandas DataFrame · ${(trainCount ?? 0) + (testCount ?? 0)} rows`
-        : mode === 'driver' ? 'scikit-learn — single machine'
-            : mode === 'rdd' ? 'SparkContext (sc) — HPC only'
+        : mode === 'driver' ? 'scikit-learn, single machine'
+            : mode === 'rdd' ? 'SparkContext (sc), HPC only'
                 : 'no result yet (lazy)';
 
     g.append('text')
         .attr('x', dX + DW / 2).attr('y', 32)
         .attr('text-anchor', 'middle').attr('font-family', 'var(--font-mono)')
         .attr('font-size', 9)
-        .attr('fill', driverActive ? 'rgba(255,255,255,0.8)' : 'var(--grey-300)')
+        .attr('fill', driverActive ? alpha(neutralWhite, 0.8) : 'var(--grey-300)')
         .text(driverSub);
 
     // Network boundary 
@@ -118,7 +134,7 @@ function draw(svgEl, {
 
     const boundaryCol = (mode === 'driver') ? 'var(--grey-200)'
         : (mode === 'topandas') ? C_COLLECT
-            : '#E69F00';
+            : chartOrange;
 
     g.append('line')
         .attr('x1', 0).attr('y1', netY)
@@ -184,7 +200,7 @@ function draw(svgEl, {
             g.append('rect')
                 .attr('x', px).attr('y', pY)
                 .attr('width', boxW).attr('height', maxBarH)
-                .attr('fill', isReal ? '#f8faff' : '#fafafa')
+                .attr('fill', isReal ? lazyFill : neutralSurface)
                 .attr('stroke', isReal ? C_SPARK : 'var(--grey-200)')
                 .attr('stroke-width', 1.5).attr('rx', 3);
 
@@ -202,11 +218,27 @@ function draw(svgEl, {
                     .attr('x', px + 2).attr('y', barY + testH)
                     .attr('width', boxW - 4).attr('height', 0).attr('rx', 2)
                     .attr('fill', C_TRAIN)
-                    .attr('stroke', isTrainSel ? '#E69F00' : 'none')
+                    .attr('stroke', isTrainSel ? selectedStroke : 'none')
                     .attr('stroke-width', isTrainSel ? 2.5 : 0)
                     .style('cursor', clickableTrain ? 'pointer' : 'default')
+                    .attr('tabindex', clickableTrain ? 0 : -1)
+                    .attr('role', clickableTrain ? 'button' : null)
+                    .attr('aria-label', clickableTrain ? `Train segment, ${trainCount ?? '?'} rows. Press Enter or Space to inspect train rows.` : null)
+                    .attr('aria-pressed', isTrainSel ? 'true' : 'false')
                     .on('click', () => {
-                        if (clickableTrain) onPartitionClick?.('train');
+                        if (clickableTrain) activateSelection('train');
+                    })
+                    .on('keydown', function (event) {
+                        if (!clickableTrain || (event.key !== 'Enter' && event.key !== ' ')) return;
+                        event.preventDefault();
+                        activateSelection('train');
+                    })
+                    .on('focus', function () {
+                        if (!clickableTrain) return;
+                        d3.select(this).attr('stroke', focusStroke).attr('stroke-width', 3);
+                    })
+                    .on('blur', function () {
+                        d3.select(this).attr('stroke', isTrainSel ? selectedStroke : 'none').attr('stroke-width', isTrainSel ? 2.5 : 0);
                     });
                 trainRect.transition().duration(500).ease(d3.easeCubicOut)
                     .attr('height', trainH);
@@ -217,11 +249,27 @@ function draw(svgEl, {
                     .attr('x', px + 2).attr('y', barY)
                     .attr('width', boxW - 4).attr('height', 0).attr('rx', 2)
                     .attr('fill', C_TEST)
-                    .attr('stroke', isTestSel ? '#E69F00' : 'none')
+                    .attr('stroke', isTestSel ? selectedStroke : 'none')
                     .attr('stroke-width', isTestSel ? 2.5 : 0)
                     .style('cursor', clickableTest ? 'pointer' : 'default')
+                    .attr('tabindex', clickableTest ? 0 : -1)
+                    .attr('role', clickableTest ? 'button' : null)
+                    .attr('aria-label', clickableTest ? `Test segment, ${testCount ?? '?'} rows. Press Enter or Space to inspect test rows.` : null)
+                    .attr('aria-pressed', isTestSel ? 'true' : 'false')
                     .on('click', () => {
-                        if (clickableTest) onPartitionClick?.('test');
+                        if (clickableTest) activateSelection('test');
+                    })
+                    .on('keydown', function (event) {
+                        if (!clickableTest || (event.key !== 'Enter' && event.key !== ' ')) return;
+                        event.preventDefault();
+                        activateSelection('test');
+                    })
+                    .on('focus', function () {
+                        if (!clickableTest) return;
+                        d3.select(this).attr('stroke', focusStroke).attr('stroke-width', 3);
+                    })
+                    .on('blur', function () {
+                        d3.select(this).attr('stroke', isTestSel ? selectedStroke : 'none').attr('stroke-width', isTestSel ? 2.5 : 0);
                     });
                 testRect.transition().duration(500).ease(d3.easeCubicOut)
                     .attr('height', testH);
@@ -231,7 +279,7 @@ function draw(svgEl, {
                     .attr('x', px + boxW / 2).attr('y', barY + testH + trainH / 2 + 3)
                     .attr('text-anchor', 'middle').attr('font-size', 9)
                     .attr('font-weight', 'bold')
-                    .attr('fill', '#ffffff').attr('font-family', 'var(--font-mono)')
+                    .attr('fill', neutralWhite).attr('font-family', 'var(--font-mono)')
                     .text(`${totalRows} rows`);
             }
 
@@ -249,7 +297,7 @@ function draw(svgEl, {
             .attr('x', p0X + boxW / 2).attr('y', pY - 5)
             .attr('text-anchor', 'middle').attr('font-size', 8)
             .attr('fill', C_SPARK).attr('font-family', 'var(--font-mono)').attr('font-weight', 'bold')
-            .text('P0 — all rows');
+            .text('P0: all rows');
 
         // Train / Test count labels below P0
         g.append('text')
@@ -298,16 +346,33 @@ function draw(svgEl, {
         g.append('rect')
             .attr('x', px).attr('y', pY)
             .attr('width', boxW).attr('height', maxBarH)
-            .attr('fill', isSelected ? '#fffbeb'
-                : isDimmed ? '#fafafa'
-                    : isReal ? '#f0f8ff' : '#fafafa')
-            .attr('stroke', isSelected ? '#E69F00' : boxStroke)
+            .attr('fill', isSelected ? selectedFill
+                : isLazyBox ? lazyFill
+                : isDimmed ? neutralSurface
+                    : isReal ? chartBlueTint : neutralSurface)
+            .attr('stroke', isSelected ? selectedStroke : boxStroke)
             .attr('stroke-width', isSelected ? 2.5 : 1.5)
             .attr('stroke-dasharray', isLazyBox ? '4,4' : 'none')
             .attr('rx', 3)
+            .attr('tabindex', isClickable ? 0 : -1)
+            .attr('role', isClickable ? 'button' : null)
+            .attr('aria-label', isClickable ? `Partition ${pData.partition_id ?? i}, ${rows.toLocaleString()} rows. Press Enter or Space to inspect rows.` : null)
+            .attr('aria-pressed', isSelected ? 'true' : 'false')
             .style('cursor', isClickable ? 'pointer' : 'default')
+            .on('focus', function () {
+                if (!isClickable) return;
+                d3.select(this).attr('stroke', focusStroke).attr('stroke-width', 3);
+            })
+            .on('blur', function () {
+                d3.select(this).attr('stroke', isSelected ? selectedStroke : boxStroke).attr('stroke-width', isSelected ? 2.5 : 1.5);
+            })
+            .on('keydown', function (event) {
+                if (!isClickable || (event.key !== 'Enter' && event.key !== ' ')) return;
+                event.preventDefault();
+                activateSelection(0);
+            })
             .on('click', () => {
-                if (isClickable) onPartitionClick?.(0);
+                if (isClickable) activateSelection(0);
             });
 
         if (rows > 0 && !isDimmed) {
@@ -317,8 +382,9 @@ function draw(svgEl, {
                 .attr('x', px).attr('y', pY + maxBarH).attr('width', boxW).attr('height', 0)
                 .attr('fill', isSelected ? 'var(--uos-yellow)' : barCol).attr('rx', 2)
                 .style('cursor', isClickable ? 'pointer' : 'default')
+                .attr('tabindex', -1)
                 .on('click', () => {
-                    if (isClickable) onPartitionClick?.(0);
+                    if (isClickable) activateSelection(0);
                 });
             barRect.transition().duration(600).ease(d3.easeCubicOut)
                 .attr('y', barY).attr('height', barH);
@@ -373,8 +439,8 @@ function draw(svgEl, {
             .attr('x', IW / 2).attr('y', bannerY)
             .attr('text-anchor', 'middle').attr('font-size', 9)
             .attr('font-family', 'var(--font-mono)')
-            .attr('fill', '#c2410c')
-            .text(`${idleCount} idle slot${idleCount > 1 ? 's' : ''} — file too small to split across partitions`);
+            .attr('fill', chartOrange)
+            .text(`${idleCount} idle slot${idleCount > 1 ? 's' : ''}, file too small to split across partitions`);
     }
 
     // .toPandas() convergence arrows 
@@ -406,7 +472,7 @@ function draw(svgEl, {
             .attr('text-anchor', 'middle').attr('font-size', 11)
             .attr('font-weight', 'bold').attr('fill', 'var(--grey-300)')
             .attr('font-family', 'var(--font-mono)')
-            .text('sc.parallelize() — RDDs would run here');
+            .text('sc.parallelize(): RDDs would run here');
         g.append('text')
             .attr('x', IW / 2).attr('y', annotY + 10)
             .attr('text-anchor', 'middle').attr('font-size', 9)
@@ -421,7 +487,7 @@ function draw(svgEl, {
             .attr('x', IW / 2).attr('y', annotY)
             .attr('text-anchor', 'middle').attr('font-size', 10)
             .attr('fill', 'var(--grey-300)').attr('font-family', 'var(--font-mono)')
-            .text('partitions inactive — data collected to driver at Step 5');
+            .text('partitions inactive, data collected to driver at Step 5');
     }
 }
 
@@ -444,9 +510,6 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
     const isLazy = !!stepObj?.lazy;
 
     const partitionDist = si?.partition_distribution ?? [];
-    const trainDist = si?.train_partition_distribution ?? [];
-    const testDist = si?.test_partition_distribution ?? [];
-    const splitRows = data?.train_test_split?.split_rows ?? [];
     const trainCount = data?.train_test_split?.train_count;
     const testCount = data?.train_test_split?.test_count;
 
@@ -462,9 +525,6 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
             mode,
             isLazy,
             partitionDist,
-            trainDist,
-            testDist,
-            splitRows,
             trainCount,
             testCount,
             stepIndex: currentStep,
@@ -489,19 +549,19 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
 
     const annotation = (() => {
         if (mode === 'rdd')
-            return 'On HPC, sc.parallelize() distributes a Python list across executor slots as an RDD. On Databricks Serverless the SparkContext is unavailable — use DataFrames instead.';
+            return 'On HPC, sc.parallelize() distributes a Python list across executor slots as an RDD. On Databricks Serverless the SparkContext is unavailable, use DataFrames instead.';
         if (mode === 'spark' && currentStep === 2)
             return `The CSV (${totalRows} rows) landed in ${realNAnn} partition${realNAnn === 1 ? '' : 's'}. ${idleN} executor slot${idleN === 1 ? '' : 's'} idle. A larger file would automatically fill more slots.`;
         if (mode === 'spark' && currentStep === 3)
-            return 'df.select() is a narrow transformation — it adds a projection to the DAG without executing anything. The partition layout is unchanged. Dashed borders indicate the operation is lazy.';
+            return 'df.select() is a narrow transformation: it adds a projection to the DAG without executing anything. The partition layout is unchanged. Dashed borders indicate the operation is lazy.';
         if (mode === 'split')
-            return 'randomSplit([0.6, 0.4]) is a narrow transformation — each executor independently hash-assigns its rows into train/test buckets. No data crosses the network. Both splits stay in Partition 0.';
+            return 'randomSplit([0.6, 0.4]) is a narrow transformation: each executor independently hash-assigns its rows into train/test buckets. No data crosses the network. Both splits stay in Partition 0.';
         if (mode === 'topandas')
             return '.toPandas() serialises all partitions and sends them to the driver in a single collect operation. With 200 rows this is trivial. On a large dataset this would cause an OutOfMemoryError, this is why spark.ml is normally used instead.';
         if (mode === 'driver' && currentStep === 6)
-            return 'Predictions are computed on the driver using the trained scikit-learn model. No Spark executors are involved — this is ordinary single-machine Python.';
+            return 'Predictions are computed on the driver using the trained scikit-learn model. No Spark executors are involved, this is ordinary single-machine Python.';
         if (mode === 'driver' && currentStep === 7)
-            return 'The ML Pipeline runs on the driver. On HPC, spark.ml Pipeline distributes tokenisation and hashing across executors — here scikit-learn runs equivalent stages locally.';
+            return 'The ML Pipeline runs on the driver. On HPC, spark.ml Pipeline distributes tokenisation and hashing across executors, while this version runs equivalent scikit-learn stages locally.';
         return '';
     })();
 
@@ -537,7 +597,7 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
                                 height: 10,
                                 background: C_LAZY,
                                 borderRadius: 2,
-                                border: '1px dashed #0072B2'
+                                border: `1px dashed ${chartBlue}`
                             }, label: 'Lazy (no exec)'
                         },
                         idle: {s: {width: 10, height: 10, background: C_INACTIVE, borderRadius: 2}, label: 'Idle'},
@@ -605,17 +665,17 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
 
                 if (isStep2) {
                     partRows = sampleRows ?? [];
-                    partLabel = `Partition 0 — ${partitionDist?.[0]?.row_count ?? '?'} rows · ${Math.min(partRows.length, 5)} samples`;
+                    partLabel = `Partition 0: ${partitionDist?.[0]?.row_count ?? '?'} rows, ${Math.min(partRows.length, 5)} samples`;
                     stepLabel = 'Raw CSV data (single partition holds all rows)';
                     columns = partRows[0] ? Object.keys(partRows[0]) : [];
                 } else if (isTrain) {
                     partRows = trainSample ?? [];
-                    partLabel = `Partition 0 · train — ${trainCount ?? '?'} rows · ${Math.min(partRows.length, 5)} samples`;
+                    partLabel = `Partition 0 train: ${trainCount ?? '?'} rows, ${Math.min(partRows.length, 5)} samples`;
                     stepLabel = 'randomSplit assigned these rows to TRAIN (within P0)';
                     columns = partRows[0] ? Object.keys(partRows[0]) : [];
                 } else if (isTest) {
                     partRows = testSample ?? [];
-                    partLabel = `Partition 0 · test — ${testCount ?? '?'} rows · ${Math.min(partRows.length, 5)} samples`;
+                    partLabel = `Partition 0 test: ${testCount ?? '?'} rows, ${Math.min(partRows.length, 5)} samples`;
                     stepLabel = 'randomSplit assigned these rows to TEST (within P0)';
                     columns = partRows[0] ? Object.keys(partRows[0]) : [];
                 }
@@ -654,13 +714,13 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
                                         // Render each row as a pipe-separated line
                                         const line = columns.map(k => {
                                             const v = row[k];
-                                            if (v == null) return `${k}=—`;
+                                            if (v == null) return `${k}=-`;
                                             if (typeof v === 'number')
                                                 return `${k}=${Number.isInteger(v) ? v : v.toFixed(2)}`;
                                             return `${k}=${v}`;
                                         }).join('  |  ');
                                         return (
-                                            <div key={i} className="lab2-cluster-view-terminal-line" style={{borderBottom: i < partRows.length - 1 ? '1px solid #333' : 'none'}}>
+                                            <div key={i} className="lab2-cluster-view-terminal-line" style={{borderBottom: i < partRows.length - 1 ? '1px solid var(--grey-700)' : 'none'}}>
                                                 {line}
                                             </div>
                                         );

@@ -27,7 +27,7 @@ function GlassTable({title, badge, columns, rows, maxRows = 10}) {
                                             ? row[c].toFixed(4)
                                             : Array.isArray(row[c])
                                                 ? `[${row[c].map(v => typeof v === 'number' ? v.toFixed(1) : v).join(', ')}]`
-                                                : String(row[c] ?? '—')}
+                                                : String(row[c] ?? '-')}
                                     </td>
                                 ))}
                             </tr>

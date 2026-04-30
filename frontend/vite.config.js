@@ -3,6 +3,22 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          joyride: ['react-joyride'],
+          d3: ['d3'],
+          codemirror: [
+            '@uiw/react-codemirror',
+            '@uiw/codemirror-theme-vscode',
+            '@codemirror/lang-python',
+            '@codemirror/theme-one-dark'
+          ]
+        }
+      }
+    }
+  },
   esbuild: {
     loader: 'jsx',
     include: /src\/.*\.js$/,

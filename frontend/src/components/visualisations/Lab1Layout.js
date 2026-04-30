@@ -10,13 +10,14 @@ import PartitionDiagram from './Partitiondiagram';
 import StatsRow from './StatsRow';
 import { useTour } from '../../context/TourContext';
 import { lab1Steps, joyrideConfig } from '../../config/tourSteps';
+import { chartBlue, chartOrange, chartPurple, chartRed, chartSky } from '../../theme/palette';
 
 function stepColour(step, stepIndex) {
-    if (stepIndex === 1) return '#D55E00';
-    if (step?.shuffle) return '#E69F00';
-    if (step?.type === 'action' && !step?.shuffle) return '#0072B2';
-    if (step?.partitions_after != null) return '#CC79A7';
-    return '#56B4E9';
+    if (stepIndex === 1) return chartRed;
+    if (step?.shuffle) return chartOrange;
+    if (step?.type === 'action' && !step?.shuffle) return chartBlue;
+    if (step?.partitions_after != null) return chartPurple;
+    return chartSky;
 }
 
 function deriveKeyConcept(step, data) {
@@ -27,31 +28,23 @@ function deriveKeyConcept(step, data) {
     if (step.type === 'action' && step.shuffle) {
         const readParts = step.partitions_read ?? '?';
         const outRows = step.output_rows ?? '?';
-        return `WIDE transformation — ${step.operation} triggers a SHUFFLE. ` +
-            `Each of the ${readParts} input partitions sends rows with matching keys to the same destination bucket. ` +
-            `The groupBy produced only ${outRows} distinct keys — a tiny output. `;
+        return `Wide transformation: ${step.operation} shuffles matching keys into the same destination partition. ` +
+            `The ${readParts} input partitions feed the shuffle, and the grouped result contains ${outRows} distinct keys.`;
     }
 
     if (step.type === 'action' && !step.shuffle) {
-        return `ACTION — ${step.operation} triggers the full DAG. ` +
-            `Every lazy transformation queued since the last action now executes across all ${partCount} partitions in parallel. ` +
-            `Spark fires ${partCount} tasks simultaneously — one per partition — each evaluating the filter against its local rows with no inter-task communication. ` +
-            `Only the final result (a single value) travels back to the Driver.`;
+        return `Action: ${step.operation} executes the queued DAG across ${partCount} partitions. ` +
+            `Spark runs one task per partition, then returns only the final result to the driver.`;
     }
 
     if (step.partitions_after != null) {
-        return `WIDE transformation — repartition() triggers a full shuffle. ` +
-            `Data moves across the network from ${step.partitions ?? 1} -> ${step.partitions_after} partition(s), ` +
-            `restoring the parallelism lost because gzip files are non-splittable. ` +
-            `On non-Serverless Spark you would call .cache() here to keep the repartitioned data in memory. ` +
-            `On Databricks Serverless, cache() is unavailable so the Delta write-and-reload achieves the same effect: ` +
-            `it severs the DAG lineage so Spark reuses the balanced partitions without re-reading the full gzip.`;
+        return `Wide transformation: repartition() reshapes the data from ${step.partitions ?? 1} to ${step.partitions_after} partitions. ` +
+            `That shuffle costs network work now, but it restores parallelism for the next steps.`;
     }
 
     if (step.lazy) {
-        return `LAZY transformation — ${step.operation} adds a predicate to the logical plan (DAG) but executes nothing. ` +
-            `Each partition will evaluate this operation independently when an action is called. ` +
-            `No data moves across the network — Spark is building an instruction set, not running it yet.`;
+        return `Lazy transformation: ${step.operation} updates the logical plan but does not run yet. ` +
+            `Spark waits for an action before applying it across the partitions.`;
     }
 
     return step.description ?? '';
@@ -61,20 +54,20 @@ const ParallelTasksPanel = ({numPartitions, stepType, colour}) => {
     const n = Math.min(numPartitions ?? 8, 16);
     const label = stepType === 'repartition'
         ? 'tasks writing in parallel'
-        : 'tasks executing filter in parallel';
+        : 'tasks executing in parallel';
     const detail = stepType === 'repartition'
-        ? 'Each task writes its slice of rows to Delta Lake independently. No task waits for another.'
-        : 'Each task scans its partition and counts local matches. Results are summed on the Driver — the only communication in the whole operation.';
+        ? 'Each task writes its slice of rows to Delta Lake independently.'
+        : 'Each task scans its partition locally, then Spark combines the results on the driver.';
     return (
         <div className="parallel-tasks" style={{color: colour, background: colour + '08'}}>
             <div className="parallel-tasks-header">
-                Parallel Execution — {n} {label}
+                Parallel execution: {n} {label}
                 {numPartitions > 16 && <span style={{fontWeight: 'normal'}}> (showing 16 of {numPartitions})</span>}
             </div>
             <div className="parallel-tasks-grid">
                 {Array.from({length: n}, (_, i) => (
                     <div key={i} className="parallel-tasks-task" style={{background: colour + '18'}}>
-                        Task {i}
+                        Task {i + 1}
                     </div>
                 ))}
             </div>
@@ -86,12 +79,12 @@ const ParallelTasksPanel = ({numPartitions, stepType, colour}) => {
 const ExerciseAnswersPanel = ({data}) => {
     const fr = data?.filter_results ?? {};
     const rows = [
-        {q: 'Q1 — Total requests in the log', a: (fr.total ?? 0).toLocaleString()},
-        {q: 'Q2 — Requests from gateway.timken.com', a: (fr.from_timken ?? 0).toLocaleString()},
-        {q: 'Q3 — Requests on 15 Aug 1995', a: (fr.on_15th ?? 0).toLocaleString()},
-        {q: 'Q4 — Total 404 errors', a: (fr.errors_404 ?? 0).toLocaleString()},
-        {q: 'Q5 — 404 errors on 15 Aug', a: (fr.errors_404_15th ?? 0).toLocaleString()},
-        {q: 'Q6 — 404 errors from timken on 15 Aug', a: (fr.errors_404_15th_timken ?? 0).toLocaleString()},
+        {q: 'Q1: Total requests in the log', a: (fr.total ?? 0).toLocaleString()},
+        {q: 'Q2: Requests from gateway.timken.com', a: (fr.from_timken ?? 0).toLocaleString()},
+        {q: 'Q3: Requests on 15 Aug 1995', a: (fr.on_15th ?? 0).toLocaleString()},
+        {q: 'Q4: Total 404 errors', a: (fr.errors_404 ?? 0).toLocaleString()},
+        {q: 'Q5: 404 errors on 15 Aug', a: (fr.errors_404_15th ?? 0).toLocaleString()},
+        {q: 'Q6: 404 errors from timken on 15 Aug', a: (fr.errors_404_15th_timken ?? 0).toLocaleString()},
     ];
     return (
         <div className="exercise-answers">
@@ -204,7 +197,7 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
 
             <div className="data-panel">
                 <div className="data-panel-header">
-                    <div className="panel-title">Data Panel</div>
+                    <div className="panel-title">Execution trace</div>
                     <button
                         onClick={handleSaveTrace}
                         title="Download this run's execution trace as a JSON file"
@@ -272,7 +265,7 @@ const Lab1Layout = ({data, onExecuteStep, lastExecutedStep, runHistory = []}) =>
 
             <div className="bottom-panel">
                 <div className="concept-text">
-                    <span className="concept-label">KEY CONCEPT —</span>
+                    <span className="concept-label">Key Concept:</span>
                     {keyConcept}
                 </div>
             </div>

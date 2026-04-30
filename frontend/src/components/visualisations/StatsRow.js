@@ -19,8 +19,8 @@ const StatsRow = ({currentStep, data}) => {
     const step = pipeline[currentStep - 1];
     if (!step || !internals) return null;
 
-    let partCount = '—';
-    let rowsPerPart = '—';
+    let partCount;
+    let rowsPerPart;
     let partSub = null;
 
     if (currentStep === 1) {
@@ -38,33 +38,33 @@ const StatsRow = ({currentStep, data}) => {
         const realCount = isDayStep
             ? (internals.partition_story?.daily_post_shuffle_partitions ?? internals.partition_story?.post_shuffle_partitions ?? dist.length)
             : (internals.partition_story?.post_shuffle_partitions ?? dist.length);
-        partCount = String(realCount ?? '—');
+        partCount = String(realCount ?? '-');
         rowsPerPart = realCount != null
             ? `${(step.output_rows ?? 0).toLocaleString()} rows total`
-            : '—';
+            : '-';
         partSub = didCoalesce
             ? `after AQE coalescing (from ${shuffleForSub.output_distinct_keys} keys)`
-            : `${realCount.toLocaleString()} partition(s) — one per distinct ${internals?.shuffles?.[0]?.operation?.match(/groupBy\('(.+?)'\)/)?.[1] ?? 'key'}`;
+            : `${realCount.toLocaleString()} partition(s), one per distinct ${internals?.shuffles?.[0]?.operation?.match(/groupBy\('(.+?)'\)/)?.[1] ?? 'key'}`;
     } else if (step.type === 'action' && !step.shuffle) {
         const dist = internals.filter_partition_distribution ?? internals.partition_distribution ?? [];
-        partCount = String(dist.length || '—');
+        partCount = String(dist.length || '-');
         const avg = dist.length
             ? Math.round(dist.reduce((s, p) => s + p.row_count, 0) / dist.length)
             : 0;
-        rowsPerPart = avg ? `~${avg.toLocaleString()} avg/partition` : '—';
+        rowsPerPart = avg ? `~${avg.toLocaleString()} avg/partition` : '-';
         const matchCount = step.output_rows ?? 0;
         partSub = `${matchCount.toLocaleString()} ${matchCount === 1 ? 'row' : 'rows'} matched filter`;
     } else {
         const dist = internals.partition_distribution ?? [];
-        partCount = String(dist.length || step.partitions_after || step.partitions || '—');
+        partCount = String(dist.length || step.partitions_after || step.partitions || '-');
         const avg = dist.length
             ? Math.round(dist.reduce((s, p) => s + p.row_count, 0) / dist.length)
             : 0;
-        rowsPerPart = avg ? `~${avg.toLocaleString()} rows/partition` : '—';
+        rowsPerPart = avg ? `~${avg.toLocaleString()} rows/partition` : '-';
         if (step.partitions_after != null && step.partitions != null && step.partitions !== step.partitions_after) {
             partSub = `${step.partitions} -> ${step.partitions_after} partitions (shuffle)`;
         } else if (step.lazy) {
-            partSub = 'partition state unchanged — no execution yet';
+            partSub = 'partition state unchanged, no execution yet';
         }
     }
 
@@ -107,7 +107,7 @@ const StatsRow = ({currentStep, data}) => {
                     <div className="stats-row-success-title">No network I/O</div>
                     <div className="stats-row-success-sub">
                         {step.lazy
-                            ? 'Narrow transformation — predicate added to DAG, no data moved'
+                            ? 'Narrow transformation: predicate added to DAG, no data moved'
                             : 'Result computed locally on each partition'
                         }
                     </div>

@@ -1,7 +1,7 @@
 .lab2-cluster-view {
     border: 1px solid var(--grey-300);
     border-radius: 6px;
-    background: #fff;
+    background: var(--white);
 }
 
 .lab2-cluster-view-header {
@@ -64,7 +64,7 @@
 
 .lab2-cluster-view-panel-header {
     background: var(--uos-purple);
-    color: #fff;
+    color: var(--white);
     padding: 8px 14px;
     display: flex;
     justify-content: space-between;
@@ -89,7 +89,7 @@
 .lab2-cluster-view-panel-close {
     background: none;
     border: none;
-    color: #fff;
+    color: var(--white);
     cursor: pointer;
     font-size: 14px;
     padding: 0 4px;
@@ -97,7 +97,7 @@
 
 .lab2-cluster-view-panel-body {
     padding: 12px 14px;
-    background: #fafafa;
+    background: var(--grey-50);
 }
 
 .lab2-cluster-view-panel-copy-title {
@@ -110,8 +110,8 @@
 .lab2-cluster-view-terminal {
     font-family: var(--font-mono);
     font-size: 11px;
-    background: #1e1e1e;
-    color: #d4d4d4;
+    background: var(--grey-900);
+    color: var(--grey-300);
     border-radius: 4px;
     overflow: hidden;
 }
