@@ -1,6 +1,6 @@
 import React, {useState, useEffect, useRef, useMemo} from 'react';
 import useContainerWidth from '../../hooks/useContainerWidth';
-import { chartBlue, chartBlueTint, chartOrange, chartGreen, chartPurple, successBg, successFg, neutralWhite, neutralSurface, alpha } from '../../theme/palette';
+import { okabeIto, chartBlueTint, chartGreen, successBg, successFg, neutralWhite, neutralSurface } from '../../theme/palette';
 
 //Configuration
 const DOTS_PER_PART = 100;     // dots per partition
@@ -8,10 +8,10 @@ const TICK_MS = 28;      // ms per animation frame
 const DOTS_PER_TICK = 1;       // dots added per partition per tick
 
 // Okabe-Ito colours
-const C_IN = chartBlue;    // inside arc  — blue (train colour)
-const C_OUT = chartOrange;    // outside arc — vermillion
+const C_IN = okabeIto.blue;    // inside arc  — blue (train colour)
+const C_OUT = okabeIto.orange;    // outside arc — vermillion
 const C_DONE = chartGreen;    // driver active — green (scikit-learn colour)
-const C_PART = [chartBlue, chartOrange, chartGreen, chartPurple]; // per-partition
+const C_PART = [okabeIto.blue, okabeIto.orange, chartGreen, okabeIto.purple]; // per-partition
 
 //LCG PRNG — reproducible dot placement with seed
 function makeLCG(seed) {
@@ -223,7 +223,7 @@ const PiEstimationDiagram = ({piData, partitionCount}) => {
                     {s: {width: 8, height: 8, borderRadius: '50%', background: C_IN}, label: 'Inside arc (hit)'},
                     {s: {width: 8, height: 8, borderRadius: '50%', background: C_OUT}, label: 'Outside arc (miss)'},
                     {
-                        s: {width: 10, height: 10, borderRadius: 2, background: chartBlueTint, border: `1px solid ${chartBlue}`},
+                        s: {width: 10, height: 10, borderRadius: 2, background: chartBlueTint, border: `1px solid ${okabeIto.blue}`},
                         label: 'Quarter circle (x²+y²≤1)'
                     },
                 ].map(({s, label}) => (

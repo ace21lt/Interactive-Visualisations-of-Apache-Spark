@@ -1,11 +1,12 @@
 import React from 'react';
+import { okabeIto, alpha } from '../../theme/palette';
 
 //Badge
 const Badge = ({type}) => {
     const styles = {
-        action: {bg: '#e8f5e9', color: '#1b5e20', border: '#c8e6c9', text: 'ACTION'},
-        lazy: {bg: '#fff3e0', color: '#e65100', border: '#ffe0b2', text: 'LAZY TRANSFORMATION'},
-        shuffle: {bg: '#fce4ec', color: '#880e4f', border: '#f8bbd0', text: 'SHUFFLE (WIDE)'},
+        action: {bg: 'rgba(0, 158, 115, 0.12)', color: okabeIto.green, border: alpha(okabeIto.green, 0.3), text: 'ACTION'},
+        lazy: {bg: 'rgba(86, 180, 233, 0.12)', color: okabeIto.sky, border: alpha(okabeIto.sky, 0.3), text: 'LAZY TRANSFORMATION'},
+        shuffle: {bg: 'rgba(204, 121, 167, 0.12)', color: okabeIto.purple, border: alpha(okabeIto.purple, 0.3), text: 'SHUFFLE (WIDE)'},
     };
     const s = styles[type] || styles.lazy;
     return (
@@ -22,8 +23,8 @@ const Badge = ({type}) => {
 //Cross-filter banner
 const CrossFilterBanner = ({partitionId}) => (
     <div style={{
-        background: '#fffbeb', padding: '8px 12px', borderRadius: '4px',
-        fontSize: '12px', color: '#b45309', border: '1px solid #fcd34d',
+        background: alpha(okabeIto.orange, 0.12), padding: '8px 12px', borderRadius: '4px',
+        fontSize: '12px', color: okabeIto.orange, border: `1px solid ${alpha(okabeIto.orange, 0.3)}`,
         fontWeight: 'bold', marginBottom: '4px'
     }}>
         Showing Partition {partitionId} only, click the same partition again to reset
@@ -310,8 +311,8 @@ const Step4Table = ({data, highlightedPartition}) => {
             {isFiltered && <CrossFilterBanner partitionId={highlightedPartition}/>}
             {shortCircuitBanner && !isFiltered && (
                 <div style={{
-                    background: '#fef3c7', padding: '8px 12px', borderRadius: '4px',
-                    fontSize: '12px', color: '#92400e', border: '1px solid #fcd34d',
+                    background: alpha(okabeIto.orange, 0.12), padding: '8px 12px', borderRadius: '4px',
+                    fontSize: '12px', color: okabeIto.orange, border: `1px solid ${alpha(okabeIto.orange, 0.3)}`,
                     marginBottom: '4px', lineHeight: '1.5'
                 }}>
                     {shortCircuitBanner}
@@ -396,8 +397,8 @@ const Step6Table = ({data, highlightedPartition}) => {
         <>
             {isFiltered && (
                 <div style={{
-                    background: '#f0f9ff', padding: '8px 12px', borderRadius: '4px',
-                    fontSize: '12px', color: '#0369a1', border: '1px solid #bae6fd', marginBottom: '4px'
+                    background: alpha(okabeIto.sky, 0.12), padding: '8px 12px', borderRadius: '4px',
+                    fontSize: '12px', color: okabeIto.sky, border: `1px solid ${alpha(okabeIto.sky, 0.3)}`, marginBottom: '4px'
                 }}>
                     repartitionByRange() placed each distinct <code>{groupbyKey}</code> value on its own partition
                     before groupBy, each partition owns exactly one key.
@@ -405,8 +406,8 @@ const Step6Table = ({data, highlightedPartition}) => {
             )}
             {isCapped && (
                 <div style={{
-                    background: '#fff7ed', padding: '6px 12px', borderRadius: '4px',
-                    fontSize: '11px', color: '#c2410c', border: '1px solid #fed7aa', marginBottom: '4px'
+                    background: alpha(okabeIto.orange, 0.12), padding: '6px 12px', borderRadius: '4px',
+                    fontSize: '11px', color: okabeIto.orange, border: `1px solid ${alpha(okabeIto.orange, 0.3)}`, marginBottom: '4px'
                 }}>
                     Showing top {displayCount.toLocaleString()} of {partLabel} distinct <code>{groupbyKey}</code> values
                     by request count.

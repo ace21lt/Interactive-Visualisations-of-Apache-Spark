@@ -2,7 +2,7 @@ import React, {useRef, useEffect} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './Lab2Layout.css';
-import { alpha, chartBlue, chartBlueTint, chartOrange, neutralWhite } from '../../theme/palette';
+import { okabeIto, chartBlueTint, neutralWhite } from '../../theme/palette';
 
 const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
     const wrapRef = useRef();
@@ -41,7 +41,7 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
             .attr('refX', 4).attr('refY', 4)
             .attr('markerWidth', 5).attr('markerHeight', 5)
             .attr('orient', 'auto')
-            .append('path').attr('d', 'M0,0 L8,4 L0,8 z').attr('fill', chartBlue);
+            .append('path').attr('d', 'M0,0 L8,4 L0,8 z').attr('fill', okabeIto.blue);
 
         const g = svg.append('g').attr('transform', `translate(${ml},${mt})`);
 
@@ -63,14 +63,14 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
                 .attr('x', px).attr('y', partY)
                 .attr('width', partW).attr('height', partH).attr('rx', 4)
                 .attr('fill', chartBlueTint)
-                .attr('stroke', chartBlue)
+                .attr('stroke', okabeIto.blue)
                 .attr('stroke-width', 1.5);
 
             g.append('text')
                 .attr('x', px + partW / 2).attr('y', partY + 18)
                 .attr('text-anchor', 'middle').attr('font-size', 10)
                 .attr('font-weight', 'bold')
-                .attr('fill', chartBlue)
+                .attr('fill', okabeIto.blue)
                 .attr('font-family', 'var(--font-mono)')
                 .text(`P${i}`);
 
@@ -96,7 +96,7 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
         g.append('rect')
             .attr('x', driverX).attr('y', driverY)
             .attr('width', driverW).attr('height', driverH).attr('rx', 6)
-            .attr('fill', chartOrange).attr('stroke', 'none');
+            .attr('fill', okabeIto.orange).attr('stroke', 'none');
 
         g.append('text')
             .attr('x', driverX + driverW / 2).attr('y', driverY + 16)
@@ -120,7 +120,7 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
 
             g.append('path')
                 .attr('d', `M${srcX},${arrowSourceY} Q${(srcX + destX) / 2},${(arrowSourceY + arrowTargetY) / 2 - 20} ${destX},${arrowTargetY}`)
-                .attr('fill', 'none').attr('stroke', chartBlue)
+                .attr('fill', 'none').attr('stroke', okabeIto.blue)
                 .attr('stroke-width', 2).attr('stroke-dasharray', '5,3')
                 .attr('marker-end', 'url(#topd-arrow)')
                 .attr('opacity', 0)
@@ -132,18 +132,18 @@ const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
         g.append('line')
             .attr('x1', 0).attr('y1', midY)
             .attr('x2', IW).attr('y2', midY)
-            .attr('stroke', chartOrange).attr('stroke-width', 2)
+            .attr('stroke', okabeIto.orange).attr('stroke-width', 2)
             .attr('stroke-dasharray', '6,4');
 
         g.append('rect')
             .attr('x', IW / 2 - 52).attr('y', midY - 10)
             .attr('width', 104).attr('height', 20).attr('rx', 4)
-            .attr('fill', neutralWhite).attr('stroke', chartOrange).attr('stroke-width', 1);
+            .attr('fill', neutralWhite).attr('stroke', okabeIto.orange).attr('stroke-width', 1);
 
         g.append('text')
             .attr('x', IW / 2).attr('y', midY + 4)
             .attr('text-anchor', 'middle').attr('font-size', 11)
-            .attr('font-weight', 'bold').attr('fill', chartOrange)
+            .attr('font-weight', 'bold').attr('fill', okabeIto.orange)
             .attr('font-family', 'var(--font-mono)')
             .text('.toPandas()');
 

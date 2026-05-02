@@ -1,7 +1,7 @@
 import './Lab2Layout.css';
-import { chartBlue, chartOrange, chartPurple } from '../../theme/palette';
+import { okabeIto } from '../../theme/palette';
 
-const FEAT_COLOURS = [chartBlue, chartOrange, chartPurple];
+const FEAT_COLOURS = [okabeIto.blue, okabeIto.orange, okabeIto.purple];
 
 function RegularisationHistory({regHistory, currentRegParam}) {
     if (!Array.isArray(regHistory) || regHistory.length === 0) return null;

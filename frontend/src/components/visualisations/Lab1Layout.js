@@ -10,14 +10,14 @@ import PartitionDiagram from './Partitiondiagram';
 import StatsRow from './StatsRow';
 import { useTour } from '../../context/TourContext';
 import { lab1Steps, joyrideConfig } from '../../config/tourSteps';
-import { chartBlue, chartOrange, chartPurple, chartRed, chartSky } from '../../theme/palette';
+import { okabeIto } from '../../theme/palette';
 
 function stepColour(step, stepIndex) {
-    if (stepIndex === 1) return chartRed;
-    if (step?.shuffle) return chartOrange;
-    if (step?.type === 'action' && !step?.shuffle) return chartBlue;
-    if (step?.partitions_after != null) return chartPurple;
-    return chartSky;
+    if (stepIndex === 1) return okabeIto.red;
+    if (step?.shuffle) return okabeIto.orange;
+    if (step?.type === 'action' && !step?.shuffle) return okabeIto.blue;
+    if (step?.partitions_after != null) return okabeIto.purple;
+    return okabeIto.sky;
 }
 
 function deriveKeyConcept(step, data) {
