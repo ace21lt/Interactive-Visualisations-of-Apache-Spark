@@ -2,7 +2,7 @@ import React, {useRef, useEffect} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './Lab2Layout.css';
-import { okabeIto, chartBlueTint, neutralWhite } from '../../theme/palette';
+import {okabeIto, chartBlueTint, neutralWhite, alpha} from '../../theme/palette';
 
 const ToPandasDiagram = ({trainCount, testCount, partitionDist}) => {
     const wrapRef = useRef();
