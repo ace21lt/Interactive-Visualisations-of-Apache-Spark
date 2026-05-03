@@ -9,7 +9,7 @@ import java.nio.file.{Files, Paths}
 object Routes:
 
   // Define the public directory path securely
-  private val publicDir = "/app/public"
+  private val publicDir  = "/app/public"
   private val publicPath = Paths.get(publicDir).toAbsolutePath.normalize()
 
   def apply(): zio.http.Routes[LoginHandler & NotebookHandler & HealthHandler, Response] =
