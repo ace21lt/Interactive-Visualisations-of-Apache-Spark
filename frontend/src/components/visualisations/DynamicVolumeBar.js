@@ -56,7 +56,7 @@ const DynamicVolumeBar = ({pipelineData, currentStep}) => {
             .domain([0, maxRows])
             .range([5, innerWidth]);
 
-        // 3. Setup the D3 Transition
+        // 3. Set up the D3 Transition
         const t = d3.transition()
             .duration(850)
             .ease(d3.easeCubicOut);
