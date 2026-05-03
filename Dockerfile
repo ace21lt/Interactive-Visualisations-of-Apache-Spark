@@ -1,4 +1,4 @@
-#Stage 1: Build React frontend
+# ── Stage 1: Build React frontend
 FROM node:20-alpine AS frontend-build
 
 WORKDIR /app/frontend
@@ -8,7 +8,7 @@ COPY frontend/ ./
 RUN npm run build
 
 
-#Stage 2: Build Scala backend fat JAR
+# ── Stage 2: Build Scala backend fat JAR
 FROM eclipse-temurin:21-jdk AS backend-build
 
 # Install sbt manually (Reliable method, avoids missing Docker Hub tags)
@@ -30,7 +30,7 @@ COPY src/ src/
 RUN sbt assembly
 
 
-#Stage 3: Production runtime
+# ── Stage 3: Production runtime
 FROM eclipse-temurin:21-jre-alpine AS runtime
 
 RUN apk add --no-cache curl && \
