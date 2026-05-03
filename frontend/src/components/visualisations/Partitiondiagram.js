@@ -3,7 +3,15 @@ import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import PartitionDetailPanel from './PartitionDetailPanel';
 import './Partitiondiagram.css';
-import { alpha, chartBlue, chartGreen, chartOrange, chartPurple, neutralMuted, neutralSurface, neutralWhite } from '../../theme/palette';
+import {
+    okabeIto,
+    neutralMuted,
+    neutralSurface,
+    neutralWhite,
+    alpha,
+    successFg,
+    errorFg
+} from '../../theme/palette';
 
 // Step routing
 function getPartitionsForStep(stepIndex, pipeline, internals) {
@@ -39,11 +47,11 @@ function getPartitionsForStep(stepIndex, pipeline, internals) {
 
 // Okabe-Ito colour-blind-safe palette
 function resolveStepColor(step, stepIndex) {
-    if (stepIndex === 1) return chartOrange; // vermillion  — gzip bottleneck
-    if (step.shuffle) return chartOrange;    // orange      — shuffle / wide
-    if (step.type === 'action') return chartBlue; // blue — action (count)
-    if (step.partitions_after != null) return chartPurple; // reddish purple — repartition
-    return alpha(chartBlue, 0.18);             // sky blue   — lazy transformation
+    if (stepIndex === 1) return okabeIto.red; // vermillion  — gzip bottleneck
+    if (step.shuffle) return okabeIto.orange;    // orange      — shuffle / wide
+    if (step.type === 'action') return okabeIto.blue; // blue — action (count)
+    if (step.partitions_after != null) return okabeIto.purple; // reddish purple — repartition
+    return okabeIto.sky;             // sky blue   — lazy transformation
 }
 
 // Component
@@ -83,7 +91,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
 
         const svg = d3.select(svgRef.current).attr('width', W).attr('height', H);
         svg.selectAll('*').remove();
-        const focusStroke = chartOrange;
+        const focusStroke = okabeIto.orange;
         const activatePartition = (pid) => {
             onPartitionClick?.(pid);
             setSelectedPartition(prev => prev === pid ? null : pid);
@@ -96,7 +104,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             .attr('refX', 4).attr('refY', 4)
             .attr('markerWidth', 5).attr('markerHeight', 5)
             .attr('orient', 'auto')
-            .append('path').attr('d', 'M0,0 L0,8 L8,4 z').attr('fill', chartOrange);
+            .append('path').attr('d', 'M0,0 L0,8 L8,4 z').attr('fill', okabeIto.orange);
 
         const g = svg.append('g').attr('transform', `translate(${ml},${mt})`);
 
@@ -119,7 +127,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             g.append('text')
                 .attr('x', dX + dW / 2).attr('y', -6)
                 .attr('text-anchor', 'middle').attr('font-size', 9)
-                    .attr('fill', color).attr('font-family', 'var(--font-mono)')
+                .attr('fill', color).attr('font-family', 'var(--font-mono)')
                 .text('◄ result collected here');
         }
 
@@ -127,12 +135,12 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
         const netY = dH + 30;
         g.append('line')
             .attr('x1', 0).attr('y1', netY).attr('x2', IW).attr('y2', netY)
-            .attr('stroke', chartOrange).attr('stroke-width', 2)
+            .attr('stroke', okabeIto.orange).attr('stroke-width', 2)
             .attr('stroke-dasharray', '6,4');
         g.append('text')
             .attr('x', IW / 2).attr('y', netY - 6)
             .attr('text-anchor', 'middle').attr('font-size', 9)
-            .attr('font-family', 'var(--font-mono)').attr('fill', chartOrange)
+            .attr('font-family', 'var(--font-mono)').attr('fill', okabeIto.orange)
             .text('NETWORK SHUFFLE BOUNDARY');
 
         // Executors label
@@ -174,7 +182,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             g.append('rect')
                 .attr('x', 0).attr('y', bannerY - 12)
                 .attr('width', IW).attr('height', 16)
-                .attr('fill', alpha(chartOrange, 0.16)).attr('rx', 2);
+                .attr('fill', alpha(okabeIto.orange, 0.16)).attr('rx', 2);
             g.append('text')
                 .attr('x', IW / 2).attr('y', bannerY)
                 .attr('text-anchor', 'middle').attr('font-size', 9)
@@ -198,7 +206,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                 const srcX = ghostX + i * (ghostBoxW + ghostGap) + ghostBoxW / 2;
                 g.append('path')
                     .attr('d', `M${srcX},${pY + 10} Q${(srcX + destX) / 2},${pY - 20} ${destX},${destY}`)
-                    .attr('fill', 'none').attr('stroke', chartOrange)
+                    .attr('fill', 'none').attr('stroke', okabeIto.orange)
                     .attr('stroke-width', 1.5).attr('stroke-dasharray', '4,3')
                     .attr('marker-end', 'url(#sh-arrow)').attr('opacity', 0)
                     .transition().duration(500).delay(i * 55).attr('opacity', 0.6);
@@ -220,38 +228,38 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
             g.append('rect')
                 .attr('x', x).attr('y', pY)
                 .attr('width', boxW).attr('height', maxBarH)
-                .attr('fill', isHl ? alpha(chartOrange, 0.18) : neutralSurface)
-                .attr('stroke', isHl ? chartOrange : (isLazy ? 'var(--grey-300)' : color))
+                .attr('fill', isHl ? alpha(okabeIto.orange, 0.18) : neutralSurface)
+                .attr('stroke', isHl ? okabeIto.orange : (isLazy ? 'var(--grey-300)' : color))
                 .attr('stroke-width', isHl ? 2.5 : 1.5)
                 .attr('stroke-dasharray', isLazy ? '4,4' : 'none')
                 .attr('rx', 3)
-                    .attr('tabindex', (onPartitionClick && (pData.row_count ?? 0) > 0) ? 0 : -1)
-                    .attr('role', (onPartitionClick && (pData.row_count ?? 0) > 0) ? 'button' : null)
-                    .attr('aria-label', (onPartitionClick && (pData.row_count ?? 0) > 0) ? `Partition ${pData.partition_id ?? i}, ${rows.toLocaleString()} rows. Press Enter or Space to inspect rows.` : null)
-                    .attr('aria-pressed', isHl ? 'true' : 'false')
+                .attr('tabindex', (onPartitionClick && (pData.row_count ?? 0) > 0) ? 0 : -1)
+                .attr('role', (onPartitionClick && (pData.row_count ?? 0) > 0) ? 'button' : null)
+                .attr('aria-label', (onPartitionClick && (pData.row_count ?? 0) > 0) ? `Partition ${pData.partition_id ?? i}, ${rows.toLocaleString()} rows. Press Enter or Space to inspect rows.` : null)
+                .attr('aria-pressed', isHl ? 'true' : 'false')
                 .style('cursor', onPartitionClick ? 'pointer' : 'default')
-                    .on('focus', function () {
-                        if (!onPartitionClick || (pData.row_count ?? 0) === 0) return;
-                        d3.select(this).attr('stroke', focusStroke).attr('stroke-width', 3);
-                    })
-                    .on('blur', function () {
-                        d3.select(this).attr('stroke', isHl ? chartOrange : (isLazy ? 'var(--grey-300)' : color)).attr('stroke-width', isHl ? 2.5 : 1.5);
-                    })
-                    .on('keydown', function (event) {
-                        if (!onPartitionClick || (pData.row_count ?? 0) === 0 || (event.key !== 'Enter' && event.key !== ' ')) return;
-                        event.preventDefault();
-                        activatePartition(pData.partition_id ?? i);
-                    })
+                .on('focus', function () {
+                    if (!onPartitionClick || (pData.row_count ?? 0) === 0) return;
+                    d3.select(this).attr('stroke', focusStroke).attr('stroke-width', 3);
+                })
+                .on('blur', function () {
+                    d3.select(this).attr('stroke', isHl ? okabeIto.orange : (isLazy ? 'var(--grey-300)' : color)).attr('stroke-width', isHl ? 2.5 : 1.5);
+                })
+                .on('keydown', function (event) {
+                    if (!onPartitionClick || (pData.row_count ?? 0) === 0 || (event.key !== 'Enter' && event.key !== ' ')) return;
+                    event.preventDefault();
+                    activatePartition(pData.partition_id ?? i);
+                })
                 .on('click', () => {
                     // Only open panel if this partition actually has data
                     if ((pData.row_count ?? 0) === 0) return;
-                        activatePartition(pData.partition_id ?? i);
+                    activatePartition(pData.partition_id ?? i);
                 });
 
             // Animated fill bar (grows upward from bottom of box)
             if (barH > 0) {
-                const barFill = isHl ? alpha(chartOrange, 0.18)
-                    : (isBottleneck && i === 0 ? chartOrange : color);
+                const barFill = isHl ? alpha(okabeIto.orange, 0.18)
+                    : color;
                 g.append('rect')
                     .attr('x', x).attr('y', pY + maxBarH)
                     .attr('width', boxW).attr('height', 0)
@@ -275,7 +283,7 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                     .attr('text-anchor', 'middle')
                     .attr('font-family', 'var(--font-mono)')
                     .attr('font-size', n === 1 ? 13 : 10).attr('font-weight', 'bold')
-                    .attr('fill', isHl ? chartOrange : color)
+                    .attr('fill', isHl ? okabeIto.orange : color)
                     .attr('opacity', 0)
                     .transition().duration(650).delay(300).attr('opacity', 1)
                     .text(lbl);
@@ -300,8 +308,8 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
                 const evaluated = currentStep >= 4;
                 const passes = row.passes_japan_filter;
                 const dotFill = !evaluated ? neutralMuted
-                    : passes ? chartGreen
-                        : chartOrange;
+                    : passes ? successFg
+                        : errorFg;
                 const dotOp = evaluated && !passes ? 0.18 : 1;
 
                 g.append('circle')
@@ -369,23 +377,23 @@ const PartitionDiagram = ({currentStep, data, highlightedPartition, onPartitionC
 
             <div className="partition-diagram-legend">
                 {[
-                    {s: {width: 12, height: 12, background: chartOrange, borderRadius: 2}, label: 'Bottleneck'},
-                    {s: {width: 12, height: 12, background: chartPurple, borderRadius: 2}, label: 'Repartition'},
+                    {s: {width: 12, height: 12, background: okabeIto.red, borderRadius: 2}, label: 'Bottleneck'},
+                    {s: {width: 12, height: 12, background: okabeIto.purple, borderRadius: 2}, label: 'Repartition'},
                     {
                         s: {
                             width: 12,
                             height: 12,
-                            background: alpha(chartBlue, 0.18),
+                            background: okabeIto.sky,
                             borderRadius: 2,
-                            border: `1px dashed ${chartBlue}`
+                            border: `1px dashed ${okabeIto.blue}`
                         },
                         label: 'Lazy'
                     },
-                    {s: {width: 12, height: 12, background: chartBlue, borderRadius: 2}, label: 'Action'},
-                    {s: {width: 12, height: 12, background: chartOrange, borderRadius: 2}, label: 'Shuffle'},
-                    {s: {width: 8, height: 8, background: chartGreen, borderRadius: '50%'}, label: 'Passes filter'},
+                    {s: {width: 12, height: 12, background: okabeIto.blue, borderRadius: 2}, label: 'Action'},
+                    {s: {width: 12, height: 12, background: okabeIto.orange, borderRadius: 2}, label: 'Shuffle'},
+                    {s: {width: 8, height: 8, background: successFg, borderRadius: '50%'}, label: 'Passes filter'},
                     {
-                        s: {width: 8, height: 8, background: chartOrange, borderRadius: '50%', opacity: 0.3},
+                        s: {width: 8, height: 8, background: errorFg, borderRadius: '50%'},
                         label: 'Filtered out'
                     },
                 ].map(({s, label}) => (

@@ -2,12 +2,12 @@ import React, {useRef, useEffect, useState} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './PipelineFlowDiagram.css';
-import { alpha, chartBlue, chartGreen, chartOrange, brandPurpleTint, neutralWhite } from '../../theme/palette';
+import { alpha, okabeIto, brandPurpleTint, neutralWhite } from '../../theme/palette';
 
 
-const TF = chartBlue;   // Okabe-Ito blue, Transformer
-const EST = chartOrange;   // Okabe-Ito vermillion, Estimator
-const MODEL = chartGreen;   // Okabe-Ito green, Model (was Estimator)
+const TF = okabeIto.blue;          // Okabe-Ito blue — Transformer
+const EST = okabeIto.orange;       // Okabe-Ito orange — Estimator
+const MODEL = okabeIto.green;      // Okabe-Ito green — Model (was Estimator)
 
 //Type diagram (SVG) 
 

@@ -2,7 +2,7 @@ import React, {useRef, useEffect, useState} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './Lab2Layout.css';
-import { chartBlue, chartOrange, chartPurple } from '../../theme/palette';
+import { okabeIto } from '../../theme/palette';
 
 const FeatureScatter = ({allRows, featureCols, coefficients, coefficientsOriginalScale}) => {
     const wrapRef = useRef();
@@ -31,7 +31,7 @@ const FeatureScatter = ({allRows, featureCols, coefficients, coefficientsOrigina
         const svg = d3.select(svgRef.current).attr('width', W).attr('height', H);
         svg.selectAll('*').remove();
 
-        const dotColours = [chartBlue, chartOrange, chartPurple];
+        const dotColours = [okabeIto.blue, okabeIto.orange, okabeIto.purple];
         const allDots = [];
 
         const setHighlightedRow = (idx, point) => {
