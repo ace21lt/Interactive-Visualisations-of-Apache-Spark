@@ -7,7 +7,7 @@ import {
     brandPurpleDark,
     okabeIto,
     neutralSurface,
-    neutralWhite, chartBlueTint, chartPurpleTint
+    neutralWhite, chartBlueTint, chartPurpleTint,
 } from '../../theme/palette';
 
 // Okabe-Ito colour palette
