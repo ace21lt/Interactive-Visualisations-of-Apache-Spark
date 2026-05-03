@@ -2,7 +2,7 @@ import React, {useRef, useEffect, useState} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './Lab2Layout.css';
-import { chartBlue, chartOrange, neutralSurface, neutralWhite } from '../../theme/palette';
+import { okabeIto, neutralSurface, neutralWhite } from '../../theme/palette';
 
 const SplitPartitionDiagram = ({splitRows, trainCount, testCount, seed, featureCols}) => {
     const wrapRef = useRef();
@@ -31,7 +31,7 @@ const SplitPartitionDiagram = ({splitRows, trainCount, testCount, seed, featureC
         g.append('rect')
             .attr('x', dX).attr('y', -40)
             .attr('width', dW).attr('height', dH).attr('rx', 6)
-            .attr('fill', chartBlue).attr('stroke', 'none');
+            .attr('fill', okabeIto.blue).attr('stroke', 'none');
         g.append('text')
             .attr('x', dX + dW / 2).attr('y', -40 + dH / 2 + 1)
             .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
@@ -90,7 +90,7 @@ const SplitPartitionDiagram = ({splitRows, trainCount, testCount, seed, featureC
             g.append('circle')
                 .attr('cx', cx).attr('cy', cy)
                 .attr('r', 0)
-                .attr('fill', isTrain ? chartBlue : chartOrange)
+                .attr('fill', isTrain ? okabeIto.blue : okabeIto.red)
                 .attr('opacity', 0.75)
                 .attr('stroke', 'none')
                 .style('cursor', 'pointer')
@@ -128,7 +128,7 @@ const SplitPartitionDiagram = ({splitRows, trainCount, testCount, seed, featureC
         g.append('text')
             .attr('x', boxX - 4).attr('y', boxY + boxH / 7)
             .attr('text-anchor', 'end').attr('font-size', 9)
-            .attr('fill', chartOrange).attr('font-family', 'var(--font-mono)')
+            .attr('fill', okabeIto.orange).attr('font-family', 'var(--font-mono)')
             .attr('transform', `rotate(-90, ${boxX - 4}, ${boxY + boxH / 7})`)
             .text('NO SHUFFLE — rows stay in place');
 
@@ -188,11 +188,11 @@ const SplitPartitionDiagram = ({splitRows, trainCount, testCount, seed, featureC
             ) : (
                 <div className="legend-row" style={{padding: '6px 16px', borderTop: '1px solid var(--grey-200)'}}>
                     <span className="legend-item">
-                        <span className="legend-item-dot" style={{background: chartBlue}}/>
+                        <span className="legend-item-dot" style={{background: okabeIto.blue}}/>
                         Train ({trainCount ?? '?'})
                     </span>
                     <span className="legend-item">
-                        <span className="legend-item-dot" style={{background: chartOrange}}/>
+                        <span className="legend-item-dot" style={{background: okabeIto.red}}/>
                         Test ({testCount ?? '?'})
                     </span>
                     <span style={{color: 'var(--grey-400)', fontSize: '11px'}}>

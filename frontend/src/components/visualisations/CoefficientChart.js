@@ -2,7 +2,7 @@ import React, {useRef, useEffect} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './Lab2Layout.css';
-import { chartBlue, chartOrange, chartPurple, chartSky } from '../../theme/palette';
+import { okabeIto} from '../../theme/palette';
 
 const CoefficientChart = ({coefficients, featureCols, intercept}) => {
     const svgRef = useRef();
@@ -36,7 +36,7 @@ const CoefficientChart = ({coefficients, featureCols, intercept}) => {
             .attr('stroke', 'var(--grey-300)').attr('stroke-width', 1)
             .attr('stroke-dasharray', '4,3');
 
-        const barColours = [chartBlue, chartOrange, chartPurple, chartSky];
+        const barColours = [okabeIto.blue, okabeIto.orange, okabeIto.purple, okabeIto.sky];
         g.selectAll('.coeff-bar')
             .data(values)
             .enter().append('rect')

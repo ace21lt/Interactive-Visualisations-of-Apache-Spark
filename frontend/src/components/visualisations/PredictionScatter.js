@@ -2,7 +2,7 @@ import React, {useRef, useEffect, useState} from 'react';
 import * as d3 from 'd3';
 import useContainerWidth from '../../hooks/useContainerWidth';
 import './Lab2Layout.css';
-import { chartBlue, chartOrange, chartGreen, neutralBorder, neutralWhite } from '../../theme/palette';
+import { okabeIto, chartGreen, neutralBorder, neutralWhite } from '../../theme/palette';
 
 const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) => {
     const svgRef = useRef();
@@ -66,7 +66,7 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
             .attr('cx', d => x(d.label))
             .attr('cy', d => y(d.prediction))
             .attr('r', 0)
-            .attr('fill', chartBlue)
+            .attr('fill', okabeIto.blue)
             .attr('stroke', neutralWhite)
             .attr('stroke-width', 1.5)
             .attr('opacity', 0.8)
@@ -102,7 +102,7 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
             .enter().append('line')
             .attr('x1', d => x(d.label)).attr('y1', d => y(d.prediction))
             .attr('x2', d => x(d.label)).attr('y2', d => y(d.label))
-            .attr('stroke', chartOrange).attr('stroke-width', 1)
+            .attr('stroke', okabeIto.orange).attr('stroke-width', 1)
             .attr('opacity', 0)
             .transition().duration(400).delay(800)
             .attr('opacity', 0.3);
@@ -142,8 +142,8 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
             <div className="viz-card-header">
                 <span className="viz-card-title">Predicted vs Actual</span>
                 <div style={{display: 'flex', gap: '12px', fontSize: '11px', fontFamily: 'var(--font-mono)'}}>
-                    <span style={{color: chartBlue}}>RMSE: {testRmse?.toFixed(4) ?? '-'}</span>
-                    <span style={{color: chartBlue}}>R²: {testR2?.toFixed(4) ?? '-'}</span>
+                    <span style={{color: okabeIto.blue}}>RMSE: {testRmse?.toFixed(4) ?? '-'}</span>
+                    <span style={{color: okabeIto.blue}}>R²: {testR2?.toFixed(4) ?? '-'}</span>
                 </div>
             </div>
 
@@ -155,7 +155,7 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
                 {activePoint ? (
                     <>
                         Actual: {formatValue(activePoint.label)} | Predicted: {formatValue(activePoint.prediction)} |
-                        Residual: <span style={{color: chartOrange, fontWeight: 'bold'}}>{formatValue(activePoint.residual ?? (activePoint.prediction - activePoint.label))}</span>
+                        Residual: <span style={{color: okabeIto.orange, fontWeight: 'bold'}}>{formatValue(activePoint.residual ?? (activePoint.prediction - activePoint.label))}</span>
                         {activePoint.features && featureCols.length > 0 && (
                             <span>
                                 {' '}| Features:{' '}
@@ -178,7 +178,7 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
 
             <div className="legend-row" style={{padding: '6px 16px', borderTop: '1px solid var(--grey-200)'}}>
                 <span className="legend-item">
-                    <span className="legend-item-dot" style={{background: chartBlue}} />
+                    <span className="legend-item-dot" style={{background: okabeIto.blue}} />
                     Data point
                 </span>
                 <span className="legend-item">
@@ -186,7 +186,7 @@ const PredictionScatter = ({predictions, testRmse, testR2, featureCols = []}) =>
                     Perfect prediction
                 </span>
                 <span className="legend-item">
-                    <span style={{width: 16, height: 0, borderTop: `1px solid ${chartOrange}`, display: 'inline-block', opacity: 0.5}} />
+                    <span style={{width: 16, height: 0, borderTop: `1px solid ${okabeIto.orange}`, display: 'inline-block', opacity: 0.5}} />
                     Residual
                 </span>
             </div>

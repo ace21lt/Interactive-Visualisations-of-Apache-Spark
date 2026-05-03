@@ -5,26 +5,19 @@ import './Lab2ClusterView.css';
 import {
     alpha,
     brandPurpleDark,
-    chartBlue,
-    chartBlueTint,
-    chartGreen,
-    chartOrange,
-    chartPurple,
-    chartPurpleTint,
-    chartRed,
-    chartSky,
+    okabeIto,
     neutralSurface,
-    neutralWhite,
+    neutralWhite, chartBlueTint,
 } from '../../theme/palette';
 
 // Okabe-Ito colour palette
-const C_TRAIN = chartBlue;   // blue, train rows
-const C_TEST = chartRed;   // vermillion, test rows
-const C_LAZY = chartSky;   // sky blue, lazy Spark step
-const C_SPARK = chartBlue;   // blue, executed Spark step
-const C_COLLECT = chartRed;   // vermillion, .toPandas() driver
-const C_SKLEARN = chartGreen;   // green, scikit-learn driver
-const C_INACTIVE = 'var(--grey-300)';   // grey, idle slots
+const C_TRAIN = okabeIto.blue;      // blue — train rows
+const C_TEST = okabeIto.red;        // vermillion — test rows
+const C_LAZY = okabeIto.sky;        // sky blue — lazy Spark step
+const C_SPARK = okabeIto.blue;      // blue — executed Spark step
+const C_COLLECT = okabeIto.red;     // vermillion — .toPandas() driver
+const C_SKLEARN = okabeIto.green;   // green — scikit-learn driver
+const C_INACTIVE = 'var(--grey-300)';   // grey — idle slots
 
 
 function resolveMode(stepObj) {
@@ -38,14 +31,14 @@ function resolveMode(stepObj) {
 
 // Card header badge per mode
 function modeBadge(mode, isLazy) {
-    if (mode === 'rdd') return {label: 'RDD: HPC only', bg: alpha(chartOrange, 0.14), col: chartOrange};
-    if (mode === 'split') return {label: 'Narrow: no shuffle', bg: chartBlueTint, col: chartBlue};
-    if (mode === 'topandas') return {label: 'Parallelism ends here', bg: chartPurpleTint, col: chartPurple};
-    if (mode === 'driver') return {label: 'Driver: scikit-learn', bg: chartPurpleTint, col: chartPurple};
+    if (mode === 'rdd') return {label: 'RDD: HPC only', bg: alpha(okabeIto.orange, 0.14), col: okabeIto.orange};
+    if (mode === 'split') return {label: 'Narrow: no shuffle', bg: chartBlueTint, col: okabeIto.blue};
+    if (mode === 'topandas') return {label: 'Parallelism ends here', bg: chartPurpleTint, col: okabeIto.purple};
+    if (mode === 'driver') return {label: 'Driver: scikit-learn', bg: chartPurpleTint, col: okabeIto.purple};
     // spark
     return isLazy
-        ? {label: 'Spark distributed: lazy', bg: chartBlueTint, col: chartBlue}
-        : {label: 'Spark distributed', bg: chartBlueTint, col: chartBlue};
+        ? {label: 'Spark distributed: lazy', bg: chartBlueTint, col: okabeIto.blue}
+        : {label: 'Spark distributed', bg: chartBlueTint, col: okabeIto.blue};
 }
 
 // Layout constants shared across all modes 
@@ -78,8 +71,8 @@ function draw(svgEl, {
     svg.selectAll('*').remove();
     const focusStroke = brandPurpleDark;
     const activateSelection = (pid) => onPartitionClick?.(pid);
-    const lazyFill = alpha(chartBlue, 0.22);
-    const selectedFill = alpha(chartOrange, 0.26);
+    const lazyFill = alpha(okabeIto.blue, 0.22);
+    const selectedFill = alpha(okabeIto.orange, 0.26);
     const selectedStroke = brandPurpleDark;
 
     // Arrow marker (upward, for .toPandas convergence)
@@ -134,7 +127,7 @@ function draw(svgEl, {
 
     const boundaryCol = (mode === 'driver') ? 'var(--grey-200)'
         : (mode === 'topandas') ? C_COLLECT
-            : chartOrange;
+            : okabeIto.orange;
 
     g.append('line')
         .attr('x1', 0).attr('y1', netY)
@@ -332,7 +325,7 @@ function draw(svgEl, {
 
         // Determine box appearance
         const isDimmed = mode === 'driver' || mode === 'rdd';
-        const isLazyBox = mode === 'spark' && isLazy;
+        const isLazyBox = mode === 'spark' && isLazy && isReal;
         const barCol = isDimmed ? C_INACTIVE
             : isLazyBox ? C_LAZY
                 : C_SPARK;
@@ -439,7 +432,7 @@ function draw(svgEl, {
             .attr('x', IW / 2).attr('y', bannerY)
             .attr('text-anchor', 'middle').attr('font-size', 9)
             .attr('font-family', 'var(--font-mono)')
-            .attr('fill', chartOrange)
+            .attr('fill', okabeIto.orange)
             .text(`${idleCount} idle slot${idleCount > 1 ? 's' : ''}, file too small to split across partitions`);
     }
 
@@ -597,7 +590,7 @@ const Lab2ClusterView = ({currentStep, data, sampleRows, trainSample, testSample
                                 height: 10,
                                 background: C_LAZY,
                                 borderRadius: 2,
-                                border: `1px dashed ${chartBlue}`
+                                border: `1px dashed ${okabeIto.blue}`
                             }, label: 'Lazy (no exec)'
                         },
                         idle: {s: {width: 10, height: 10, background: C_INACTIVE, borderRadius: 2}, label: 'Idle'},

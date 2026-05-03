@@ -1,4 +1,5 @@
 import React from 'react';
+import { okabeIto } from '../../theme/palette';
 
 // Shows execution time comparison across partition count changes.
 // Builds up as the student reruns Step 2 with different NUM_PARTITIONS values.
@@ -9,12 +10,12 @@ const PartitionTimingChart = ({runHistory}) => {
     const sorted = [...runHistory].sort((a, b) => a.partitions - b.partitions);
     const maxSecs = Math.max(...sorted.map(r => r.executionSecs ?? r.roundTripSecs), 1);
 
-    // Colour scale: fewer partitions = warmer
+    // Colour scale: fewer partitions = warmer (Okabe-Ito palette)
     const barColour = (partitions) => {
-        if (partitions <= 2) return '#ef4444'; // red, very few, likely bottleneck
-        if (partitions <= 6) return '#f97316'; // orange
-        if (partitions <= 12) return '#10b981'; // green, sensible range
-        return '#6366f1';                        // indigo, many partitions
+        if (partitions <= 2) return okabeIto.red;     // red — bottleneck
+        if (partitions <= 6) return okabeIto.orange;  // orange — shuffle
+        if (partitions <= 12) return okabeIto.green;  // green — passes filter
+        return okabeIto.purple;                        // purple — repartition
     };
 
     return (
@@ -105,7 +106,7 @@ const PartitionTimingChart = ({runHistory}) => {
                                             position: 'absolute', right: '6px', top: '50%',
                                             transform: 'translateY(-50%)',
                                             fontSize: '10px', fontWeight: 'bold',
-                                            color: '#15803d', background: '#dcfce7',
+                                            color: okabeIto.green, background: 'rgba(0, 158, 115, 0.15)',
                                             padding: '1px 5px', borderRadius: '3px',
                                         }}>
                                             fastest ✓
@@ -135,8 +136,8 @@ const PartitionTimingChart = ({runHistory}) => {
                 {/* Guidance */}
                 <div style={{
                     marginTop: '12px', padding: '8px 12px',
-                    background: '#f0f9ff', borderLeft: '3px solid #0ea5e9',
-                    borderRadius: '4px', fontSize: '11px', color: '#0369a1',
+                    background: 'rgba(86, 180, 233, 0.08)', borderLeft: `3px solid ${okabeIto.sky}`,
+                    borderRadius: '4px', fontSize: '11px', color: 'var(--grey-700)',
                 }}>
                     <strong>What to look for:</strong> Fewer partitions means less parallelism but less shuffle
                     overhead.
