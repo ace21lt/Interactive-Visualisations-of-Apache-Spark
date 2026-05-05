@@ -12,20 +12,26 @@ case class TriggerResponse(
 )
 
 object TriggerResponse:
-  implicit val notebookOutputEncoder: JsonEncoder[NotebookOutput] = DeriveJsonEncoder.gen[NotebookOutput]
-  implicit val encoder: JsonEncoder[TriggerResponse]              = DeriveJsonEncoder.gen[TriggerResponse]
+  given JsonEncoder[NotebookOutput]  = DeriveJsonEncoder.gen[NotebookOutput]
+  given JsonEncoder[TriggerResponse] = DeriveJsonEncoder.gen[TriggerResponse]
 
 // Error response with timestamp for debugging
 case class ErrorResponse(error: String, timestamp: Long)
 
 object ErrorResponse:
-  implicit val encoder: JsonEncoder[ErrorResponse] = DeriveJsonEncoder.gen[ErrorResponse]
+  given JsonEncoder[ErrorResponse] = DeriveJsonEncoder.gen[ErrorResponse]
+
+// Authentication status payload returned by /api/login and /api/me
+final case class AuthResponse(workspaceUrl: String, mode: String)
+
+object AuthResponse:
+  given JsonEncoder[AuthResponse] = DeriveJsonEncoder.gen[AuthResponse]
 
 // Login request for PAT authentication mode
 final case class PatLoginRequest(workspaceUrl: String, token: String)
 
 object PatLoginRequest:
-  implicit val decoder: JsonDecoder[PatLoginRequest] = DeriveJsonDecoder.gen[PatLoginRequest]
+  given JsonDecoder[PatLoginRequest] = DeriveJsonDecoder.gen[PatLoginRequest]
 
 // Request body for POST /trigger
 // lab: which lab notebook to run (default "lab1")
@@ -39,4 +45,4 @@ final case class TriggerRequest(
 )
 
 object TriggerRequest:
-  implicit val decoder: JsonDecoder[TriggerRequest] = DeriveJsonDecoder.gen[TriggerRequest]
+  given JsonDecoder[TriggerRequest] = DeriveJsonDecoder.gen[TriggerRequest]

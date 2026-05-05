@@ -173,7 +173,7 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
         for response <- handler.trigger(request)
         yield assert(response.status)(equalTo(Status.Ok))
       },
-      test("handles malformed JSON in request body gracefully") {
+      test("returns 400 for malformed JSON in request body") {
         val handler = NotebookHandlerLive(
           testConfig,
           SuccessfulCredentialResolver("https://test.databricks.com", "dapiTOKEN-123"),
@@ -181,6 +181,6 @@ object NotebookHandlerSpec extends ZIOSpecDefault:
         )
         val request = Request.post(URL(Path("/trigger")), Body.fromString("{not-json}"))
         for response <- handler.trigger(request)
-        yield assert(response.status)(equalTo(Status.Ok))
+        yield assert(response.status)(equalTo(Status.BadRequest))
       }
     )

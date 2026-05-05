@@ -12,8 +12,8 @@ case class NewCluster(
 )
 
 object NewCluster:
-  implicit val encoder: JsonEncoder[NewCluster] = DeriveJsonEncoder.gen[NewCluster]
-  implicit val decoder: JsonDecoder[NewCluster] = DeriveJsonDecoder.gen[NewCluster]
+  given JsonEncoder[NewCluster] = DeriveJsonEncoder.gen[NewCluster]
+  given JsonDecoder[NewCluster] = DeriveJsonDecoder.gen[NewCluster]
 
 // Notebook task configuration specifying which notebook to run
 case class NotebookTask(
@@ -22,8 +22,8 @@ case class NotebookTask(
 )
 
 object NotebookTask:
-  implicit val encoder: JsonEncoder[NotebookTask] = DeriveJsonEncoder.gen[NotebookTask]
-  implicit val decoder: JsonDecoder[NotebookTask] = DeriveJsonDecoder.gen[NotebookTask]
+  given JsonEncoder[NotebookTask] = DeriveJsonEncoder.gen[NotebookTask]
+  given JsonDecoder[NotebookTask] = DeriveJsonDecoder.gen[NotebookTask]
 
 // Task specification for MULTI_TASK format (required for serverless)
 case class TaskSpec(
@@ -32,8 +32,8 @@ case class TaskSpec(
 )
 
 object TaskSpec:
-  implicit val encoder: JsonEncoder[TaskSpec] = DeriveJsonEncoder.gen[TaskSpec]
-  implicit val decoder: JsonDecoder[TaskSpec] = DeriveJsonDecoder.gen[TaskSpec]
+  given JsonEncoder[TaskSpec] = DeriveJsonEncoder.gen[TaskSpec]
+  given JsonDecoder[TaskSpec] = DeriveJsonDecoder.gen[TaskSpec]
 
 // Request to submit a notebook run to Databricks
 case class NotebookRunRequest(
@@ -46,8 +46,8 @@ case class NotebookRunRequest(
 )
 
 object NotebookRunRequest:
-  implicit val encoder: JsonEncoder[NotebookRunRequest] = DeriveJsonEncoder.gen[NotebookRunRequest]
-  implicit val decoder: JsonDecoder[NotebookRunRequest] = DeriveJsonDecoder.gen[NotebookRunRequest]
+  given JsonEncoder[NotebookRunRequest] = DeriveJsonEncoder.gen[NotebookRunRequest]
+  given JsonDecoder[NotebookRunRequest] = DeriveJsonDecoder.gen[NotebookRunRequest]
 
 case class WorkspaceImportRequest(
     path: String,
@@ -57,18 +57,18 @@ case class WorkspaceImportRequest(
     overwrite: Boolean = true
 )
 object WorkspaceImportRequest:
-  implicit val encoder: JsonEncoder[WorkspaceImportRequest] = DeriveJsonEncoder.gen[WorkspaceImportRequest]
-  implicit val decoder: JsonDecoder[WorkspaceImportRequest] = DeriveJsonDecoder.gen[WorkspaceImportRequest]
+  given JsonEncoder[WorkspaceImportRequest] = DeriveJsonEncoder.gen[WorkspaceImportRequest]
+  given JsonDecoder[WorkspaceImportRequest] = DeriveJsonDecoder.gen[WorkspaceImportRequest]
 
 // Empty object returned on success from /workspace/import
 case class WorkspaceImportResponse()
 object WorkspaceImportResponse:
-  implicit val decoder: JsonDecoder[WorkspaceImportResponse] = DeriveJsonDecoder.gen[WorkspaceImportResponse]
+  given JsonDecoder[WorkspaceImportResponse] = DeriveJsonDecoder.gen[WorkspaceImportResponse]
 
 case class SubmitRunResponse(@jsonField("run_id") runId: Long)
 object SubmitRunResponse:
-  implicit val encoder: JsonEncoder[SubmitRunResponse] = DeriveJsonEncoder.gen[SubmitRunResponse]
-  implicit val decoder: JsonDecoder[SubmitRunResponse] = DeriveJsonDecoder.gen[SubmitRunResponse]
+  given JsonEncoder[SubmitRunResponse] = DeriveJsonEncoder.gen[SubmitRunResponse]
+  given JsonDecoder[SubmitRunResponse] = DeriveJsonDecoder.gen[SubmitRunResponse]
 
 // State information about a notebook run
 case class RunState(
@@ -78,8 +78,8 @@ case class RunState(
 )
 
 object RunState:
-  implicit val encoder: JsonEncoder[RunState] = DeriveJsonEncoder.gen[RunState]
-  implicit val decoder: JsonDecoder[RunState] = DeriveJsonDecoder.gen[RunState]
+  given JsonEncoder[RunState] = DeriveJsonEncoder.gen[RunState]
+  given JsonDecoder[RunState] = DeriveJsonDecoder.gen[RunState]
 
 // Response from polling run status
 // start_time and end_time are Unix ms timestamps from the Databricks API —
@@ -92,8 +92,8 @@ case class RunStatusResponse(
 )
 
 object RunStatusResponse:
-  implicit val encoder: JsonEncoder[RunStatusResponse] = DeriveJsonEncoder.gen[RunStatusResponse]
-  implicit val decoder: JsonDecoder[RunStatusResponse] = DeriveJsonDecoder.gen[RunStatusResponse]
+  given JsonEncoder[RunStatusResponse] = DeriveJsonEncoder.gen[RunStatusResponse]
+  given JsonDecoder[RunStatusResponse] = DeriveJsonDecoder.gen[RunStatusResponse]
 
 // Task run information for MULTI_TASK format
 case class TaskRun(
@@ -102,8 +102,8 @@ case class TaskRun(
 )
 
 object TaskRun:
-  implicit val encoder: JsonEncoder[TaskRun] = DeriveJsonEncoder.gen[TaskRun]
-  implicit val decoder: JsonDecoder[TaskRun] = DeriveJsonDecoder.gen[TaskRun]
+  given JsonEncoder[TaskRun] = DeriveJsonEncoder.gen[TaskRun]
+  given JsonDecoder[TaskRun] = DeriveJsonDecoder.gen[TaskRun]
 
 // Response from getting run details (includes task runs)
 case class RunDetailsResponse(
@@ -113,8 +113,8 @@ case class RunDetailsResponse(
 )
 
 object RunDetailsResponse:
-  implicit val encoder: JsonEncoder[RunDetailsResponse] = DeriveJsonEncoder.gen[RunDetailsResponse]
-  implicit val decoder: JsonDecoder[RunDetailsResponse] = DeriveJsonDecoder.gen[RunDetailsResponse]
+  given JsonEncoder[RunDetailsResponse] = DeriveJsonEncoder.gen[RunDetailsResponse]
+  given JsonDecoder[RunDetailsResponse] = DeriveJsonDecoder.gen[RunDetailsResponse]
 
 // Metadata for notebook output (contains the actual result string)
 case class NotebookOutputMetadata(
@@ -122,8 +122,8 @@ case class NotebookOutputMetadata(
 )
 
 object NotebookOutputMetadata:
-  implicit val encoder: JsonEncoder[NotebookOutputMetadata] = DeriveJsonEncoder.gen[NotebookOutputMetadata]
-  implicit val decoder: JsonDecoder[NotebookOutputMetadata] = DeriveJsonDecoder.gen[NotebookOutputMetadata]
+  given JsonEncoder[NotebookOutputMetadata] = DeriveJsonEncoder.gen[NotebookOutputMetadata]
+  given JsonDecoder[NotebookOutputMetadata] = DeriveJsonDecoder.gen[NotebookOutputMetadata]
 
 // Notebook output data with result, truncated flag, and type
 case class NotebookOutputData(
@@ -133,8 +133,8 @@ case class NotebookOutputData(
 )
 
 object NotebookOutputData:
-  implicit val encoder: JsonEncoder[NotebookOutputData] = DeriveJsonEncoder.gen[NotebookOutputData]
-  implicit val decoder: JsonDecoder[NotebookOutputData] = DeriveJsonDecoder.gen[NotebookOutputData]
+  given JsonEncoder[NotebookOutputData] = DeriveJsonEncoder.gen[NotebookOutputData]
+  given JsonDecoder[NotebookOutputData] = DeriveJsonDecoder.gen[NotebookOutputData]
 
 // Response from get-output API endpoint
 case class NotebookOutputResponse(
@@ -144,8 +144,8 @@ case class NotebookOutputResponse(
 )
 
 object NotebookOutputResponse:
-  implicit val encoder: JsonEncoder[NotebookOutputResponse] = DeriveJsonEncoder.gen[NotebookOutputResponse]
-  implicit val decoder: JsonDecoder[NotebookOutputResponse] = DeriveJsonDecoder.gen[NotebookOutputResponse]
+  given JsonEncoder[NotebookOutputResponse] = DeriveJsonEncoder.gen[NotebookOutputResponse]
+  given JsonDecoder[NotebookOutputResponse] = DeriveJsonDecoder.gen[NotebookOutputResponse]
 
 // Service Output Models
 

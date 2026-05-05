@@ -9,10 +9,7 @@ import zio.json.*
 import java.util.Base64
 import java.lang.System.currentTimeMillis
 
-// Imports a notebook into the Databricks workspace so the job submitter
-// can run the user-modified version.
-// Creates the parent directory first via mkdirs (idempotent) so the import
-// never fails with RESOURCE_DOES_NOT_EXIST on a fresh workspace.
+// Import a notebook into the Databricks workspace. Ensures parent dir exists before import.
 trait WorkspaceImporter:
   def importNotebook(
       workspaceUrl: String,
@@ -51,7 +48,7 @@ case class WorkspaceImporterLive(client: Client) extends WorkspaceImporter:
       path: String
   ): IO[DatabricksError, Unit] =
     val url  = DatabricksApiPaths.buildWorkspaceMkdirsUrl(workspaceUrl)
-    val body = s"""{"path":"$path"}"""
+    val body = MkdirsRequest(path).toJson
     ZIO
       .scoped {
         client
@@ -86,10 +83,7 @@ case class WorkspaceImporterLive(client: Client) extends WorkspaceImporter:
 
     val requestBody = WorkspaceImportRequest(
       path = workspacePath,
-      format = "SOURCE",
-      language = "PYTHON",
-      content = encoded,
-      overwrite = true
+      content = encoded
     ).toJson
 
     ZIO
@@ -122,7 +116,9 @@ object WorkspaceImporter:
 
   // Produce a unique workspace destination path for each run so concurrent
   // users never overwrite each other's notebooks.
-  def destinationPath(baseDir: String): String =
+  def destinationPath(baseDir: String, lab: String = "lab1"): String =
     val ts   = currentTimeMillis()
     val base = baseDir.stripSuffix("/")
-    s"$base/spark_viz_lab1_$ts"
+    s"$base/spark_viz_${lab}_$ts"
+
+private case class MkdirsRequest(path: String) derives JsonEncoder

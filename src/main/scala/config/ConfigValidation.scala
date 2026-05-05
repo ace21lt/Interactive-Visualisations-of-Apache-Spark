@@ -42,5 +42,5 @@ object ConfigValidation:
           !hasTraversal &&
           !hasBackslash
 
-        if isValid then ZIO.succeed(path)
+        if isValid then ZIO.succeed(decoded)
         else ZIO.fail("Invalid notebook path format")

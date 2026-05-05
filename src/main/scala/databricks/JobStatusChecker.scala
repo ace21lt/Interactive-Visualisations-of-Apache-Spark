@@ -28,39 +28,33 @@ case class JobStatusCheckerLive(config: DatabricksConfig, client: Client, retryP
     def checkStatus(): IO[DatabricksError, Option[RunOutput]] =
       ZIO
         .scoped {
-          client
-            .request(Request.get(apiUrl).addHeader("Authorization", s"Bearer $token"))
-            .flatMap { response =>
-              response.body.asString.flatMap { jsonStr =>
-                if response.status.isSuccess then
-                  ZIO
-                    .fromEither(jsonStr.fromJson[RunStatusResponse])
-                    .mapError(err => new RuntimeException(s"Failed to parse run status: $err"))
-                    .flatMap { statusResponse =>
-                      val state       = statusResponse.state.lifeCycleState
-                      val resultState = statusResponse.state.resultState
-                      val stateMsg    = statusResponse.state.stateMessage.getOrElse("")
-                      {
-                        ZIO
-                          .logInfo(
-                            s"Run $runId: lifecycle=$state, result=${resultState.getOrElse("N/A")}, msg=$stateMsg"
-                          )
-                      } *> {
-                        if state == TerminatedState then
-                          val execSeconds = for
-                            start <- statusResponse.startTime
-                            end   <- statusResponse.endTime
-                            if end > start
-                          yield (end - start) / 1000L
-                          ZIO.some(RunOutput(runId, resultState.getOrElse(UnknownState), None, execSeconds))
-                        else if state == InternalErrorState || state == SkippedState then
-                          ZIO.fail(DatabricksError.ExecutionFailed(runId, state, statusResponse.state.stateMessage))
-                        else ZIO.none
-                      }
-                    }
-                else ZIO.fail(new RuntimeException(s"Status check failed: HTTP ${response.status.code}"))
-              }
-            }
+          for
+            response       <- client.request(Request.get(apiUrl).addHeader("Authorization", s"Bearer $token"))
+            jsonStr        <- response.body.asString
+            _              <- ZIO
+                                .fail(new RuntimeException(s"Status check failed: HTTP ${response.status.code}"))
+                                .unless(response.status.isSuccess)
+            statusResponse <- ZIO
+                                .fromEither(jsonStr.fromJson[RunStatusResponse])
+                                .mapError(err => new RuntimeException(s"Failed to parse run status: $err"))
+            state           = statusResponse.state.lifeCycleState
+            resultState     = statusResponse.state.resultState
+            stateMsg        = statusResponse.state.stateMessage.getOrElse("")
+            _              <- ZIO.logInfo(
+                                s"Run $runId: lifecycle=$state, result=${resultState.getOrElse("N/A")}, msg=$stateMsg"
+                              )
+            result         <-
+              if state == TerminatedState then
+                val execSeconds = for
+                  start <- statusResponse.startTime
+                  end   <- statusResponse.endTime
+                  if end > start
+                yield (end - start) / 1000L
+                ZIO.some(RunOutput(runId, resultState.getOrElse(UnknownState), None, execSeconds))
+              else if state == InternalErrorState || state == SkippedState then
+                ZIO.fail(DatabricksError.ExecutionFailed(runId, state, statusResponse.state.stateMessage))
+              else ZIO.none
+          yield result
         }
         .mapError(DatabricksError.fromThrowable)
         .retry(retryPolicy.schedule)
@@ -85,23 +79,20 @@ case class JobStatusCheckerLive(config: DatabricksConfig, client: Client, retryP
 
     ZIO
       .scoped {
-        client
-          .request(Request.get(apiUrl).addHeader("Authorization", s"Bearer $token"))
-          .flatMap { response =>
-            response.body.asString.flatMap { jsonStr =>
-              if response.status.isSuccess then
-                ZIO
-                  .fromEither(jsonStr.fromJson[RunDetailsResponse])
-                  .mapError(err => new RuntimeException(s"Failed to parse run details: $err"))
-                  .flatMap { runDetails =>
-                    runDetails.tasks
-                      .flatMap(_.headOption)
-                      .map(task => ZIO.succeed(task.runId))
-                      .getOrElse(ZIO.fail(new RuntimeException(s"No tasks found in run $runId")))
-                  }
-              else ZIO.fail(new RuntimeException(s"Get task failed: HTTP ${response.status.code}"))
-            }
-          }
+        for
+          response   <- client.request(Request.get(apiUrl).addHeader("Authorization", s"Bearer $token"))
+          jsonStr    <- response.body.asString
+          _          <- ZIO
+                          .fail(new RuntimeException(s"Get task failed: HTTP ${response.status.code}"))
+                          .unless(response.status.isSuccess)
+          runDetails <- ZIO
+                          .fromEither(jsonStr.fromJson[RunDetailsResponse])
+                          .mapError(err => new RuntimeException(s"Failed to parse run details: $err"))
+          taskRunId  <- runDetails.tasks
+                          .flatMap(_.headOption)
+                          .map(task => ZIO.succeed(task.runId))
+                          .getOrElse(ZIO.fail(new RuntimeException(s"No tasks found in run $runId")))
+        yield taskRunId
       }
       .mapError(DatabricksError.fromThrowable)
       .retry(retryPolicy.schedule)

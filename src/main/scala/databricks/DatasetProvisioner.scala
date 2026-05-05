@@ -5,13 +5,12 @@ import zio.*
 import zio.http.*
 import zio.Chunk
 
-// Returned by ensureDatasets so callers know whether to skip the Delta write.
+// Result of dataset provisioning: resolved volume path and whether the optimized Delta exists.
 case class DatasetProvisionResult(volumePath: String, deltaTableExists: Boolean)
 
+// Ensures dataset files exist in the student's workspace and detects an existing optimized Delta.
 trait DatasetProvisioner:
-  // Returns the resolved volume path and whether the optimised Delta table
-  // already exists, so DatabricksService can decide whether to skip the
-  // repartition/write step for non-step-2 runs.
+  // Discover the volume path and ensure all dataset files are uploaded.
   def ensureDatasets(
       workspaceUrl: String,
       token: String
@@ -19,14 +18,14 @@ trait DatasetProvisioner:
 
 case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
 
-  // Dataset files bundled directly in src/main/resources/
+  // Dataset resource files bundled in src/main/resources/.
   private val datasets = List(
     "NASA_Aug95_100.txt",
     "NASA_access_log_Aug95.gz",
     "Advertising.csv"
   )
 
-  // Sentinel file inside the Delta log — present iff the table has been written.
+  // Sentinel path inside the Delta log to detect an optimized Delta table.
   private val DeltaLogSentinel = "NASA_logs_optimised/_delta_log/00000000000000000000.json"
 
   override def ensureDatasets(
@@ -34,18 +33,19 @@ case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
       token: String
   ): IO[DatabricksError, DatasetProvisionResult] =
     for
-      // Auto-discover the catalog, works for any student's workspace
+      // Auto-discover the student's default volume from their workspace catalog
       volumePath       <- CatalogDiscovery.discoverVolumePath(workspaceUrl, token, client)
       _                <- ZIO.foreachDiscard(datasets) { filename =>
                             val destPath = s"${volumePath.stripSuffix("/")}/$filename"
                             ensureFile(workspaceUrl, token, filename, destPath)
                           }
-      // Check whether the optimised Delta table has already been written.
+      // Check if the optimized Delta table sentinel file already exists
       sentinelPath      = s"${volumePath.stripSuffix("/")}/$DeltaLogSentinel"
       deltaTableExists <- checkExists(workspaceUrl, token, sentinelPath)
       _                <- ZIO.logInfo(s"Delta table exists: $deltaTableExists ($sentinelPath)")
     yield DatasetProvisionResult(volumePath, deltaTableExists)
 
+  // Upload a dataset file if it doesn't already exist.
   private def ensureFile(
       workspaceUrl: String,
       token: String,
@@ -60,7 +60,7 @@ case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
                     uploadFile(workspaceUrl, token, resourceName, destPath)
     yield ()
 
-  // HEAD /api/2.0/fs/files/{path} — 200 means exists, 404 means missing
+  // Check if a file exists using HTTP HEAD: 200 = exists, 404 = missing.
   private def checkExists(
       workspaceUrl: String,
       token: String,
@@ -88,7 +88,7 @@ case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
           }
       }
 
-  // PUT /api/2.0/fs/files/{path} — body is raw file bytes
+  // Upload dataset bytes to the Files API (HTTP PUT).
   private def uploadFile(
       workspaceUrl: String,
       token: String,
@@ -103,33 +103,32 @@ case class DatasetProvisionerLive(client: Client) extends DatasetProvisioner:
       bytes     <- loadResource(resourceName)
       _         <- ZIO
                      .scoped {
-                       client
-                         .request(
-                           Request(
-                             method = Method.PUT,
-                             url = parsedUrl,
-                             body = Body.fromChunk(bytes)
-                           )
-                             .addHeader("Authorization", s"Bearer $token")
-                             .addHeader("Content-Type", "application/octet-stream")
-                         )
-                         .flatMap { response =>
-                           response.body.asString.flatMap { body =>
-                             if response.status.isSuccess then ZIO.logInfo(s"Uploaded $resourceName -> $destPath")
-                             else
-                               ZIO.fail(
-                                 new RuntimeException(
-                                   s"Files API upload failed for $resourceName: " +
-                                     s"HTTP ${response.status.code} — $body"
-                                 )
+                       for
+                         response <- client.request(
+                                       Request(
+                                         method = Method.PUT,
+                                         url = parsedUrl,
+                                         body = Body.fromChunk(bytes)
+                                       )
+                                         .addHeader("Authorization", s"Bearer $token")
+                                         .addHeader("Content-Type", "application/octet-stream")
+                                     )
+                         body     <- response.body.asString
+                         _        <-
+                           if response.status.isSuccess then ZIO.logInfo(s"Uploaded $resourceName -> $destPath")
+                           else
+                             ZIO.fail(
+                               new RuntimeException(
+                                 s"Files API upload failed for $resourceName: " +
+                                   s"HTTP ${response.status.code} — $body"
                                )
-                           }
-                         }
+                             )
+                       yield ()
                      }
                      .mapError(DatabricksError.fromThrowable)
     yield ()
 
-  // Load a dataset file directly from src/main/resources/
+  // Load a dataset file from classpath resources (UTF-8 bytes).
   private def loadResource(filename: String): IO[DatabricksError, Chunk[Byte]] =
     ZIO
       .attempt {

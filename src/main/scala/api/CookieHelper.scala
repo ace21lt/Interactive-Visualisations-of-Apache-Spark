@@ -12,9 +12,8 @@ object CookieHelper:
   def getSidCookie(req: Request): Option[String] =
     req.cookie(SessionCookieName).map(_.content)
 
-  // Create a session cookie with the given session ID
-  // Pass secure = true when the app is served over HTTPS
-  def createSidCookie(sid: String, secure: Boolean = false): Cookie.Response =
+  // Create a session cookie; set secure=true for HTTPS. maxAge=None => browser session cookie.
+  def createSidCookie(sid: String, secure: Boolean = false, maxAge: Option[Duration] = None): Cookie.Response =
     Cookie.Response(
       name = SessionCookieName,
       content = sid,
@@ -23,11 +22,10 @@ object CookieHelper:
       isSecure = secure,
       isHttpOnly = true,
       sameSite = Some(Cookie.SameSite.Lax),
-      maxAge = None
+      maxAge = maxAge
     )
 
-  // Clear the session cookie by setting maxAge to 0
-  // Pass secure = true when the app is served over HTTPS
+  // Clear the session cookie by setting maxAge=0; set secure=true for HTTPS when applicable.
   def clearSidCookie(response: Response, secure: Boolean = false): Response =
     response.addCookie(
       Cookie.Response(

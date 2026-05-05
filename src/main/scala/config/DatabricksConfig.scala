@@ -3,18 +3,9 @@ package config
 import service.DatabricksError
 import zio.*
 
-// Configuration for Databricks REST API integration.
-// Notebooks and datasets are loaded from the backend classpath and provisioned.
-//
-// Environment variables:
-//   DATABRICKS_HOST         — (optional) workspace URL for direct/demo mode
-//   DATABRICKS_TOKEN        — (optional) PAT for direct/demo mode
-//   NOTEBOOK_IMPORT_DIR     — workspace dir for imported notebooks  (default: /tmp/spark-viz)
-//   DATASET_VOLUME_PATH     — Unity Catalog volume path for datasets (default: /Volumes/main/default/sparkml_tmp)
-//   MAX_POLL_ATTEMPTS       — (default: 60)
-//   POLL_INTERVAL_SECONDS   — (default: 2)
-//   TIMEOUT_SECONDS         — (default: 300)
-//   SECURE_COOKIES          — set to "true" when serving over HTTPS
+// Databricks integration configuration. Environment vars (examples):
+// DATABRICKS_HOST, DATABRICKS_TOKEN, NOTEBOOK_IMPORT_DIR, DATASET_VOLUME_PATH,
+// MAX_POLL_ATTEMPTS, POLL_INTERVAL_SECONDS, TIMEOUT_SECONDS, SECURE_COOKIES
 case class DatabricksConfig(
     workspaceUrl: Option[String] = None,
     token: Option[String] = None,
@@ -41,6 +32,25 @@ case class DatabricksConfig(
     ZIO.succeed(notebookImportBase)
 
 object DatabricksConfig:
+
+  // Validate a single CORS origin: must parse as a URI with a non-empty
+  // scheme (http or https) and a non-empty host, and no path/query component.
+  private def validateCorsOrigin(origin: String): IO[String, String] =
+    ZIO.fromEither(
+      try
+        val uri    = new java.net.URI(origin)
+        val scheme = Option(uri.getScheme).map(_.toLowerCase).getOrElse("")
+        val host   = Option(uri.getHost).getOrElse("")
+        if scheme != "http" && scheme != "https" then Left(s"CORS origin '$origin' must use http or https scheme")
+        else if host.isEmpty then Left(s"CORS origin '$origin' must include a host")
+        else if uri.getPath != null && uri.getPath.nonEmpty && uri.getPath != "/" then
+          Left(s"CORS origin '$origin' must not contain a path component")
+        else if uri.getQuery != null then Left(s"CORS origin '$origin' must not contain a query component")
+        else Right(origin)
+      catch
+        case _: java.net.URISyntaxException =>
+          Left(s"CORS origin '$origin' is not a valid URI")
+    )
 
   private val MinPollAttempts           = 1
   private val MaxPollAttempts           = 1000
@@ -92,11 +102,18 @@ object DatabricksConfig:
                            ZIO.logInfo("Secure cookies disabled — set SECURE_COOKIES=true when serving over HTTPS")
                          )
 
-        corsOriginsRaw    <- ConfigReader.getOptionalEnv("CORS_ALLOWED_ORIGINS")
-        corsAllowedOrigins = corsOriginsRaw
-                               .map(_.split(",").map(_.trim).filter(_.nonEmpty).toSet)
-                               .getOrElse(Set("http://localhost:3000"))
-        _                 <- ZIO.logInfo(s"CORS allowed origins: ${corsAllowedOrigins.mkString(", ")}")
+        corsOriginsRaw     <- ConfigReader.getOptionalEnv("CORS_ALLOWED_ORIGINS")
+        corsAllowedOrigins <- corsOriginsRaw match
+                                case None      =>
+                                  ZIO.succeed(Set("http://localhost:3000"))
+                                case Some(raw) =>
+                                  val candidates = raw.split(",").map(_.trim).filter(_.nonEmpty)
+                                  ZIO
+                                    .foreach(candidates.toList) { origin =>
+                                      validateCorsOrigin(origin)
+                                    }
+                                    .map(_.toSet)
+        _                  <- ZIO.logInfo(s"CORS allowed origins: ${corsAllowedOrigins.mkString(", ")}")
       yield DatabricksConfig(
         workspaceUrl = validHost,
         token = validToken,

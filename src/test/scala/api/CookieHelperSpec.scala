@@ -7,6 +7,9 @@ import zio.test.Assertion.*
 
 object CookieHelperSpec extends ZIOSpecDefault:
 
+  private def setCookieHeaderValue(response: Response): Option[String] =
+    response.header(Header.SetCookie).map(_.renderedValue)
+
   override def spec: Spec[TestEnvironment, Any] =
     suite("CookieHelper")(
       // getSidCookie tests
@@ -15,7 +18,7 @@ object CookieHelperSpec extends ZIOSpecDefault:
           .get(URL.root)
           .addHeader(Header.Cookie(zio.NonEmptyChunk(Cookie.Request("sid", "test-session-123"))))
         val result = CookieHelper.getSidCookie(req)
-        assertTrue(result.contains("test-session-123"))
+        assertTrue(result.get == "test-session-123")
       },
       test("returns None when request has no cookies") {
         val req    = Request.get(URL.root)
@@ -56,7 +59,7 @@ object CookieHelperSpec extends ZIOSpecDefault:
             )
           )
         val result = CookieHelper.getSidCookie(req)
-        assertTrue(result.contains("my-session-456"))
+        assertTrue(result.get == "my-session-456")
       },
 
       // createSidCookie tests
@@ -70,11 +73,11 @@ object CookieHelperSpec extends ZIOSpecDefault:
       },
       test("creates HttpOnly cookie") {
         val cookie = CookieHelper.createSidCookie("test-sid")
-        assert(cookie.isHttpOnly)(isTrue)
+        assertTrue(cookie.isHttpOnly)
       },
       test("creates cookie with Lax SameSite") {
         val cookie = CookieHelper.createSidCookie("test-sid")
-        assertTrue(cookie.sameSite.contains(Cookie.SameSite.Lax))
+        assertTrue(cookie.sameSite.get == Cookie.SameSite.Lax)
       },
       test("creates cookie with root path") {
         val cookie = CookieHelper.createSidCookie("test-sid")
@@ -90,55 +93,42 @@ object CookieHelperSpec extends ZIOSpecDefault:
       },
       test("creates non-secure cookie by default") {
         val cookie = CookieHelper.createSidCookie("test-sid")
-        assert(cookie.isSecure)(isFalse)
+        assertTrue(!cookie.isSecure)
       },
       test("creates secure cookie when secure = true") {
         val cookie = CookieHelper.createSidCookie("test-sid", secure = true)
-        assert(cookie.isSecure)(isTrue)
+        assertTrue(cookie.isSecure)
       },
       test("clear cookie is non-secure by default") {
         val response = Response.text("test")
         val cleared  = CookieHelper.clearSidCookie(response)
-        val isSecure = cleared.headers.exists { header =>
-          header.headerName.equalsIgnoreCase("set-cookie") &&
-          header.renderedValue.contains("Secure")
-        }
-        assert(isSecure)(isFalse)
+        val isSecure = setCookieHeaderValue(cleared).exists(_.contains("Secure"))
+        assertTrue(!isSecure)
       },
       test("clear cookie is secure when secure = true") {
         val response = Response.text("test")
         val cleared  = CookieHelper.clearSidCookie(response, secure = true)
-        val isSecure = cleared.headers.exists { header =>
-          header.headerName.equalsIgnoreCase("set-cookie") &&
-          header.renderedValue.contains("Secure")
-        }
-        assert(isSecure)(isTrue)
+        val isSecure = setCookieHeaderValue(cleared).exists(_.contains("Secure"))
+        assertTrue(isSecure)
       },
 
       // clearSidCookie tests
       test("clears sid cookie with empty content") {
-        val response = Response.text("test")
-        val cleared  = CookieHelper.clearSidCookie(response)
-        // We need to extract the cookie and check it was set
-        assert(cleared.status)(equalTo(Status.Ok))
+        val response  = Response.text("test")
+        val cleared   = CookieHelper.clearSidCookie(response)
+        val setCookie = setCookieHeaderValue(cleared)
+        assert(setCookie)(isSome(containsString("sid=;")))
       },
       test("clear cookie has maxAge set to 0") {
         val response       = Response.text("test")
         val cleared        = CookieHelper.clearSidCookie(response)
-        // Check that SetCookie header exists and contains Max-Age=0
-        val hasClearCookie = cleared.headers.exists { header =>
-          header.headerName.equalsIgnoreCase("set-cookie") &&
-          header.renderedValue.contains("Max-Age=0")
-        }
-        assert(hasClearCookie)(isTrue)
+        val hasClearCookie = setCookieHeaderValue(cleared).exists(_.contains("Max-Age=0"))
+        assertTrue(hasClearCookie)
       },
       test("clear cookie name is 'sid'") {
         val response     = Response.text("test")
         val cleared      = CookieHelper.clearSidCookie(response)
-        val hasSidCookie = cleared.headers.exists { header =>
-          header.headerName.equalsIgnoreCase("set-cookie") &&
-          header.renderedValue.contains("sid=")
-        }
-        assert(hasSidCookie)(isTrue)
+        val hasSidCookie = setCookieHeaderValue(cleared).exists(_.startsWith("sid="))
+        assertTrue(hasSidCookie)
       }
     )

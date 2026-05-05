@@ -9,13 +9,13 @@ object HealthHandlerSpec extends ZIOSpecDefault:
   override def spec: Spec[TestEnvironment, Any] =
     suite("HealthHandler")(
       test("returns 200 OK status") {
-        val handler = HealthHandlerLive()
+        val handler = HealthHandlerLive
         val request = Request.get(URL.root)
         for response <- handler.health(request)
         yield assert(response.status)(equalTo(Status.Ok))
       },
       test("returns 'OK' text") {
-        val handler = HealthHandlerLive()
+        val handler = HealthHandlerLive
         val request = Request.get(URL.root)
         for
           response <- handler.health(request)
@@ -25,7 +25,7 @@ object HealthHandlerSpec extends ZIOSpecDefault:
       // Note: CORS headers are injected by Middleware.cors in Main, not by individual
       // handlers. CORS behaviour is covered at the integration level in RoutesSpec.
       test("handles multiple requests") {
-        val handler = HealthHandlerLive()
+        val handler = HealthHandlerLive
         for
           resp1 <- handler.health(Request.get(URL.root))
           resp2 <- handler.health(Request.get(URL.root))

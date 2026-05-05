@@ -1,4 +1,5 @@
 package api
+
 import config.{DatabricksConfig, WorkspaceUrlValidation, WorkspaceUrlValidator}
 import config.WorkspaceUrlValidationStub
 import credentials.CredentialResolver
@@ -11,6 +12,8 @@ import zio.test.*
 import zio.test.Assertion.*
 
 import java.net.InetAddress
+
+import api.TestAuthHelpers.*
 
 object LoginLogoutSpec extends ZIOSpecDefault:
 
@@ -44,8 +47,8 @@ object LoginLogoutSpec extends ZIOSpecDefault:
     )
 
   // Mock DNS resolver for URL validation tests
-  private val dnsPublicOnly: WorkspaceUrlValidator.DnsResolver = new WorkspaceUrlValidator.DnsResolver:
-    override def resolveAll(host: String) = Right(List(InetAddress.getByName("8.8.8.8")))
+  private val dnsPublicOnly: WorkspaceUrlValidator.DnsResolver = (host: String) =>
+    Right(List(InetAddress.getByName("8.8.8.8")))
 
   // Real URL validator with mock DNS (for testing validation errors)
   private val urlValidationReal: ZLayer[Any, Nothing, WorkspaceUrlValidation] =
@@ -86,28 +89,6 @@ object LoginLogoutSpec extends ZIOSpecDefault:
   private val ValidWorkspaceUrl = "https://dbc-DOES-NOT-NEED-TO-RESOLVE.cloud.databricks.com"
   private val ValidToken        = "dapiTESTTOKEN-1234567890"
 
-  private def json(body: String): Body = Body.fromString(body)
-
-  // Extract session ID from Set-Cookie header
-  private def extractSidCookie(resp: Response): Option[String] =
-    resp.header(Header.SetCookie).flatMap { h =>
-      h.renderedValue.split(';').headOption.flatMap { kv =>
-        kv.split('=') match
-          case Array(name, value) if name.trim == "sid" => Some(value.trim)
-          case _                                        => None
-      }
-    }
-
-  // Build Cookie header for authenticated requests
-  private def cookieHeader(sid: String): Header.Cookie =
-    Header.Cookie(zio.NonEmptyChunk(Cookie.Request("sid", sid)))
-
-  // Helper to create login request with JSON body
-  private def loginRequest(workspaceUrl: String, token: String): Request =
-    Request
-      .post(URL(Path("/api/login")), json(s"""{"workspaceUrl":"$workspaceUrl","token":"$token"}"""))
-      .addHeader(Header.ContentType(MediaType.application.json))
-
   // Test Suites
 
   override def spec: Spec[TestEnvironment & Scope, Any] =
@@ -128,12 +109,18 @@ object LoginLogoutSpec extends ZIOSpecDefault:
       yield assert(resp.status)(equalTo(Status.Ok)) &&
         assertTrue(sid.nonEmpty)
     }.provideSomeLayerShared(patEnv),
+    test("sets sid cookie max age to 60 minutes for valid credentials") {
+      for resp <- app.runZIO(loginRequest(ValidWorkspaceUrl, ValidToken))
+      yield assert(
+        resp.header(Header.SetCookie).map(_.renderedValue).exists(_.contains("Max-Age=3600"))
+      )(isTrue)
+    }.provideSomeLayerShared(patEnv),
 
     // Invalid JSON should return 400 Bad Request
     test("returns 400 for malformed JSON body") {
       for resp <- app.runZIO(
                     Request
-                      .post(URL(Path("/api/login")), json("{not-json"))
+                      .post(URL(Path("/api/login")), jsonBody("{not-json"))
                       .addHeader(Header.ContentType(MediaType.application.json))
                   )
       yield assert(resp.status)(equalTo(Status.BadRequest))
@@ -218,7 +205,7 @@ object LoginLogoutSpec extends ZIOSpecDefault:
         loginResp   <- app.runZIO(loginRequest(ValidWorkspaceUrl, ValidToken))
         sid         <- ZIO.fromOption(extractSidCookie(loginResp)).orElseFail(new RuntimeException("sid cookie missing"))
         triggerResp <- app.runZIO(Request.post(URL(Path("/trigger")), Body.empty).addHeader(cookieHeader(sid)))
-      yield assert(triggerResp.status)(not(equalTo(Status.Unauthorized)))
+      yield assert(triggerResp.status)(equalTo(Status.Ok))
     }
   ).provideSomeLayerShared(patEnv)
 
@@ -228,6 +215,6 @@ object LoginLogoutSpec extends ZIOSpecDefault:
     test("returns 400 and no cookie when direct mode is enabled") {
       for resp <- app.runZIO(loginRequest(ValidWorkspaceUrl, ValidToken))
       yield assert(resp.status)(equalTo(Status.BadRequest)) &&
-        assert(extractSidCookie(resp).isEmpty)(isTrue)
+        assertTrue(extractSidCookie(resp).isEmpty)
     }
   ).provideSomeLayerShared(directModeEnv)
