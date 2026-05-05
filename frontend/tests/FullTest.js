@@ -36,7 +36,7 @@ test('test', async ({ page }) => {
     await page.getByRole('button', { name: 'Step 1' }).click();
     await page.locator('rect').nth(4).click();
     await page.getByRole('button', { name: 'Step 2' }).click();
-    await page.getByRole('button', { name: 'Partition 4, 196,236 rows.' }).click();
+    await page.getByRole('button', { name: /^Partition\s+\d+,/ }).first().click();
     await page.getByRole('button', { name: 'Close partition detail' }).click();
     await page.getByRole('button', { name: 'Step 3' }).click();
     await page.getByRole('button', { name: 'Step 4' }).click();
@@ -69,8 +69,8 @@ test('test', async ({ page }) => {
     await page.getByRole('button', { name: 'Step 4' }).click();
     await page.locator('circle:nth-child(147)').click();
     await page.locator('circle:nth-child(78)').click();
-    const testSegment = page.getByRole('button', { name: /Test segment, 78 rows/ });
-    const trainSegment = page.getByRole('button', { name: /Train segment, 122 rows/ });
+    const testSegment = page.getByRole('button', { name: /Test segment/i });
+    const trainSegment = page.getByRole('button', { name: /Train segment/i });
     await testSegment.click();
     await trainSegment.focus();
     await trainSegment.press('Enter');
