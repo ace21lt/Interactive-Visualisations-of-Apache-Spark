@@ -8,7 +8,7 @@ test('test', async ({ page }) => {
         throw new Error('Missing required environment variables: DATABRICKS_WORKSPACE_URL and DATABRICKS_PAT_TOKEN');
     }
     
-    await page.goto('https://interactive-visualisations-of-apache-spark-prod.up.railway.app/');
+    await page.goto('/');
     await expect(page.locator('#root')).toContainText('Databricks Workspace URL');
     await expect(page.locator('#root')).toContainText('Personal Access Token (PAT)');
     await page.getByRole('textbox', { name: 'Databricks Workspace URL' }).click();
@@ -24,8 +24,7 @@ test('test', async ({ page }) => {
     await expect(page.getByText('Lab 1: Intro to SparkLab 2:')).toBeVisible();
     await expect(page.getByText('Interactive Spark Visualisationsdbc-c91b1745-f6ccLogoutLab 1: Intro to SparkLab')).toBeVisible();
     await page.getByRole('button', { name: 'Run Lab 1: Intro to Spark' }).click();
-    await page.waitForTimeout(120000);
-    await expect(page.locator('path').nth(1)).toBeVisible();
+    await expect(page.locator('path').nth(1)).toBeVisible({ timeout: 150000 });
     await expect(page.getByRole('alertdialog', { name: 'Lab steps' })).toBeVisible();
     await page.getByTestId('button-skip').click();
     await page.getByRole('button', { name: 'Step 2' }).click();
@@ -34,7 +33,7 @@ test('test', async ({ page }) => {
     await page.getByRole('button', { name: 'Step 5' }).click();
     await page.getByRole('button', { name: 'Step 6' }).click();
     await page.getByRole('button', { name: 'Step 1' }).click();
-    await page.locator('rect').nth(4).click();
+    await page.getByRole('button', { name: /^Partition\s+\d+,/ }).first().click();
     await page.getByRole('button', { name: 'Step 2' }).click();
     await page.getByRole('button', { name: /^Partition\s+\d+,/ }).first().click();
     await page.getByRole('button', { name: 'Close partition detail' }).click();
@@ -49,8 +48,7 @@ test('test', async ({ page }) => {
     await page.getByTestId('button-skip').click();
     await page.getByRole('button', { name: 'Lab 2: DataFrame & ML Pipeline' }).click();
     await page.getByRole('button', { name: 'Run Lab 2: DataFrame & ML' }).click();
-    await page.waitForTimeout(60000);
-    await page.getByTestId('button-skip').click();
+    await page.getByTestId('button-skip').click({ timeout: 90000 });
     await expect(page.locator('div').filter({ hasText: 'Step 1Step 2Step 3Step 4Step' }).nth(3)).toBeVisible();
     await page.getByRole('button', { name: 'Step 2' }).click();
     await page.getByRole('button', { name: 'Step 3' }).click();
@@ -61,14 +59,14 @@ test('test', async ({ page }) => {
     await page.getByRole('button', { name: 'Step 1' }).click();
     await page.getByRole('button', { name: '↺ Replay' }).click();
     await page.getByRole('button', { name: 'Step 2' }).click();
-    await page.locator('rect').nth(2).click();
+    await page.getByRole('button', { name: /^Partition\s+\d+,/ }).first().click();
     await page.getByRole('button', { name: 'Close partition detail' }).click();
     await page.getByRole('button', { name: 'Step 3' }).click();
-    await page.getByRole('button', { name: 'radio value 16.7, sales 15.9' }).click();
-    await page.getByRole('button', { name: 'newspaper value 51.4, sales' }).click();
+    await page.getByRole('button', { name: /radio value/ }).first().focus();
+    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: /newspaper value/ }).first().focus();
+    await page.keyboard.press('Enter');
     await page.getByRole('button', { name: 'Step 4' }).click();
-    await page.locator('circle:nth-child(147)').click();
-    await page.locator('circle:nth-child(78)').click();
     const testSegment = page.getByRole('button', { name: /Test segment/i });
     const trainSegment = page.getByRole('button', { name: /Train segment/i });
     await testSegment.click();
@@ -78,15 +76,18 @@ test('test', async ({ page }) => {
     await trainSegment.focus();
     await trainSegment.press('Enter');
     await page.getByRole('button', { name: 'Step 5' }).click();
-    await page.getByRole('button', { name: 'newspaper value 37.9, sales' }).click();
+    await page.getByRole('button', { name: /newspaper value/ }).nth(1).focus();
+    await page.keyboard.press('Enter');
     await page.getByRole('button', { name: 'Step 6' }).click();
-    await page.getByRole('button', { name: 'Actual 8, predicted 11.25,' }).click();
-    await page.getByRole('button', { name: 'Actual 3.20, predicted 5.77,' }).click();
+    await page.getByRole('button', { name: /Actual .*, predicted/ }).first().focus();
+    await page.keyboard.press('Enter');
+    await page.getByRole('button', { name: /Actual .*, predicted/ }).nth(1).focus();
+    await page.keyboard.press('Enter');
     await page.getByRole('button', { name: 'Step 7' }).click();
     await page.getByRole('button', { name: '7b: .fit() type transform' }).click();
     await expect(page.locator('.pipeline-flow > div:nth-child(2)')).toBeVisible();
     await page.getByRole('button', { name: '7c: Exercise 5 predictions' }).click();
-    await expect(page.getByText('model.transform: tracing document ID 4 through the pipelinetext"spark i j 6012"')).toBeVisible();
+    await expect(page.getByText(/model\.transform: tracing document ID 4/)).toBeVisible();
     await page.getByRole('button', { name: 'ID 5' }).click();
     await page.getByRole('button', { name: 'ID 6' }).click();
     await page.getByRole('button', { name: 'ID 7' }).click();

@@ -1,18 +1,21 @@
 // @ts-check
-import { defineConfig, devices } from '@playwright/test';
+const { defineConfig, devices } = require('@playwright/test');
+const dotenv = require('dotenv');
+const path = require('path');
 
 /**
  * Read environment variables from file.
  * https://github.com/motdotla/dotenv
  */
-import dotenv from 'dotenv';
-import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, 'tests/.env.local') });
+
+const baseURL = process.env.PLAYWRIGHT_BASE_URL ;
+const basicAuthPassword = process.env.PLAYWRIGHT_BASIC_AUTH_PASSWORD;
 
 /**
  * @see https://playwright.dev/docs/test-configuration
  */
-export default defineConfig({
+module.exports = defineConfig({
   testDir: './tests',
   testMatch: '**/*Test.js',
   /* Run tests in files in parallel */
@@ -28,7 +31,16 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
-    // baseURL: 'http://localhost:3000',
+    baseURL,
+
+    ...(basicAuthPassword
+      ? {
+          httpCredentials: {
+            username: 'admin',
+            password: basicAuthPassword,
+          },
+        }
+      : {}),
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
@@ -69,4 +81,3 @@ export default defineConfig({
   //   reuseExistingServer: !process.env.CI,
   // },
 });
-
