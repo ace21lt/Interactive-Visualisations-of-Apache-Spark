@@ -35,18 +35,24 @@ object DatabricksConfig:
 
   // Validate a single CORS origin: must parse as a URI with a non-empty
   // scheme (http or https) and a non-empty host, and no path/query component.
+  // Normalise accepted origins to scheme://host[:port] so they match browser
+  // Origin headers even if configured with a trailing slash.
   private def validateCorsOrigin(origin: String): IO[String, String] =
     ZIO.fromEither(
       try
-        val uri    = new java.net.URI(origin)
-        val scheme = Option(uri.getScheme).map(_.toLowerCase).getOrElse("")
-        val host   = Option(uri.getHost).getOrElse("")
+        val uri              = new java.net.URI(origin)
+        val scheme           = Option(uri.getScheme).map(_.toLowerCase).getOrElse("")
+        val host             = Option(uri.getHost).map(_.toLowerCase).getOrElse("")
+        val port             = uri.getPort
+        val normalisedOrigin =
+          if port == -1 then s"$scheme://$host"
+          else s"$scheme://$host:$port"
         if scheme != "http" && scheme != "https" then Left(s"CORS origin '$origin' must use http or https scheme")
         else if host.isEmpty then Left(s"CORS origin '$origin' must include a host")
         else if uri.getPath != null && uri.getPath.nonEmpty && uri.getPath != "/" then
           Left(s"CORS origin '$origin' must not contain a path component")
         else if uri.getQuery != null then Left(s"CORS origin '$origin' must not contain a query component")
-        else Right(origin)
+        else Right(normalisedOrigin)
       catch
         case _: java.net.URISyntaxException =>
           Left(s"CORS origin '$origin' is not a valid URI")

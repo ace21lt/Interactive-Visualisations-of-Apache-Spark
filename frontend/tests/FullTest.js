@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 test.setTimeout(200_000)
-test('test', async ({ page }) => {
+test('connects to Databricks workspace and runs Labs lflow', async ({ page }) => {
     const workspaceUrl = process.env.DATABRICKS_WORKSPACE_URL;
     const patToken = process.env.DATABRICKS_PAT_TOKEN;
     

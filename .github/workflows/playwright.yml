@@ -8,6 +8,7 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
+    if: ${{ (secrets.PLAYWRIGHT_BASE_URL != '' || vars.PLAYWRIGHT_BASE_URL != '') && secrets.DATABRICKS_WORKSPACE_URL != '' && secrets.DATABRICKS_PAT_TOKEN != '' }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
