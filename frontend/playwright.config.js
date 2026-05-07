@@ -9,7 +9,20 @@ const path = require('path');
  */
 dotenv.config({ path: path.resolve(__dirname, 'tests/.env.local') });
 
-const baseURL = process.env.PLAYWRIGHT_BASE_URL ;
+const rawBaseURL = process.env.PLAYWRIGHT_BASE_URL?.trim();
+if (!rawBaseURL) {
+  throw new Error(
+    'Missing PLAYWRIGHT_BASE_URL. Set it in frontend/tests/.env.local for local runs or in GitHub Actions secrets/vars for CI.'
+  );
+}
+
+let baseURL;
+try {
+  baseURL = new URL(rawBaseURL).toString().replace(/\/$/, '');
+} catch {
+  throw new Error(`Invalid PLAYWRIGHT_BASE_URL: "${rawBaseURL}". Expected a full URL like https://example.com`);
+}
+
 const basicAuthPassword = process.env.PLAYWRIGHT_BASIC_AUTH_PASSWORD;
 
 /**
