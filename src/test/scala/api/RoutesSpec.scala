@@ -1,4 +1,5 @@
 package api
+
 import config.{DatabricksConfig, WorkspaceUrlValidation}
 import config.WorkspaceUrlValidationStub
 import credentials.CredentialResolver
@@ -10,6 +11,8 @@ import zio.http.*
 import zio.json.*
 import zio.test.*
 import zio.test.Assertion.*
+
+import api.TestAuthHelpers.*
 
 object RoutesSpec extends ZIOSpecDefault:
 
@@ -68,16 +71,6 @@ object RoutesSpec extends ZIOSpecDefault:
 
   private def app: HttpApp[LoginHandler & NotebookHandler & HealthHandler] = api.Routes.apply().toHttpApp
 
-  // Extract session ID from Set-Cookie header
-  private def extractSidCookie(resp: Response): Option[String] =
-    resp.header(Header.SetCookie).flatMap { h =>
-      h.renderedValue.split(';').headOption.flatMap { kv =>
-        kv.split('=') match
-          case Array(name, value) if name.trim == "sid" => Some(value.trim)
-          case _                                        => None
-      }
-    }
-
   private val ValidWorkspaceUrl = "https://does-not-need-to-resolve.cloud.databricks.com"
   private val ValidToken        = "dapiTESTTOKEN-1234567890"
 
@@ -89,26 +82,19 @@ object RoutesSpec extends ZIOSpecDefault:
       test("POST /api/login creates session; GET /api/me returns PAT mode info") {
         for
           // Step 1: Login with valid credentials
-          loginReqBody <- ZIO.succeed(
-                            Body.fromString(s"""{"workspaceUrl":"$ValidWorkspaceUrl","token":"$ValidToken"}""")
-                          )
-          loginResp    <- app.runZIO(
-                            Request
-                              .post(URL(Path("/api/login")), loginReqBody)
-                              .addHeader(Header.ContentType(MediaType.application.json))
-                          )
+          loginResp <- app.runZIO(loginRequest(ValidWorkspaceUrl, ValidToken))
           // Fail fast if login didn't return 200
-          _            <- ZIO
-                            .fail(new RuntimeException(s"Expected 200, got ${loginResp.status}"))
-                            .unless(loginResp.status == Status.Ok)
+          _         <- ZIO
+                         .fail(new RuntimeException(s"Expected 200, got ${loginResp.status}"))
+                         .unless(loginResp.status == Status.Ok)
           // Extract session cookie from response
-          sid          <- ZIO.fromOption(extractSidCookie(loginResp)).orElseFail(new RuntimeException("sid cookie missing"))
+          sid       <- ZIO.fromOption(extractSidCookie(loginResp)).orElseFail(new RuntimeException("sid cookie missing"))
 
           // Step 2: Use session to check /api/me
           meResp <- app.runZIO(
                       Request
                         .get(URL(Path("/api/me")))
-                        .addHeader(Header.Cookie(zio.NonEmptyChunk(Cookie.Request("sid", sid))))
+                        .addHeader(cookieHeader(sid))
                     )
           meBody <- meResp.body.asString
         yield
@@ -126,21 +112,14 @@ object RoutesSpec extends ZIOSpecDefault:
       test("POST /trigger with valid session returns 200 with run details") {
         for
           // Step 1: Login to get session
-          loginResp <- app.runZIO(
-                         Request
-                           .post(
-                             URL(Path("/api/login")),
-                             Body.fromString(s"""{"workspaceUrl":"$ValidWorkspaceUrl","token":"$ValidToken"}""")
-                           )
-                           .addHeader(Header.ContentType(MediaType.application.json))
-                       )
+          loginResp <- app.runZIO(loginRequest(ValidWorkspaceUrl, ValidToken))
           sid       <- ZIO.fromOption(extractSidCookie(loginResp)).orElseFail(new RuntimeException("sid cookie missing"))
 
           // Step 2: Trigger notebook with session cookie
           triggerResp <- app.runZIO(
                            Request
                              .post(URL(Path("/trigger")), Body.empty)
-                             .addHeader(Header.Cookie(zio.NonEmptyChunk(Cookie.Request("sid", sid))))
+                             .addHeader(cookieHeader(sid))
                          )
           body        <- triggerResp.body.asString
           // Parse response to verify structure

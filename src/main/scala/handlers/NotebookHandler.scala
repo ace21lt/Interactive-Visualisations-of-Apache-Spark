@@ -20,13 +20,32 @@ case class NotebookHandlerLive(
 ) extends NotebookHandler:
 
   override def trigger(req: Request): UIO[Response] =
+    // Enforce a max edited-code length and return 400 on invalid JSON.
+    val MaxEditedCodeChars = 20_000
+
     val effect =
       for
         creds                <- credentialResolver.getCredentials(req)
         (workspaceUrl, token) = creds
 
-        bodyStr   <- req.body.asString.orElseSucceed("")
-        triggerReq = bodyStr.fromJson[TriggerRequest].getOrElse(TriggerRequest())
+        bodyStr <- req.body.asString.orElseSucceed("")
+
+        // Allow empty body (uses default TriggerRequest); reject malformed non-empty JSON.
+        triggerReq <-
+          if bodyStr.trim.isEmpty then ZIO.succeed(TriggerRequest())
+          else
+            ZIO
+              .fromEither(bodyStr.fromJson[TriggerRequest])
+              .mapError(err => DatabricksError.BadRequestError(s"Invalid JSON: $err"))
+
+        // Enforce edited code size limit to avoid excessively large submissions
+        _          <- ZIO.when(triggerReq.editedCode.exists(_.length > MaxEditedCodeChars))(
+                        ZIO.fail(
+                          DatabricksError.ValidationError(
+                            s"editedCode exceeds maximum allowed length of $MaxEditedCodeChars characters"
+                          )
+                        )
+                      )
 
         lab = triggerReq.lab.getOrElse("lab1")
 

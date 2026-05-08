@@ -2,11 +2,11 @@ package config
 
 import service.DatabricksError
 
-object TokenValidator {
+object TokenValidator:
   private val MinTokenLength        = 10
   private val DatabricksTokenPrefix = "dapi"
 
-  def validate(token: String): Either[DatabricksError.ValidationError, String] = {
+  def validate(token: String): Either[DatabricksError.ValidationError, String] =
     val t = Option(token).map(_.trim).getOrElse("")
 
     val isValid = t.nonEmpty &&
@@ -14,7 +14,5 @@ object TokenValidator {
       t.startsWith(DatabricksTokenPrefix) &&
       t.matches("^[a-zA-Z0-9-]+$")
 
-    if (isValid) Right(t)
+    if isValid then Right(t)
     else Left(DatabricksError.ValidationError("Invalid Databricks token format"))
-  }
-}

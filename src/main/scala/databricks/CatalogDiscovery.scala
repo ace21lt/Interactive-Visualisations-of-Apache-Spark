@@ -1,13 +1,17 @@
 package databricks
 
-import service.{DatabricksApiPaths, DatabricksError}
+import service.DatabricksError
 import zio.*
 import zio.http.*
 import zio.json.*
 
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
+
+// Discover a writable Unity Catalog volume path for datasets.
 object CatalogDiscovery:
 
-  // All known Databricks-managed catalogs that are never user-writable
+  // Databricks-managed system catalogs to ignore.
   private val SystemCatalogs = Set(
     "system",
     "hive_metastore",
@@ -18,6 +22,10 @@ object CatalogDiscovery:
 
   private val VolumeName = "sparkml_tmp"
 
+  private def encodeQueryParam(value: String): String =
+    URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
+
+  // Discover a writable volume and return its `/Volumes/...` path. Creates the volume if missing.
   def discoverVolumePath(
       workspaceUrl: String,
       token: String,
@@ -33,8 +41,7 @@ object CatalogDiscovery:
       _       <- ZIO.logInfo(s"Resolved volume path: $path")
     yield path
 
-  // Step 1: find a user-writable catalog
-
+  // Step 1: find a user-writable catalog (filters out system catalogs).
   private def findWritableCatalog(
       workspaceUrl: String,
       token: String,
@@ -60,15 +67,15 @@ object CatalogDiscovery:
         )
     }
 
-  // Step 2: find the first schema in the catalog
-
+  // Step 2: find the first usable schema in the catalog (prefer "default").
   private def findFirstSchema(
       workspaceUrl: String,
       token: String,
       client: Client,
       catalog: String
   ): IO[DatabricksError, String] =
-    val url = s"${workspaceUrl.stripSuffix("/")}/api/2.1/unity-catalog/schemas?catalog_name=$catalog"
+    val url =
+      s"${workspaceUrl.stripSuffix("/")}/api/2.1/unity-catalog/schemas?catalog_name=${encodeQueryParam(catalog)}"
     get[SchemaListResponse](url, token, client).flatMap { resp =>
       val schemas = resp.schemas
         .getOrElse(Nil)
@@ -90,8 +97,7 @@ object CatalogDiscovery:
         )
     }
 
-  // Step 3: ensure sparkml_tmp volume exists (create if missing)
-
+  // Step 3: ensure the `sparkml_tmp` volume exists, create if necessary.
   private def ensureVolume(
       workspaceUrl: String,
       token: String,
@@ -100,7 +106,7 @@ object CatalogDiscovery:
       schema: String
   ): IO[DatabricksError, Unit] =
     val listUrl = s"${workspaceUrl.stripSuffix("/")}/api/2.1/unity-catalog/volumes" +
-      s"?catalog_name=$catalog&schema_name=$schema"
+      s"?catalog_name=${encodeQueryParam(catalog)}&schema_name=${encodeQueryParam(schema)}"
     get[VolumeListResponse](listUrl, token, client).flatMap { resp =>
       val volumes = resp.volumes.getOrElse(Nil).map(_.name)
       if volumes.contains(VolumeName) then ZIO.logInfo(s"Volume $catalog.$schema.$VolumeName already exists")
@@ -109,6 +115,7 @@ object CatalogDiscovery:
           createVolume(workspaceUrl, token, client, catalog, schema)
     }
 
+  // Create a MANAGED volume via the Unity Catalog API.
   private def createVolume(
       workspaceUrl: String,
       token: String,
@@ -117,7 +124,12 @@ object CatalogDiscovery:
       schema: String
   ): IO[DatabricksError, Unit] =
     val url  = s"${workspaceUrl.stripSuffix("/")}/api/2.1/unity-catalog/volumes"
-    val body = s"""{"catalog_name":"$catalog","schema_name":"$schema","name":"$VolumeName","volume_type":"MANAGED"}"""
+    val body = CreateVolumeRequest(
+      catalogName = catalog,
+      schemaName = schema,
+      name = VolumeName,
+      volumeType = "MANAGED"
+    ).toJson
     ZIO
       .scoped {
         client
@@ -142,8 +154,7 @@ object CatalogDiscovery:
       }
       .mapError(DatabricksError.fromThrowable)
 
-  // Generic GET helper
-
+  // Generic HTTP GET helper that decodes JSON and handles status codes.
   private def get[A: JsonDecoder](
       url: String,
       token: String,
@@ -197,11 +208,18 @@ object CatalogDiscovery:
       }
       .mapError(DatabricksError.fromThrowable)
 
-//JSON models
+// JSON models for Unity Catalog API responses
 
 private case class CatalogEntry(name: String) derives JsonDecoder
 private case class SchemaEntry(name: String) derives JsonDecoder
 private case class VolumeEntry(name: String) derives JsonDecoder
+
+private case class CreateVolumeRequest(
+    @zio.json.jsonField("catalog_name") catalogName: String,
+    @zio.json.jsonField("schema_name") schemaName: String,
+    name: String,
+    @zio.json.jsonField("volume_type") volumeType: String
+) derives JsonEncoder
 
 private case class CatalogListResponse(catalogs: Option[List[CatalogEntry]]) derives JsonDecoder
 private case class SchemaListResponse(schemas: Option[List[SchemaEntry]]) derives JsonDecoder

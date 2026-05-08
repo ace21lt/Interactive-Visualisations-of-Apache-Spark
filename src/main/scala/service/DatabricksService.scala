@@ -81,7 +81,7 @@ case class DatabricksServiceLive(
 
       // Step 3 — import notebook to a fresh path in the student's workspace
       importDir      <- config.notebookImportDir
-      destPath        = WorkspaceImporter.destinationPath(importDir)
+      destPath        = WorkspaceImporter.destinationPath(importDir, lab)
       _              <- ZIO.logInfo(s"Importing notebook [$lab] to $workspaceUrl at $destPath")
       _              <- workspaceImporter.importNotebook(workspaceUrl, token, destPath, notebookSource)
 
