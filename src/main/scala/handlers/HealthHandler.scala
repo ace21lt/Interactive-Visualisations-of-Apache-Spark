@@ -7,11 +7,11 @@ import zio.http.*
 trait HealthHandler:
   def health(req: Request): UIO[Response]
 
-case class HealthHandlerLive() extends HealthHandler:
+object HealthHandlerLive extends HealthHandler:
 
   override def health(req: Request): UIO[Response] =
     ZIO.succeed(Response.text("OK"))
 
 object HealthHandler:
   val layer: ULayer[HealthHandler] =
-    ZLayer.succeed(HealthHandlerLive())
+    ZLayer.succeed(HealthHandlerLive)

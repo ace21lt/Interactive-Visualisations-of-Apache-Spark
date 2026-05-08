@@ -33,9 +33,7 @@ case class JobSubmitterLive(config: DatabricksConfig, client: Client, retryPolic
     val body    = request.toJson
 
     (for
-      _ <- ZIO.logInfo(s"Submitting to: $apiUrl")
-      _ <- ZIO.logInfo(s"Request body: $body")
-
+      _     <- ZIO.logInfo(s"Submitting to: $apiUrl")
       runId <- ZIO.scoped {
                  client
                    .request(

@@ -19,6 +19,8 @@ import zio.http.Middleware.{cors, CorsConfig}
 import java.io.File
 import java.nio.file.Paths
 
+// Backend API server: HTTP service for Databricks notebook execution
+// Provides REST API for authentication, notebook execution, and SPA routing
 object Main extends ZIOAppDefault:
 
   locally {
@@ -27,10 +29,10 @@ object Main extends ZIOAppDefault:
     java.util.logging.Logger.getLogger("").setLevel(java.util.logging.Level.SEVERE)
   }
 
-  // Directory containing the React production build
+  // Production React build directory (served by the backend container).
   private val PublicDir = "/app/public"
 
-  // Build a Middleware.cors instance validated against the config allow-list.
+  // Build CORS middleware from configured allow-list; rejects unlisted origins.
   private def buildCorsMiddleware(allowedOrigins: Set[String]) =
     cors(
       CorsConfig(
@@ -48,7 +50,7 @@ object Main extends ZIOAppDefault:
       )
     )
 
-  // Content-type lookup for static files
+  // Determine MIME type for static file responses based on extension.
   private def contentTypeFor(path: String): Header.ContentType =
     val ext = path.lastIndexOf('.') match
       case -1 => ""
@@ -72,15 +74,15 @@ object Main extends ZIOAppDefault:
       case _              => MediaType.application.`octet-stream`
     Header.ContentType(mt)
 
-  // Serve a file from the public directory, or index.html as SPA fallback
+  // Serve static asset or SPA fallback. Sanitises path to prevent traversal attacks.
   private def serveStaticFile(requestPath: String): ZIO[Any, Nothing, Response] =
     ZIO
       .attemptBlocking {
-        // Normalise and prevent path traversal
+        // Normalize and prevent path traversal attacks
         val sanitised  = requestPath.stripPrefix("/").replaceAll("\\.\\.", "")
         val targetPath = Paths.get(PublicDir, sanitised).normalize()
 
-        // Ensure resolved path is still within PublicDir
+        // Verify the resolved path is still within PublicDir boundary
         if !targetPath.startsWith(Paths.get(PublicDir).normalize()) then Response.status(Status.Forbidden)
         else
           val file = targetPath.toFile
@@ -91,7 +93,7 @@ object Main extends ZIOAppDefault:
               body = Body.fromFile(file)
             )
           else
-            // SPA fallback: serve index.html for unmatched routes
+            // SPA fallback: serve index.html for unmatched routes (React Router handles them)
             val indexFile = new File(s"$PublicDir/index.html")
             if indexFile.exists() then
               Response(
@@ -103,7 +105,7 @@ object Main extends ZIOAppDefault:
       }
       .orElse(ZIO.succeed(Response.status(Status.InternalServerError)))
 
-  // Static file routes — catch-all, placed AFTER API routes
+  // Catch-all static + SPA fallback routes (placed after API routes).
   private val staticRoutes: zio.http.Routes[Any, Response] =
     zio.http.Routes(
       Method.GET / trailing -> handler { (path: Path, _: Request) =>
@@ -111,81 +113,88 @@ object Main extends ZIOAppDefault:
       }
     )
 
-  override def run: URIO[Any, ExitCode] =
-    (for
-      cfg           <- ZIO.service[DatabricksConfig]
-      corsMiddleware = buildCorsMiddleware(cfg.corsAllowedOrigins)
+  // Resolve PORT once at startup so log and server use identical value.
+  private val resolvePort: UIO[Int] =
+    ZIO
+      .attempt(scala.sys.env.getOrElse("PORT", "8080").toInt)
+      .orElse(ZIO.succeed(8080))
 
-      // Read PORT from environment (Railway injects this)
-      port <- ZIO
-                .attempt(scala.sys.env.getOrElse("PORT", "8080").toInt)
-                .orElse(ZIO.succeed(8080))
-
-      _ <- ZIO.logInfo(s"CORS middleware active for origins: ${cfg.corsAllowedOrigins.mkString(", ")}")
-      _ <- ZIO.logInfo(s"Starting server on port $port")
-      _ <- ZIO.logInfo(s"Serving static files from $PublicDir")
-
-      // 1. Define base routes (API + Static)
-      baseRoutes = (Routes.apply() ++ staticRoutes) @@ corsMiddleware
-
-      // 2. Apply password protection if configured
-      protectedRoutes = scala.sys.env.get("DEV_PASSWORD") match {
-                          case Some(pwd) if pwd.nonEmpty =>
-                            baseRoutes @@ Middleware.basicAuth { credentials =>
-                              credentials.uname == "admin" && credentials.upassword == pwd
-                            }
-                          case _                         =>
-                            baseRoutes
-                        }
-
-      // 3. Create an UNPROTECTED health route for Railway
-      healthRoute     = zio.http.Routes(
-                          Method.GET / "health" -> handler { (req: Request) =>
-                            ZIO.serviceWithZIO[HealthHandler](_.health(req))
-                          }
-                        )
-
-      allRoutes = healthRoute ++ protectedRoutes
-
-      _ <- Server.serve(allRoutes.toHttpApp)
-    yield ())
-      .provide(
-        // HTTP infrastructure — bind to configured port
-        ZLayer.fromZIO(
-          ZIO
-            .attempt(scala.sys.env.getOrElse("PORT", "8080").toInt)
-            .orElse(ZIO.succeed(8080))
-            .map(port =>
-              Server.Config.default
-                .port(port)
-                .idleTimeout(5.minutes)
-            )
-        ) >>> Server.live,
-        Client.default,
-
-        // Configuration
-        ZLayer.succeed(WorkspaceUrlValidation.live),
-        DatabricksConfig.layer.mapError(msg => new RuntimeException(s"Configuration error: $msg")),
-
-        // Session management
-        InMemorySessionManager.layer,
-
-        // Credential resolution
-        CredentialResolver.layer,
-
-        // Databricks components
-        RetryPolicy.layer,
-        JobSubmitter.layer,
-        JobStatusChecker.layer,
-        OutputFetcher.layer,
-        WorkspaceImporter.layer,
-        DatasetProvisioner.layer,
-        DatabricksServiceLive.layer,
-
-        // Request handlers
-        LoginHandler.layer,
-        NotebookHandler.layer,
-        HealthHandler.layer
+  private def serverLayer(port: Int): ZLayer[Any, Nothing, Server] =
+    (ZLayer.fromZIO(
+      ZIO.succeed(
+        Server.Config.default
+          .port(port)
+          .idleTimeout(5.minutes)
       )
-      .tapError(error => ZIO.logError(s"Application failed to start: ${error.getMessage}"))
-      .exitCode
+    ) >>> Server.live).orDie
+
+  override def run: URIO[Any, ExitCode] =
+    // Resolve PORT once and reuse the same value for logging and server config.
+    resolvePort.flatMap { port =>
+      val appEffect =
+        for
+          cfg           <- ZIO.service[DatabricksConfig]
+          corsMiddleware = buildCorsMiddleware(cfg.corsAllowedOrigins)
+
+          _ <- ZIO.logInfo(s"CORS middleware active for origins: ${cfg.corsAllowedOrigins.mkString(", ")}")
+          _ <- ZIO.logInfo(s"Starting server on port $port")
+          _ <- ZIO.logInfo(s"Serving static files from $PublicDir")
+
+          // 1. Combine API routes and static file routes with CORS middleware
+          baseRoutes = (Routes.apply() ++ staticRoutes) @@ corsMiddleware
+
+          // 2. Apply optional HTTP Basic Auth (DEV_PASSWORD environment variable)
+          protectedRoutes = scala.sys.env.get("DEV_PASSWORD") match {
+                              case Some(pwd) if pwd.nonEmpty =>
+                                baseRoutes @@ Middleware.basicAuth { credentials =>
+                                  credentials.uname == "admin" && credentials.upassword == pwd
+                                }
+                              case _                         =>
+                                baseRoutes
+                            }
+
+          // 3. Create an UNPROTECTED health route for deployment health checks (Railway, etc.)
+          healthRoute     = zio.http.Routes(
+                              Method.GET / "health" -> handler { (req: Request) =>
+                                ZIO.serviceWithZIO[HealthHandler](_.health(req))
+                              }
+                            )
+
+          allRoutes = healthRoute ++ protectedRoutes
+
+          _ <- Server.serve(allRoutes.toHttpApp)
+        yield ()
+
+      appEffect
+        .provide(
+          // HTTP infrastructure — port resolved exactly once above
+          serverLayer(port),
+          Client.default,
+
+          // Configuration
+          ZLayer.succeed(WorkspaceUrlValidation.live),
+          DatabricksConfig.layer.mapError(msg => new RuntimeException(s"Configuration error: $msg")),
+
+          // Session management
+          InMemorySessionManager.layer,
+
+          // Credential resolution
+          CredentialResolver.layer,
+
+          // Databricks components
+          RetryPolicy.layer,
+          JobSubmitter.layer,
+          JobStatusChecker.layer,
+          OutputFetcher.layer,
+          WorkspaceImporter.layer,
+          DatasetProvisioner.layer,
+          DatabricksServiceLive.layer,
+
+          // Request handlers
+          LoginHandler.layer,
+          NotebookHandler.layer,
+          HealthHandler.layer
+        )
+        .tapError(error => ZIO.logError(s"Application failed to start: ${error.getMessage}"))
+        .exitCode
+    }

@@ -1,21 +1,22 @@
 package service
 
+// Error hierarchy for Databricks operations. Provides user-facing and technical messages.
 sealed trait DatabricksError extends Throwable:
-  // User-friendly error message that doesn't leak sensitive information
+  // Short message safe to display in the UI.
   def toUserMessage: String
 
-  // Technical message for logging (may contain more details)
+  // Detailed message for server-side logs and diagnostics.
   def getMessage: String
 
 object DatabricksError:
-  // Configuration validation errors
+  // Configuration is invalid or missing required environment variables.
   case class ConfigError(message: String) extends DatabricksError:
     override def toUserMessage: String =
       "Configuration error. Please verify DATABRICKS_HOST, DATABRICKS_TOKEN, and NOTEBOOK_PATH environment variables."
 
     override def getMessage: String = message
 
-  // Network/HTTP communication errors when calling Databricks API
+  // Network or HTTP communication failure calling Databricks REST API.
   case class ApiCommunicationError(message: String, cause: Option[Throwable] = None) extends DatabricksError:
     override def toUserMessage: String =
       "Failed to communicate with Databricks API. Please check network connectivity and workspace URL."
@@ -25,7 +26,7 @@ object DatabricksError:
     // Preserve exception chain for debugging
     cause.foreach(initCause)
 
-  // Databricks API returned an error response (4xx/5xx status codes)
+  // Databricks API returned a non-2xx HTTP status code.
   case class ApiResponseError(statusCode: Int, message: String) extends DatabricksError:
     override def toUserMessage: String =
       statusCode match {
@@ -41,7 +42,7 @@ object DatabricksError:
 
     override def getMessage: String = s"API error (HTTP $statusCode): $message"
 
-  // Failed to parse JSON response from Databricks API
+  // Failed to parse Databricks API response body as JSON.
   case class JsonParseError(message: String, json: Option[String] = None) extends DatabricksError:
     override def toUserMessage: String =
       "Failed to parse Databricks API response. The API may have changed or returned unexpected data."
@@ -56,7 +57,7 @@ object DatabricksError:
           s"JSON parse error: $message"
       }
 
-  // Notebook execution timed out (exceeded max poll attempts)
+  // Notebook execution timed out while polling for completion.
   case class ExecutionTimeout(runId: Long, maxAttempts: Int, pollInterval: Int) extends DatabricksError:
     override def toUserMessage: String =
       s"Notebook execution timed out after ${(maxAttempts + 1) * pollInterval} seconds. The notebook may be taking longer than expected."
@@ -64,7 +65,7 @@ object DatabricksError:
     override def getMessage: String =
       s"Execution timeout for run_id=$runId after $maxAttempts polling attempts (interval: ${pollInterval}s)"
 
-  // Notebook execution failed (TERMINATED state with non-SUCCESS result)
+  // Notebook execution finished with a non-success terminal state.
   case class ExecutionFailed(runId: Long, state: String, stateMessage: Option[String] = None) extends DatabricksError:
     override def toUserMessage: String =
       "Notebook execution failed. Please check the notebook code and Databricks workspace for errors."
@@ -75,7 +76,7 @@ object DatabricksError:
         case None      => s"Execution failed for run_id=$runId with state=$state"
       }
 
-  // Task run ID not found in multi-task job response
+  // Multi-task job response missing the expected task run.
   case class TaskNotFound(runId: Long, message: String) extends DatabricksError:
     override def toUserMessage: String =
       "Failed to retrieve task information from Databricks. The job structure may be unexpected."
@@ -83,28 +84,28 @@ object DatabricksError:
     override def getMessage: String =
       s"Task not found for run_id=$runId: $message"
 
-  // User supplied invalid URL/token during PAT login (client-side input validation)
+  // Client-side validation failure for workspace URL or token.
   case class ValidationError(message: String) extends DatabricksError:
     override def toUserMessage: String = message
     override def getMessage: String    = message
 
-  // Failed to parse a request body
+  // Request body parsing or field validation error.
   case class BadRequestError(message: String) extends DatabricksError:
     override def toUserMessage: String = "Bad request. Please check your inputs and try again."
     override def getMessage: String    = message
 
-  // Not authenticated / missing or expired session
+  // Missing or expired authentication credentials.
   case class NotAuthenticated(message: String = "Not authenticated") extends DatabricksError:
     override def toUserMessage: String = "Not authenticated. Please log in again."
     override def getMessage: String    = message
 
-  // Incorrect token permissions or insufficient API scopes
+  // Databricks token lacks the required API scopes.
   case class InsufficientPermissions(message: String) extends DatabricksError:
     override def toUserMessage: String =
       "Insufficient permissions. Please ensure your Databricks token has the necessary API Scope of jobs, workspace, files, unity-catalog and clusters."
     override def getMessage: String    = message
 
-  // Helper to convert generic Throwable to DatabricksError
+  // Convert any Throwable into a DatabricksError wrapper.
   def fromThrowable(error: Throwable): DatabricksError =
     error match {
       case e: DatabricksError => e
