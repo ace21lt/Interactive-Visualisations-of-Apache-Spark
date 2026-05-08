@@ -8,7 +8,10 @@ jobs:
   test:
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    if: ${{ (secrets.PLAYWRIGHT_BASE_URL != '' || vars.PLAYWRIGHT_BASE_URL != '') && secrets.DATABRICKS_WORKSPACE_URL != '' && secrets.DATABRICKS_PAT_TOKEN != '' }}
+    env:
+      PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL || vars.PLAYWRIGHT_BASE_URL }}
+      DATABRICKS_WORKSPACE_URL: ${{ secrets.DATABRICKS_WORKSPACE_URL }}
+      DATABRICKS_PAT_TOKEN: ${{ secrets.DATABRICKS_PAT_TOKEN }}
     steps:
     - uses: actions/checkout@v4
     - uses: actions/setup-node@v4
@@ -22,11 +25,12 @@ jobs:
       run: npx playwright install --with-deps
     - name: Run Playwright tests
       working-directory: frontend
+      if: ${{ env.PLAYWRIGHT_BASE_URL != '' && env.DATABRICKS_WORKSPACE_URL != '' && env.DATABRICKS_PAT_TOKEN != '' }}
       env:
-        PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BASE_URL || vars.PLAYWRIGHT_BASE_URL }}
+        PLAYWRIGHT_BASE_URL: ${{ env.PLAYWRIGHT_BASE_URL }}
         PLAYWRIGHT_BASIC_AUTH_PASSWORD: ${{ secrets.PLAYWRIGHT_BASIC_AUTH_PASSWORD }}
-        DATABRICKS_WORKSPACE_URL: ${{ secrets.DATABRICKS_WORKSPACE_URL }}
-        DATABRICKS_PAT_TOKEN: ${{ secrets.DATABRICKS_PAT_TOKEN }}
+        DATABRICKS_WORKSPACE_URL: ${{ env.DATABRICKS_WORKSPACE_URL }}
+        DATABRICKS_PAT_TOKEN: ${{ env.DATABRICKS_PAT_TOKEN }}
       run: npx playwright test
     - uses: actions/upload-artifact@v4
       if: ${{ !cancelled() }}

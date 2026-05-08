@@ -14,22 +14,19 @@ metals.sbt
 
 # Node.js/React (for frontend)
 node_modules/
-frontend/node_modules/
 build/
-frontend/build/
 dist/
-frontend/dist/
 .pnp
 .pnp.js
 coverage/
-frontend/coverage/
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
 npm-debug.log*
+yarn-debug.log*
 yarn-error.log*
-yarn.lock
+pnpm-debug.log*
 
 # Environment variables (contains secrets)
 .env
