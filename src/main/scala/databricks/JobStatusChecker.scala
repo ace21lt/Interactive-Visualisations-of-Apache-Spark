@@ -96,7 +96,7 @@ case class JobStatusCheckerLive(config: DatabricksConfig, client: Client, retryP
       }
       .mapError(DatabricksError.fromThrowable)
       .retry(retryPolicy.schedule)
-      .tapError(err => ZIO.logWarning(s"Failed to get task run ID: ${err.getMessage}"))
+      .tapError(err => ZIO.logWarning(s"Failed to get task run ID: ${err.logMessage}"))
 
 object JobStatusChecker:
   val layer: ZLayer[DatabricksConfig & Client & RetryPolicy, Nothing, JobStatusChecker] =

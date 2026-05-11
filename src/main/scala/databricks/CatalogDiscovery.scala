@@ -11,7 +11,6 @@ import java.nio.charset.StandardCharsets
 // Discover a writable Unity Catalog volume path for datasets.
 object CatalogDiscovery:
 
-  // Databricks-managed system catalogs to ignore.
   private val SystemCatalogs = Set(
     "system",
     "hive_metastore",
@@ -25,7 +24,6 @@ object CatalogDiscovery:
   private def encodeQueryParam(value: String): String =
     URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
 
-  // Discover a writable volume and return its `/Volumes/...` path. Creates the volume if missing.
   def discoverVolumePath(
       workspaceUrl: String,
       token: String,
@@ -41,7 +39,6 @@ object CatalogDiscovery:
       _       <- ZIO.logInfo(s"Resolved volume path: $path")
     yield path
 
-  // Step 1: find a user-writable catalog (filters out system catalogs).
   private def findWritableCatalog(
       workspaceUrl: String,
       token: String,
@@ -67,7 +64,6 @@ object CatalogDiscovery:
         )
     }
 
-  // Step 2: find the first usable schema in the catalog (prefer "default").
   private def findFirstSchema(
       workspaceUrl: String,
       token: String,
@@ -97,7 +93,6 @@ object CatalogDiscovery:
         )
     }
 
-  // Step 3: ensure the `sparkml_tmp` volume exists, create if necessary.
   private def ensureVolume(
       workspaceUrl: String,
       token: String,
@@ -115,7 +110,6 @@ object CatalogDiscovery:
           createVolume(workspaceUrl, token, client, catalog, schema)
     }
 
-  // Create a MANAGED volume via the Unity Catalog API.
   private def createVolume(
       workspaceUrl: String,
       token: String,
@@ -154,7 +148,6 @@ object CatalogDiscovery:
       }
       .mapError(DatabricksError.fromThrowable)
 
-  // Generic HTTP GET helper that decodes JSON and handles status codes.
   private def get[A: JsonDecoder](
       url: String,
       token: String,

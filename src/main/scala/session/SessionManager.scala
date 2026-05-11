@@ -20,13 +20,3 @@ trait SessionManager:
   def createSession(creds: DatabricksCreds): UIO[String]
   def getSession(sessionId: String): UIO[Option[DatabricksCreds]]
   def deleteSession(sessionId: String): UIO[Unit]
-
-object SessionManager:
-  def createSession(creds: DatabricksCreds): URIO[SessionManager, String] =
-    ZIO.serviceWithZIO[SessionManager](_.createSession(creds))
-
-  def getSession(sessionId: String): URIO[SessionManager, Option[DatabricksCreds]] =
-    ZIO.serviceWithZIO[SessionManager](_.getSession(sessionId))
-
-  def deleteSession(sessionId: String): URIO[SessionManager, Unit] =
-    ZIO.serviceWithZIO[SessionManager](_.deleteSession(sessionId))

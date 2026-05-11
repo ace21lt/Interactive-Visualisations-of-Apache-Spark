@@ -79,7 +79,7 @@ case class WorkspaceImporterLive(client: Client) extends WorkspaceImporter:
       source: String
   ): IO[DatabricksError, Unit] =
     val apiUrl  = DatabricksApiPaths.buildWorkspaceImportUrl(workspaceUrl)
-    val encoded = Base64.getEncoder.encodeToString(source.getBytes("UTF-8"))
+    val encoded = Base64.getEncoder.encodeToString(source.getBytes(java.nio.charset.StandardCharsets.UTF_8))
 
     val requestBody = WorkspaceImportRequest(
       path = workspacePath,

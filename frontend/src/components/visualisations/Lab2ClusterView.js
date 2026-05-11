@@ -42,13 +42,13 @@ function modeBadge(mode, isLazy) {
 }
 
 // Layout constants shared across all modes 
-const H = 290;   // SVG height (px)
-const ML = 20;    // left margin
-const MR = 20;    // right margin
-const MT = 16;    // top margin
-const MB = 30;    // bottom margin
-const DW = 170;   // driver node width
-const DH = 42;    // driver node height
+const H = 290;
+const ML = 20;
+const MR = 20;
+const MT = 16;
+const MB = 30;
+const DW = 170;
+const DH = 42;
 
 const MIN_SLOTS = 4;
 

@@ -21,20 +21,17 @@ object OutputParser:
         case Json.Obj(fields) => fields.find(_._1 == key).map(_._2)
         case _                => None
 
-      // Try: metadata.notebook_output.result
       val fromMetadata = for
         metadata       <- getObj(ast, "metadata")
         notebookOutput <- getObj(metadata, "notebook_output")
         result         <- getString(notebookOutput, "result")
       yield result
 
-      // Try: notebook_output.result
       val fromTopLevel = for
         notebookOutput <- getObj(ast, "notebook_output")
         result         <- getString(notebookOutput, "result")
       yield result
 
-      // Try: direct result
       val fromDirect = getString(ast, "result")
 
       fromMetadata.orElse(fromTopLevel).orElse(fromDirect)

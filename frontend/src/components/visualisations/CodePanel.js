@@ -336,7 +336,7 @@ const CodePanel = ({currentStep, onExecuteStep, data}) => {
                     marginTop: '8px',
                     padding: '10px 12px',
                     background: 'var(--chart-red-tint)',
-                    borderLeft: '4px solid var(--error-fg)',
+                    border: '1px solid var(--error-fg)',
                     borderRadius: '4px',
                     fontSize: '13px',
                     color: 'var(--error-fg)'
@@ -349,8 +349,8 @@ const CodePanel = ({currentStep, onExecuteStep, data}) => {
             <div style={{
                 marginTop: '16px',
                 padding: '12px',
-                background: 'var(--grey-100)',
-                borderLeft: '4px solid var(--uos-yellow)',
+                background: 'var(--uos-yellow-tint, #fffbeb)',
+                border: '1px solid var(--uos-yellow)',
                 borderRadius: '4px',
                 fontSize: '13px'
             }}>

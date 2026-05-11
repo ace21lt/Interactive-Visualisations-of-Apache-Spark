@@ -16,14 +16,10 @@ import api.TestAuthHelpers.*
 
 object RoutesSpec extends ZIOSpecDefault:
 
-  // Test Response Model
-
   // Local model for parsing trigger response in tests
   private final case class TriggerResponse(runId: Long, state: String)
   private object TriggerResponse:
     given JsonDecoder[TriggerResponse] = DeriveJsonDecoder.gen[TriggerResponse]
-
-  // Test Dependencies
 
   // Stub DatabricksService that returns a fixed successful response
   private val testDatabricksService: ZLayer[Any, Nothing, DatabricksService] =
@@ -53,10 +49,6 @@ object RoutesSpec extends ZIOSpecDefault:
   private val urlValidationStub: ZLayer[Any, Nothing, WorkspaceUrlValidation] =
     WorkspaceUrlValidationStub.acceptAll("https://dbc-test.cloud.databricks.com")
 
-  // Layer Composition
-
-  // Compose all handler layers from their dependencies
-
   private val handlerLayers: ZLayer[Any, Nothing, LoginHandler & NotebookHandler & HealthHandler] =
     val baseLayer            =
       configLayerDirectDisabled ++ urlValidationStub ++ testDatabricksService ++ InMemorySessionManager.layer
@@ -67,65 +59,45 @@ object RoutesSpec extends ZIOSpecDefault:
     val healthHandlerLayer   = HealthHandler.layer
     loginHandlerLayer ++ notebookHandlerLayer ++ healthHandlerLayer
 
-  // Test Utilities
-
   private def app: HttpApp[LoginHandler & NotebookHandler & HealthHandler] = api.Routes.apply().toHttpApp
 
   private val ValidWorkspaceUrl = "https://does-not-need-to-resolve.cloud.databricks.com"
   private val ValidToken        = "dapiTESTTOKEN-1234567890"
 
-  // Test Suite
-
   override def spec: Spec[TestEnvironment & Scope, Any] =
     suite("Routes")(
-      // Test complete login flow: login -> verify session with /api/me
       test("POST /api/login creates session; GET /api/me returns PAT mode info") {
         for
-          // Step 1: Login with valid credentials
           loginResp <- app.runZIO(loginRequest(ValidWorkspaceUrl, ValidToken))
-          // Fail fast if login didn't return 200
           _         <- ZIO
                          .fail(new RuntimeException(s"Expected 200, got ${loginResp.status}"))
                          .unless(loginResp.status == Status.Ok)
-          // Extract session cookie from response
           sid       <- ZIO.fromOption(extractSidCookie(loginResp)).orElseFail(new RuntimeException("sid cookie missing"))
 
-          // Step 2: Use session to check /api/me
           meResp <- app.runZIO(
                       Request
                         .get(URL(Path("/api/me")))
                         .addHeader(cookieHeader(sid))
                     )
           meBody <- meResp.body.asString
-        yield
-        // Verify: /api/me returns 200 with PAT mode indicator
-        assert(meResp.status == Status.Ok && meBody.contains("\"mode\":\"pat\""))(isTrue)
+        yield assert(meResp.status == Status.Ok && meBody.contains("\"mode\":\"pat\""))(isTrue)
       },
-
-      // Verify /trigger endpoint requires authentication
       test("POST /trigger returns 401 without session cookie") {
         for resp <- app.runZIO(Request.post(URL(Path("/trigger")), Body.empty))
         yield assert(resp.status)(equalTo(Status.Unauthorized))
       },
-
-      // Test complete flow: login -> trigger notebook -> verify response
       test("POST /trigger with valid session returns 200 with run details") {
         for
-          // Step 1: Login to get session
           loginResp <- app.runZIO(loginRequest(ValidWorkspaceUrl, ValidToken))
           sid       <- ZIO.fromOption(extractSidCookie(loginResp)).orElseFail(new RuntimeException("sid cookie missing"))
 
-          // Step 2: Trigger notebook with session cookie
           triggerResp <- app.runZIO(
                            Request
                              .post(URL(Path("/trigger")), Body.empty)
                              .addHeader(cookieHeader(sid))
                          )
           body        <- triggerResp.body.asString
-          // Parse response to verify structure
           parsed       = body.fromJson[TriggerResponse]
-        yield
-        // Verify: 200 status and valid JSON response
-        assert(triggerResp.status == Status.Ok && parsed.isRight)(isTrue)
+        yield assert(triggerResp.status == Status.Ok && parsed.isRight)(isTrue)
       }
     ).provideSomeLayerShared(handlerLayers)

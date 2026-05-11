@@ -55,14 +55,14 @@ case class DatabricksServiceLive(
       editedCode: Option[String]
   ): IO[DatabricksError, RunOutput] =
     for
-      // Step 1 — auto-discover catalog, ensure datasets exist, get resolved path
+      // auto-discover catalog, ensures the datasets exist and gets resolved path to know whether to import them or not
       _         <- ZIO.logInfo(s"Discovering catalog and ensuring datasets: $workspaceUrl")
       provision <- datasetProvisioner.ensureDatasets(workspaceUrl, token)
       volumePath = provision.volumePath
       _         <- ZIO.logInfo(s"Using volume path: $volumePath")
 
-      // Step 2 — build notebook source with the resolved volume path injected.
-      // skipRepartition is only relevant for lab1; for other labs it defaults false.
+      // build notebook source with the resolved volume path injected.
+      // skipRepartition is only relevant for lab1. for other labs it defaults false.
       notebookSource <- (step, editedCode) match
                           case (Some(s), Some(code)) if code.trim.nonEmpty =>
                             ZIO.logInfo(s"Building notebook [$lab] with edited step $s") *>
@@ -79,13 +79,11 @@ case class DatabricksServiceLive(
                                 skipRepartition = skip
                               )
 
-      // Step 3 — import notebook to a fresh path in the student's workspace
-      importDir      <- config.notebookImportDir
-      destPath        = WorkspaceImporter.destinationPath(importDir, lab)
-      _              <- ZIO.logInfo(s"Importing notebook [$lab] to $workspaceUrl at $destPath")
-      _              <- workspaceImporter.importNotebook(workspaceUrl, token, destPath, notebookSource)
+      importDir <- config.notebookImportDir
+      destPath   = WorkspaceImporter.destinationPath(importDir, lab)
+      _         <- ZIO.logInfo(s"Importing notebook [$lab] to $workspaceUrl at $destPath")
+      _         <- workspaceImporter.importNotebook(workspaceUrl, token, destPath, notebookSource)
 
-      // Step 4 — run it
       result <- executeAt(workspaceUrl, token, destPath)
     yield result
 
