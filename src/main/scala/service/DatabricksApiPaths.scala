@@ -26,27 +26,21 @@ object DatabricksApiPaths:
 
   // URL builders
 
-  // Jobs run status URL
   def buildGetRunUrl(workspaceUrl: String, runId: Long): String =
     s"$workspaceUrl${Jobs.Get}?run_id=$runId"
 
-  // Jobs run output URL
   def buildGetOutputUrl(workspaceUrl: String, runId: Long): String =
     s"$workspaceUrl${Jobs.GetOutput}?run_id=$runId"
 
-  // Jobs run submission URL
   def buildSubmitUrl(workspaceUrl: String): String =
     s"$workspaceUrl${Jobs.Submit}"
 
-  // Workspace notebook import URL
   def buildWorkspaceImportUrl(workspaceUrl: String): String =
     s"$workspaceUrl${Workspace.Import}"
 
-  // Workspace mkdirs URL
   def buildWorkspaceMkdirsUrl(workspaceUrl: String): String =
     s"$workspaceUrl${Workspace.Mkdirs}"
 
-  // Build the Files API URL for a given volume path; URL-encode each segment.
   def buildFilesUrl(workspaceUrl: String, volumePath: String): String =
     val normalised                           = volumePath.stripPrefix("/")
     // Encode each path segment separately (preserves slashes) and replace + with %20

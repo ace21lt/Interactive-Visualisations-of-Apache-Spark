@@ -10,11 +10,11 @@ object ConfigValidation:
 
   // Validate workspace URL using the URL validator
   def validateDirectUrl(url: String): IO[String, String] =
-    ZIO.fromEither(WorkspaceUrlValidator.validate(url).left.map(_.getMessage))
+    ZIO.fromEither(WorkspaceUrlValidator.validate(url).left.map(_.logMessage))
 
   // Validate Databricks token format
   def validateDirectToken(token: String): IO[String, String] =
-    ZIO.fromEither(TokenValidator.validate(token).left.map(_.getMessage))
+    ZIO.fromEither(TokenValidator.validate(token).left.map(_.logMessage))
 
   // Validate notebook path
   def validateNotebookPath(path: String): IO[String, String] =

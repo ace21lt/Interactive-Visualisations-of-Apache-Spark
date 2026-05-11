@@ -359,7 +359,7 @@ const PipelineFlowDiagram = ({stages, traces, predictions, view = 'full'}) => {
 
             {/*Lab quote callout */}
             {view !== 'trace' && (
-                <div className="pipeline-flow-quote" style={{borderLeft: `4px solid ${MODEL}`}}>
+                <div className="pipeline-flow-quote" style={{border: `1px solid ${MODEL}`, background: `${MODEL}14`}}>
                     "An Estimator implements a method fit(), which accepts a DataFrame and produces a
                     Model, which is a Transformer. For example, a learning algorithm such as{' '}
                     <strong style={{fontStyle: 'normal', color: EST}}>LogisticRegression</strong>{' '}

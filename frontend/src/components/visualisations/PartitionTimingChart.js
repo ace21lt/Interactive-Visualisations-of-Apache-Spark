@@ -136,7 +136,7 @@ const PartitionTimingChart = ({runHistory}) => {
                 {/* Guidance */}
                 <div style={{
                     marginTop: '12px', padding: '8px 12px',
-                    background: 'rgba(86, 180, 233, 0.08)', borderLeft: `3px solid ${okabeIto.sky}`,
+                    background: 'rgba(86, 180, 233, 0.08)', border: `1px solid ${okabeIto.sky}`,
                     borderRadius: '4px', fontSize: '11px', color: 'var(--grey-700)',
                 }}>
                     <strong>What to look for:</strong> Fewer partitions means less parallelism but less shuffle

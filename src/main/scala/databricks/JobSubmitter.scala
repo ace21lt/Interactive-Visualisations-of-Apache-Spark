@@ -63,7 +63,7 @@ case class JobSubmitterLive(config: DatabricksConfig, client: Client, retryPolic
     yield runId)
       .mapError(DatabricksError.fromThrowable)
       .retry(retryPolicy.schedule)
-      .tapError(err => ZIO.logError(s"Submit failed after retries: ${err.getMessage}"))
+      .tapError(err => ZIO.logError(s"Submit failed after retries: ${err.logMessage}"))
 
 object JobSubmitter:
   val layer: ZLayer[DatabricksConfig & Client & RetryPolicy, Nothing, JobSubmitter] =
