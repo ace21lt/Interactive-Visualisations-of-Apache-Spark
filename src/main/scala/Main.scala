@@ -140,10 +140,8 @@ object Main extends ZIOAppDefault:
           _ <- ZIO.logInfo(s"Starting server on port $port")
           _ <- ZIO.logInfo(s"Serving static files from $PublicDir")
 
-          // 1. Combine API routes and static file routes with CORS middleware
           baseRoutes = (Routes.apply() ++ staticRoutes) @@ corsMiddleware
 
-          // 2. Apply optional HTTP Basic Auth (DEV_PASSWORD environment variable)
           protectedRoutes = scala.sys.env.get("DEV_PASSWORD") match {
                               case Some(pwd) if pwd.nonEmpty =>
                                 baseRoutes @@ Middleware.basicAuth { credentials =>
@@ -153,7 +151,7 @@ object Main extends ZIOAppDefault:
                                 baseRoutes
                             }
 
-          // 3. Create an UNPROTECTED health route for deployment health checks (Railway, etc.)
+          // an unprotected health route which was needed deployment health checks on railway
           healthRoute     = zio.http.Routes(
                               Method.GET / "health" -> handler { (req: Request) =>
                                 ZIO.serviceWithZIO[HealthHandler](_.health(req))
@@ -167,21 +165,12 @@ object Main extends ZIOAppDefault:
 
       appEffect
         .provide(
-          // HTTP infrastructure — port resolved exactly once above
           serverLayer(port),
           Client.default,
-
-          // Configuration
           ZLayer.succeed(WorkspaceUrlValidation.live),
           DatabricksConfig.layer.mapError(msg => new RuntimeException(s"Configuration error: $msg")),
-
-          // Session management
           InMemorySessionManager.layer,
-
-          // Credential resolution
           CredentialResolver.layer,
-
-          // Databricks components
           RetryPolicy.layer,
           JobSubmitter.layer,
           JobStatusChecker.layer,
@@ -189,8 +178,6 @@ object Main extends ZIOAppDefault:
           WorkspaceImporter.layer,
           DatasetProvisioner.layer,
           DatabricksServiceLive.layer,
-
-          // Request handlers
           LoginHandler.layer,
           NotebookHandler.layer,
           HealthHandler.layer

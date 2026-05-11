@@ -2,8 +2,6 @@ package models
 
 import zio.json.*
 
-// request models
-
 // Cluster configuration for creating new clusters
 case class NewCluster(
     @jsonField("spark_version") sparkVersion: String,
@@ -15,7 +13,6 @@ object NewCluster:
   given JsonEncoder[NewCluster] = DeriveJsonEncoder.gen[NewCluster]
   given JsonDecoder[NewCluster] = DeriveJsonDecoder.gen[NewCluster]
 
-// Notebook task configuration specifying which notebook to run
 case class NotebookTask(
     @jsonField("notebook_path") notebookPath: String,
     @jsonField("base_parameters") baseParameters: Option[Map[String, String]] = None
@@ -35,7 +32,6 @@ object TaskSpec:
   given JsonEncoder[TaskSpec] = DeriveJsonEncoder.gen[TaskSpec]
   given JsonDecoder[TaskSpec] = DeriveJsonDecoder.gen[TaskSpec]
 
-// Request to submit a notebook run to Databricks
 case class NotebookRunRequest(
     @jsonField("run_name") runName: String,
     tasks: Option[List[TaskSpec]] = None,
@@ -60,7 +56,6 @@ object WorkspaceImportRequest:
   given JsonEncoder[WorkspaceImportRequest] = DeriveJsonEncoder.gen[WorkspaceImportRequest]
   given JsonDecoder[WorkspaceImportRequest] = DeriveJsonDecoder.gen[WorkspaceImportRequest]
 
-// Empty object returned on success from /workspace/import
 case class WorkspaceImportResponse()
 object WorkspaceImportResponse:
   given JsonDecoder[WorkspaceImportResponse] = DeriveJsonDecoder.gen[WorkspaceImportResponse]
@@ -70,7 +65,6 @@ object SubmitRunResponse:
   given JsonEncoder[SubmitRunResponse] = DeriveJsonEncoder.gen[SubmitRunResponse]
   given JsonDecoder[SubmitRunResponse] = DeriveJsonDecoder.gen[SubmitRunResponse]
 
-// State information about a notebook run
 case class RunState(
     @jsonField("life_cycle_state") lifeCycleState: String,
     @jsonField("result_state") resultState: Option[String] = None,
@@ -81,9 +75,7 @@ object RunState:
   given JsonEncoder[RunState] = DeriveJsonEncoder.gen[RunState]
   given JsonDecoder[RunState] = DeriveJsonDecoder.gen[RunState]
 
-// Response from polling run status
-// start_time and end_time are Unix ms timestamps from the Databricks API —
-// used to compute actual notebook execution duration.
+// start_time and end_time are Unix ms timestamps from the Databricks API
 case class RunStatusResponse(
     @jsonField("run_id") runId: Long,
     state: RunState,
@@ -105,7 +97,6 @@ object TaskRun:
   given JsonEncoder[TaskRun] = DeriveJsonEncoder.gen[TaskRun]
   given JsonDecoder[TaskRun] = DeriveJsonDecoder.gen[TaskRun]
 
-// Response from getting run details (includes task runs)
 case class RunDetailsResponse(
     @jsonField("run_id") runId: Long,
     state: RunState,
@@ -116,7 +107,6 @@ object RunDetailsResponse:
   given JsonEncoder[RunDetailsResponse] = DeriveJsonEncoder.gen[RunDetailsResponse]
   given JsonDecoder[RunDetailsResponse] = DeriveJsonDecoder.gen[RunDetailsResponse]
 
-// Metadata for notebook output (contains the actual result string)
 case class NotebookOutputMetadata(
     @jsonField("notebook_output") notebookOutput: Option[NotebookOutputData] = None
 )
@@ -125,7 +115,6 @@ object NotebookOutputMetadata:
   given JsonEncoder[NotebookOutputMetadata] = DeriveJsonEncoder.gen[NotebookOutputMetadata]
   given JsonDecoder[NotebookOutputMetadata] = DeriveJsonDecoder.gen[NotebookOutputMetadata]
 
-// Notebook output data with result, truncated flag, and type
 case class NotebookOutputData(
     result: Option[String] = None,
     truncated: Option[Boolean] = None,
@@ -136,7 +125,6 @@ object NotebookOutputData:
   given JsonEncoder[NotebookOutputData] = DeriveJsonEncoder.gen[NotebookOutputData]
   given JsonDecoder[NotebookOutputData] = DeriveJsonDecoder.gen[NotebookOutputData]
 
-// Response from get-output API endpoint
 case class NotebookOutputResponse(
     metadata: Option[NotebookOutputMetadata] = None,
     error: Option[String] = None,
@@ -147,16 +135,12 @@ object NotebookOutputResponse:
   given JsonEncoder[NotebookOutputResponse] = DeriveJsonEncoder.gen[NotebookOutputResponse]
   given JsonDecoder[NotebookOutputResponse] = DeriveJsonDecoder.gen[NotebookOutputResponse]
 
-// Service Output Models
-
-// Notebook execution output
 case class NotebookOutput(
     logs: Option[String] = None,
     error: Option[String] = None,
     result: Option[String] = None
 )
 
-// Final output returned by our API to the frontend
 case class RunOutput(
     runId: Long,
     state: String,

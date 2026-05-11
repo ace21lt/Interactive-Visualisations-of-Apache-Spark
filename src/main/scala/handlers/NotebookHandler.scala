@@ -67,7 +67,7 @@ case class NotebookHandlerLive(
 
     effect.catchAll {
       case error @ (_: DatabricksError.NotAuthenticated) =>
-        ZIO.logWarning(error.getMessage) *>
+        ZIO.logWarning(error.logMessage) *>
           Clock
             .currentTime(java.util.concurrent.TimeUnit.MILLISECONDS)
             .map { ts =>
@@ -77,7 +77,7 @@ case class NotebookHandlerLive(
               )
             }
       case error                                         =>
-        ZIO.logError(s"Notebook execution failed: ${error.getMessage}") *>
+        ZIO.logError(s"Notebook execution failed: ${error.logMessage}") *>
           Clock
             .currentTime(java.util.concurrent.TimeUnit.MILLISECONDS)
             .map(ts => ErrorResponses.toResponse(error, ts))

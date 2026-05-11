@@ -26,13 +26,6 @@ libraryDependencies ++= Seq(
 
 testFrameworks += new TestFramework("zio.test.sbt.ZTestFramework")
 
-// Test coverage settings (disabled for development)
-// coverageMinimumStmtTotal   := 100
-// coverageMinimumBranchTotal := 100
-// coverageFailOnMinimum      := false
-// coverageHighlighting       := true
-// coverageExcludedPackages   := "<empty>;Main"
-
 // Assembly settings for Docker
 assembly / assemblyJarName       := "spark-viz-backend.jar"
 assembly / mainClass             := Some("Main")

@@ -6,10 +6,9 @@ import zio.*
 // Helpers to load and adapt Python notebook templates used by the labs.
 object NotebookTemplate:
 
-  // Hardcoded placeholder in template files; replaced with the student's volume path.
   private val TemplatePath = "/Volumes/main/default/sparkml_tmp"
 
-  // Map lab id -> resource filename (keep in sync with frontend LABS).
+  // Map lab id -> resource filename
   private val templates: Map[String, String] = Map(
     "lab1" -> "lab1_notebook_template.py",
     "lab2" -> "lab2_notebook_template.py"
@@ -17,7 +16,6 @@ object NotebookTemplate:
 
   private val DefaultLab = "lab1"
 
-  // Load a template, replace dataset path, and optionally set SKIP_REPARTITION for lab1.
   def loadDefault(
       lab: String = DefaultLab,
       datasetVolumePath: String = TemplatePath,
@@ -30,7 +28,6 @@ object NotebookTemplate:
           .map(injectDatasetPath(_, datasetVolumePath))
           .map(t => if lab == "lab1" then injectSkipRepartition(t, skipRepartition) else t)
 
-  // Build a notebook with an injected student code block for `step`.
   def buildNotebook(
       step: Int,
       editedCode: String,
@@ -43,24 +40,20 @@ object NotebookTemplate:
       result   <- ZIO.fromEither(substituteStep(template, step, editedCode)).mapError(DatabricksError.ConfigError(_))
     yield if lab == "lab1" then injectFilterPredicate(result, step, editedCode) else result
 
-  // Replace placeholder path in the loaded template.
   private def injectDatasetPath(template: String, datasetVolumePath: String): String =
     val normalised = datasetVolumePath.stripSuffix("/")
     template.replace(TemplatePath, normalised)
 
-  // Flip SKIP_REPARTITION flag when we want to avoid a repartition run.
   private def injectSkipRepartition(template: String, skipRepartition: Boolean): String =
     if skipRepartition then template.replace("SKIP_REPARTITION = False", "SKIP_REPARTITION = True")
     else template
 
-  // If editing step 3, extract a contains(...) predicate and inject it into the template.
   private def injectFilterPredicate(template: String, step: Int, editedCode: String): String =
     if step != 3 then template
     else
       val predicate = extractContainsPredicate(editedCode).getOrElse(".jp")
       template.replace("INJECTED_FILTER_PREDICATE = '.jp'", s"INJECTED_FILTER_PREDICATE = '$predicate'")
 
-  // Find the string inside a .contains("...") call.
   private def extractContainsPredicate(code: String): Option[String] =
     raw"""\.contains\("([^"]+)"\)""".r.findFirstMatchIn(code).map(_.group(1))
 
