@@ -47,7 +47,10 @@ object WorkspaceUrlValidator:
                   (),
                   DatabricksError.ValidationError("Workspace host resolves to a private or reserved IP address")
                 )
-    yield trimmed.stripSuffix("/")
+    yield
+      val port     = uri.getPort
+      val portPart = if port > 0 && port != 443 then s":$port" else ""
+      s"https://$host$portPart"
 
   private def parseUri(trimmed: String): Either[DatabricksError.ValidationError, URI] =
     try Right(new URI(trimmed))
