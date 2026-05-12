@@ -72,7 +72,7 @@ groupby_col = "status"
 df_grouped = df.repartitionByRange(num_return_codes, groupby_col)
 status_counts = df_grouped.groupBy(groupby_col).agg(count("*").alias("num")).orderBy(col("num").desc())`,
         readOnly: false,
-        desc: "Change groupby_col to 'day' or 'host' and re-run. Each distinct value gets its own partition, watch the partition diagram update to show how many partitions appear for different key cardinalities. Keep the variable name 'status_counts' unchanged."
+        desc: "Change groupby_col to 'day' or 'host' and re-run. DO NOT change anything but the value of groupby_col. Each distinct value gets its own partition, watch the partition diagram update to show how many partitions appear for different key cardinalities. Keep the variable name 'status_counts' unchanged."
     }
 };
 
