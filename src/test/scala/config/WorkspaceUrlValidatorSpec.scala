@@ -34,6 +34,11 @@ object WorkspaceUrlValidatorSpec extends ZIOSpecDefault {
         val res = WorkspaceUrlValidator.validate("  https://dbc-12345.cloud.databricks.com/  ", dnsPublicOnly)
         assert(res)(isRight(equalTo("https://dbc-12345.cloud.databricks.com")))
       },
+      test("strips everything after the .com") {
+        val res =
+          WorkspaceUrlValidator.validate("https://dbc-12345.cloud.databricks.com/?o=306654497558756", dnsPublicOnly)
+        assert(res)(isRight(equalTo("https://dbc-12345.cloud.databricks.com")))
+      },
       test("rejects empty input") {
         val res = WorkspaceUrlValidator.validate("", dnsPublicOnly)
         assert(res)(isLeft)
