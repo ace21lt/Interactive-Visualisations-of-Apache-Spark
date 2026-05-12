@@ -21,6 +21,12 @@ object CatalogDiscovery:
 
   private val VolumeName = "sparkml_tmp"
 
+  private val transientRetrySchedule: Schedule[Any, DatabricksError, Any] =
+    Schedule.recurWhile[DatabricksError] {
+      case _: DatabricksError.ApiCommunicationError => true
+      case _                                        => false
+    } && Schedule.exponential(1.second).jittered && Schedule.recurs(3)
+
   private def encodeQueryParam(value: String): String =
     URLEncoder.encode(value, StandardCharsets.UTF_8).replace("+", "%20")
 
@@ -162,16 +168,17 @@ object CatalogDiscovery:
               .addHeader("Authorization", s"Bearer $token")
           )
           .flatMap { response =>
+            val statusCode = response.status.code
             response.body.asString.flatMap { body =>
-              response.status.code match
-                case 401           =>
+              statusCode match
+                case 401                    =>
                   ZIO.fail(
                     DatabricksError.NotAuthenticated(
                       s"Databricks token is invalid or expired (HTTP 401). " +
                         s"Please log out and log in again with a valid access token."
                     )
                   )
-                case 403           =>
+                case 403                    =>
                   ZIO.fail(
                     DatabricksError.InsufficientPermissions(
                       s"Access denied to Unity Catalog API (HTTP 403). " +
@@ -179,20 +186,51 @@ object CatalogDiscovery:
                         s"and that your Databricks workspace has a writable catalog and schema available."
                     )
                   )
-                case c if c >= 400 =>
+                case 429                    =>
+                  ZIO.logWarning(
+                    s"Unity Catalog API rate limited (HTTP 429) at $url — will retry"
+                  ) *>
+                    ZIO.fail(
+                      DatabricksError.ApiCommunicationError(
+                        s"Unity Catalog API rate limited (HTTP 429). Body: $body"
+                      )
+                    )
+                case c if c >= 500          =>
+                  ZIO.logWarning(
+                    s"Unity Catalog API server error (HTTP $c) at $url — will retry"
+                  ) *>
+                    ZIO.fail(
+                      DatabricksError.ApiCommunicationError(
+                        s"Unity Catalog API server error (HTTP $c). Body: $body"
+                      )
+                    )
+                case c if c >= 400          =>
                   ZIO.fail(
                     DatabricksError.ApiCommunicationError(
-                      s"Unity Catalog API error: HTTP $c — $body"
+                      s"Unity Catalog API error (HTTP $c). Body: $body"
                     )
                   )
-                case _             =>
+                case c if body.trim.isEmpty =>
+                  // Success status but empty body
+                  ZIO.logWarning(
+                    s"Empty response body from Unity Catalog API (HTTP $c) at $url — " +
+                      s"Transient throttling during concurrent Databricks activity. Will retry."
+                  ) *>
+                    ZIO.fail(
+                      DatabricksError.ApiCommunicationError(
+                        s"Empty response body from Unity Catalog API (HTTP $c) at $url. " +
+                          s"Transient Databricks response, likely due to concurrent load."
+                      )
+                    )
+                case _                      =>
                   ZIO.fromEither(
                     body
                       .fromJson[A]
                       .left
                       .map(err =>
-                        DatabricksError.ApiCommunicationError(
-                          s"Failed to parse response: $err — $body"
+                        DatabricksError.JsonParseError(
+                          s"Failed to parse Unity Catalog response (HTTP $statusCode) at $url: $err",
+                          Some(body.take(500))
                         )
                       )
                   )
@@ -200,6 +238,8 @@ object CatalogDiscovery:
           }
       }
       .mapError(DatabricksError.fromThrowable)
+      .retry(transientRetrySchedule)
+      .tapError(err => ZIO.logError(s"Unity Catalog GET $url failed after retries: ${err.logMessage}"))
 
 // JSON models for Unity Catalog API responses
 
