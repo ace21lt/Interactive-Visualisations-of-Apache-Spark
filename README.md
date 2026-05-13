@@ -1,6 +1,6 @@
 # Interactive Spark Visualisations
 
-> A dissertation project (University of Sheffield) an interactive teaching tool that makes Apache Spark's distributed execution visible to students, step by step.
+> A dissertation project (University of Sheffield) an interactive teaching tool that makes Apache Spark's distributed execution visible to students, step by step. The current live deployment link is - https://interactive-visualisations-of-apache-spark-prod.up.railway.app/
 
 ## Overview
 Apache Spark's execution model is difficult to teach because students cannot see what is happening inside the cluster. This tool addresses that by connecting to a student's own Databricks workspace, executing structured teaching notebooks, and rendering the resulting execution traces as interactive D3.js visualisations.
