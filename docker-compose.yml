@@ -34,6 +34,8 @@ services:
     image: amir20/dozzle:latest
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - DOZZLE_BASE=/logs
     restart: unless-stopped
     networks:
       - ivis-network
