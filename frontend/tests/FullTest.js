@@ -22,7 +22,9 @@ test('connects to Databricks workspace and runs Labs lflow', async ({ page }) =>
     await expect(page.getByText('Where do I create a PAT?In')).toBeVisible();
     await page.getByRole('button', { name: 'Connect →' }).click();
     await expect(page.getByText('Lab 1: Intro to SparkLab 2:')).toBeVisible();
-    await expect(page.getByText('Interactive Spark Visualisationsdbc-c91b1745-f6ccLogoutLab 1: Intro to SparkLab')).toBeVisible();
+    await expect(page.locator('#root')).toContainText('Interactive Spark Visualisations');
+    await expect(page.locator('#root')).toContainText('Logout');
+    await expect(page.locator('#root')).toContainText('Lab 1: Intro to Spark');
     await page.getByRole('button', { name: 'Run Lab 1: Intro to Spark' }).click();
     await expect(page.locator('path').nth(1)).toBeVisible({ timeout: 150000 });
     await expect(page.getByRole('alertdialog', { name: 'Lab steps' })).toBeVisible();
