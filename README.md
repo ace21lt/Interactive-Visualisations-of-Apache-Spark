@@ -1,8 +1,8 @@
 # IViS (Interactive Visualisation for Spark)
 
-[![DOI](https://zenodo.org/badge/1088796914.svg)](https://doi.org/10.5281/zenodo.20832498)
+[![DOI](https://zenodo.org/badge/1088796914.svg)]([https://zenodo.org/records/21534615)
 
-> A dissertation project (University of Sheffield) an interactive teaching tool that makes Apache Spark's distributed execution visible to students, step by step. The current live deployment link is - https://interactive-visualisations-of-apache-spark-prod.up.railway.app/
+> A dissertation project (University of Sheffield) an interactive teaching tool that makes Apache Spark's distributed execution visible to students, step by step. The current live deployment link is - https://ivis.shef.ac.uk/ (Currently requires access to University of Sheffield VPN or access the the university WiFi)
 
 ## Overview
 Apache Spark's execution model is difficult to teach because students cannot see what is happening inside the cluster. This tool addresses that by connecting to a student's own Databricks workspace, executing structured teaching notebooks, and rendering the resulting execution traces as interactive D3.js visualisations.
@@ -34,7 +34,7 @@ The interface walks students through a sequence of lab steps. For each step, the
 └──────────────────────────────────────────────────────────────┘
 ```
 
-> **Local dev vs production:** locally, the React frontend and Scala backend run as two separate Docker services (ports 3000 and 8080). In the Railway production deployment, the backend JAR serves the compiled React bundle directly from `/app/public` — a single service.
+> **Local dev** locally, the React frontend and Scala backend run as two separate Docker services (ports 3000 and 8080). 
 
 ### Stack
 
@@ -43,7 +43,7 @@ The interface walks students through a sequence of lab steps. For each step, the
 | Frontend | React, Vite, D3.js, CodeMirror 6, plain CSS |
 | Backend | Scala 3.3.1, ZIO 2.0.19, ZIO HTTP 3.0.0-RC4, JVM 21 |
 | Notebook execution | Databricks Serverless Compute, Jobs API |
-| Deployment | Railway (single service, Docker multi-stage build) |
+| Deployment | University of Sheffield VPS) |
 | Testing | ZIO Test (backend), Playwright (frontend E2E) |
 
 ---
@@ -160,7 +160,6 @@ Test output: `target/test-reports/` (backend), `frontend/playwright-report/` (fr
 │
 ├── Dockerfile                          # Multi-stage build: Vite -> sbt assembly -> runtime JAR
 ├── docker-compose.yml                  # Local dev: two services (frontend :3000, backend :8080)
-├── railway.toml                        # Railway deployment config
 └── build.sbt
 ```
 
@@ -191,7 +190,7 @@ In local dev outside Docker, set `VITE_API_URL=http://localhost:8080`. In Docker
 
 ## Dissertation context
 
-This repository is the implementation for an UG dissertation at the University of Sheffield. The final project report covers the requirements, design decisions, evaluation methodology, and user study results. The live deployment is hosted on Railway and was used for a user study with COM6012 students.
+This repository is the implementation for an UG dissertation at the University of Sheffield. The final project report covers the requirements, design decisions, evaluation methodology, and user study results. The live deployment is hosted on an UoS VPS and was used for a user study with COM6012 students.
 
 ---
 
