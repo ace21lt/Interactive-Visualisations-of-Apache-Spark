@@ -1,6 +1,6 @@
 # IViS (Interactive Visualisation for Spark)
 
-[![DOI](https://zenodo.org/badge/1088796914.svg)]([https://zenodo.org/records/21534615)
+[![DOI](https://zenodo.org/badge/1088796914.svg)](https://doi.org/10.5281/zenodo.20832498)
 
 > A dissertation project (University of Sheffield) an interactive teaching tool that makes Apache Spark's distributed execution visible to students, step by step. The current live deployment link is - https://ivis.shef.ac.uk/ (Currently requires access to University of Sheffield VPN or access the the university WiFi)
 
